@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use relative URL in production (empty string), localhost in development
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // Create axios instance
 export const api: AxiosInstance = axios.create({
