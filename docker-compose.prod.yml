@@ -128,11 +128,8 @@ services:
     container_name: radar_nginx
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt/live/radarapp.fr/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
-      - /etc/letsencrypt/live/radarapp.fr/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
     depends_on:
       - frontend
       - backend
