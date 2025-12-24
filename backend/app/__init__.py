@@ -1,0 +1,3 @@
+"""
+Opportunities Radar - Backend Application
+"""
