@@ -108,10 +108,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://radarapp.fr/api/v1
+        - NEXT_PUBLIC_API_URL=https://radarapp.fr/api/v1
     container_name: radar_frontend_prod
     environment:
-      - NEXT_PUBLIC_API_URL=http://radarapp.fr/api/v1
+      - NEXT_PUBLIC_API_URL=https://radarapp.fr/api/v1
     expose:
       - "3000"
     depends_on:
@@ -130,8 +130,11 @@ services:
     container_name: radar_nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt/live/radarapp.fr/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/radarapp.fr/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
     depends_on:
       - frontend
       - backend
