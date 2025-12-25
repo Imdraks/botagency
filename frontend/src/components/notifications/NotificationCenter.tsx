@@ -42,6 +42,8 @@ export function NotificationCenter() {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 3; // Limit reconnection attempts
   
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -80,6 +82,7 @@ export function NotificationCenter() {
 
       ws.onopen = () => {
         setIsConnected(true);
+        reconnectAttempts.current = 0; // Reset on successful connection
       };
 
       ws.onmessage = (event) => {
@@ -121,10 +124,14 @@ export function NotificationCenter() {
       ws.onclose = () => {
         setIsConnected(false);
         
-        // Reconnect after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connectWebSocket();
-        }, 5000);
+        // Only reconnect if we haven't exceeded max attempts
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          reconnectAttempts.current++;
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket();
+          }, 5000 * reconnectAttempts.current); // Exponential backoff
+        }
+        // After max attempts, stop trying (WebSocket not available on server)
       };
 
       ws.onerror = () => {
