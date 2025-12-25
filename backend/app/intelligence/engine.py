@@ -48,6 +48,13 @@ class IntelligenceEngine:
             search_params: Paramètres additionnels (budget, région, etc.)
             sources: URLs sources à crawler
         """
+        print(f"\n{'='*70}", flush=True)
+        print(f"🧠 INTELLIGENCE ENGINE - search_and_analyze", flush=True)
+        print(f"{'='*70}", flush=True)
+        print(f"   Query: {query}", flush=True)
+        print(f"   Params: {search_params}", flush=True)
+        print(f"   Sources: {len(sources) if sources else 0} URLs", flush=True)
+        
         results = {
             'query': query,
             'timestamp': datetime.now().isoformat(),
@@ -62,22 +69,39 @@ class IntelligenceEngine:
         
         # Déterminer si c'est une recherche d'artiste
         is_artist_search = self._is_artist_query(query)
+        print(f"   Is Artist Search: {is_artist_search}", flush=True)
         
         if sources:
+            print(f"\n   📡 Analyse des {len(sources)} sources...", flush=True)
             # Crawler les sources fournies
-            for source_url in sources:
+            for i, source_url in enumerate(sources):
                 try:
+                    print(f"      [{i+1}/{len(sources)}] {source_url[:50]}...", flush=True)
                     data = await self._analyze_source(source_url, query, is_artist_search)
                     if data:
                         self._merge_results(results, data)
+                        print(f"         ✅ +{len(data.get('opportunities', []))} opps, +{len(data.get('artists', []))} artistes", flush=True)
+                    else:
+                        print(f"         ⚠️ Aucune donnée", flush=True)
                 except Exception as e:
+                    print(f"         ❌ Erreur: {e}", flush=True)
                     logger.error(f"Error analyzing {source_url}: {e}")
+        else:
+            print(f"   ⚠️ Aucune source fournie!", flush=True)
         
         # Post-traitement et scoring
+        print(f"\n   📊 Post-traitement...", flush=True)
         results = self._post_process(results, search_params)
         
         # Générer le résumé
         results['summary'] = self._generate_summary(results)
+        
+        print(f"\n   ✅ RÉSULTATS FINAUX:", flush=True)
+        print(f"      Opportunités: {len(results.get('opportunities', []))}", flush=True)
+        print(f"      Artistes: {len(results.get('artists', []))}", flush=True)
+        print(f"      Contacts: {len(results.get('contacts', []))}", flush=True)
+        print(f"      Prix: {len(results.get('prices', []))}", flush=True)
+        print(f"{'='*70}\n", flush=True)
         
         return results
     

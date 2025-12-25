@@ -421,6 +421,17 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
         search_params: Optional parameters (budget_min, budget_max, region, city)
         source_ids: Optional list of source IDs to search from
     """
+    import traceback
+    
+    print(f"\n{'='*80}", flush=True)
+    print(f"🔍 RECHERCHE INTELLIGENTE - DÉMARRAGE", flush=True)
+    print(f"{'='*80}", flush=True)
+    print(f"   Query: {query}", flush=True)
+    print(f"   Params: {search_params}", flush=True)
+    print(f"   Source IDs: {source_ids}", flush=True)
+    print(f"   Task ID: {self.request.id}", flush=True)
+    print(f"{'='*80}\n", flush=True)
+    
     db = get_db()
     
     try:
@@ -438,6 +449,7 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
         )
         db.add(run)
         db.commit()
+        print(f"✅ IngestionRun créé: ID={run.id}", flush=True)
         
         try:
             # Get sources URLs
@@ -455,12 +467,21 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
                 ).all()
                 source_urls = [s.url for s in sources if s.url]
             
+            print(f"📡 Sources actives trouvées: {len(source_urls)}", flush=True)
+            for i, url in enumerate(source_urls[:5]):
+                print(f"   {i+1}. {url[:60]}...", flush=True)
+            if len(source_urls) > 5:
+                print(f"   ... et {len(source_urls) - 5} autres", flush=True)
+            
             # Run intelligence engine
+            print(f"\n🧠 Lancement du moteur d'intelligence...", flush=True)
             engine = get_intelligence_engine()
+            print(f"   Engine type: {type(engine).__name__}", flush=True)
             
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
+                print(f"   Appel de engine.search_and_analyze(query='{query}', sources={len(source_urls[:20])} URLs)...", flush=True)
                 results = loop.run_until_complete(
                     engine.search_and_analyze(
                         query=query,
@@ -468,6 +489,11 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
                         sources=source_urls[:20]  # Max 20 sources
                     )
                 )
+                print(f"   ✅ Résultats reçus: {len(results.get('opportunities', []))} opportunités", flush=True)
+            except Exception as engine_error:
+                print(f"   ❌ ERREUR ENGINE: {engine_error}", flush=True)
+                print(f"   {traceback.format_exc()}", flush=True)
+                raise
             finally:
                 loop.close()
             
@@ -553,6 +579,14 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
             if high_score_opps:
                 check_and_send_notifications.delay()
             
+            print(f"\n✅ RECHERCHE TERMINÉE AVEC SUCCÈS", flush=True)
+            print(f"   Opportunités: {run.items_new}", flush=True)
+            print(f"   Duplicates: {run.items_duplicate}", flush=True)
+            print(f"   Erreurs: {run.items_error}", flush=True)
+            print(f"   Artistes: {len(results.get('artists', []))}", flush=True)
+            print(f"   Contacts: {len(results.get('contacts', []))}", flush=True)
+            print(f"{'='*80}\n", flush=True)
+            
             return {
                 "query": query,
                 "status": run.status.value,
@@ -566,6 +600,8 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
             }
             
         except Exception as e:
+            print(f"\n❌ ERREUR RECHERCHE INTELLIGENTE: {e}", flush=True)
+            print(f"   {traceback.format_exc()}", flush=True)
             logger.exception(f"Intelligent search failed for query: {query}")
             run.complete(IngestionStatus.FAILED)
             run.errors = [str(e)[:500]]
