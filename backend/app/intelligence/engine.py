@@ -418,15 +418,16 @@ class IntelligenceEngine:
         }
         
         try:
-            # Crawler la page
-            crawl_data = await self.crawler.crawl(url, max_depth=2, max_pages=10)
+            # Crawler la page - retourne une liste d'opportunités
+            crawl_data = await self.crawler.crawl(url)
             
-            if not crawl_data.get('pages'):
+            if not crawl_data:
                 return result
             
-            for page in crawl_data['pages']:
-                content = page.get('content', '')
-                page_url = page.get('url', url)
+            # crawl_data est une liste d'opportunités
+            for page in crawl_data:
+                content = page.get('content', page.get('description', ''))
+                page_url = page.get('url', page.get('source_url', url))
                 
                 # Extraire les prix
                 prices = self.price_extractor.extract_prices(content)
@@ -838,10 +839,10 @@ class IntelligenceEngine:
         
         for url in sources:
             try:
-                crawl_data = await self.crawler.crawl(url, max_depth=1, max_pages=5)
+                crawl_data = await self.crawler.crawl(url)
                 
-                for page in crawl_data.get('pages', []):
-                    content = page.get('content', '')
+                for page in (crawl_data if isinstance(crawl_data, list) else [crawl_data]):
+                    content = page.get('content', page.get('description', ''))
                     
                     # Analyser l'artiste
                     artist = self.artist_analyzer.analyze_from_text(content, artist_name)
