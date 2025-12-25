@@ -11,12 +11,6 @@ import {
   ArrowRight,
   RefreshCw,
   Loader2,
-  CheckCircle,
-  AlertCircle,
-  Search,
-  MapPin,
-  Euro,
-  Sparkles,
 } from "lucide-react";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,26 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { dashboardApi, ingestionApi, collectionApi } from "@/lib/api";
+import { dashboardApi, ingestionApi } from "@/lib/api";
 import {
   formatCurrency,
   formatRelativeDate,
@@ -53,55 +29,12 @@ import {
   truncate,
 } from "@/lib/utils";
 import type { Opportunity, IngestionRun, DashboardStats } from "@/lib/types";
-import { CollectModal, type CollectParams } from "@/components/collection";
+import { UnifiedCollectModal } from "@/components/collection";
 import { IntelligentSearchDialog, ArtistAnalysisDialog } from "@/components/intelligence";
 import { EmergingArtistsWidget } from "@/components/intelligence/EmergingArtistsWidget";
 import { DashboardOnboarding } from "@/components/onboarding";
 
-const REGIONS = [
-  "Toutes les régions",
-  "Île-de-France",
-  "Auvergne-Rhône-Alpes",
-  "Nouvelle-Aquitaine",
-  "Occitanie",
-  "Provence-Alpes-Côte d'Azur",
-  "Hauts-de-France",
-  "Grand Est",
-  "Bretagne",
-  "Pays de la Loire",
-  "Normandie",
-  "Bourgogne-Franche-Comté",
-  "Centre-Val de Loire",
-  "Corse",
-];
-
-const BUDGET_RANGES = [
-  { label: "Tous les budgets", min: undefined, max: undefined },
-  { label: "Moins de 10 000 €", min: undefined, max: 10000 },
-  { label: "10 000 € - 50 000 €", min: 10000, max: 50000 },
-  { label: "50 000 € - 100 000 €", min: 50000, max: 100000 },
-  { label: "100 000 € - 500 000 €", min: 100000, max: 500000 },
-  { label: "Plus de 500 000 €", min: 500000, max: undefined },
-];
-
-interface SimpleCollectParams {
-  keywords: string;
-  region: string;
-  budgetRange: number;
-  city: string;
-}
-
 function DashboardContent() {
-  const [isTriggering, setIsTriggering] = useState(false);
-  const [isAdvancedCollecting, setIsAdvancedCollecting] = useState(false);
-  const [triggerStatus, setTriggerStatus] = useState<"idle" | "success" | "error">("idle");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [collectParams, setCollectParams] = useState<SimpleCollectParams>({
-    keywords: "",
-    region: "Toutes les régions",
-    budgetRange: 0,
-    city: "",
-  });
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
@@ -125,89 +58,6 @@ function DashboardContent() {
     queryFn: () => dashboardApi.getRecentIngestions(5),
   });
 
-  // Advanced collection handler
-  const handleAdvancedCollect = async (params: CollectParams) => {
-    setIsAdvancedCollecting(true);
-    try {
-      const result = await collectionApi.collect({
-        objective: params.objective,
-        entities: params.entities,
-        secondary_keywords: params.secondaryKeywords,
-        budget_min: BUDGET_RANGES[params.budgetRange]?.min,
-        budget_max: BUDGET_RANGES[params.budgetRange]?.max,
-        region: params.region || undefined,
-        city: params.city || undefined,
-        timeframe_days: params.timeframeDays,
-        require_contact: params.requireContact,
-      });
-      
-      // Refresh data after collection
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["briefs"] });
-        refetchIngestions();
-      }, 2000);
-      
-      return result;
-    } finally {
-      setIsAdvancedCollecting(false);
-    }
-  };
-
-  const triggerIngestion = async () => {
-    setIsTriggering(true);
-    setTriggerStatus("idle");
-    
-    try {
-      // Construire les paramètres de recherche
-      const searchParams = {
-        keywords: collectParams.keywords || undefined,
-        region: collectParams.region !== "Toutes les régions" ? collectParams.region : undefined,
-        city: collectParams.city || undefined,
-        budget_min: BUDGET_RANGES[collectParams.budgetRange]?.min,
-        budget_max: BUDGET_RANGES[collectParams.budgetRange]?.max,
-      };
-      
-      const result = await ingestionApi.trigger(undefined, searchParams);
-      
-      if (result.source_count === 0) {
-        addToast({
-          title: "Aucune source active",
-          description: "Configurez des sources dans l'onglet Sources pour lancer une collecte",
-          type: "warning",
-        });
-      } else {
-        addToast({
-          title: "Collecte lancée !",
-          description: `${result.source_count} source(s) en cours de traitement`,
-          type: "success",
-        });
-      }
-      
-      setTriggerStatus("success");
-      setIsDialogOpen(false);
-      
-      // Rafraîchir les données après 2 secondes
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-        refetchIngestions();
-      }, 2000);
-      // Réinitialiser le statut après 3 secondes
-      setTimeout(() => setTriggerStatus("idle"), 3000);
-    } catch (error: any) {
-      addToast({
-        title: "Erreur de collecte",
-        description: error.response?.data?.detail || error.message || "Une erreur est survenue",
-        type: "error",
-      });
-      
-      setTriggerStatus("error");
-      setTimeout(() => setTriggerStatus("idle"), 3000);
-    } finally {
-      setIsTriggering(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -220,146 +70,14 @@ function DashboardContent() {
         </div>
         
         <div className="flex flex-wrap gap-2">
-          {/* Bouton collecte avancée (nouveau système) */}
-          <CollectModal 
-            onCollect={handleAdvancedCollect}
-            isCollecting={isAdvancedCollecting}
-          />
+          {/* Nouveau bouton de collecte unifiée */}
+          <UnifiedCollectModal />
           
           {/* Boutons d'intelligence IA */}
           <div data-onboarding="search-artist">
             <IntelligentSearchDialog />
           </div>
           <ArtistAnalysisDialog />
-          
-          {/* Bouton collecte standard */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                variant={triggerStatus === "success" ? "default" : triggerStatus === "error" ? "destructive" : "outline"}
-              >
-                {triggerStatus === "success" ? (
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                ) : triggerStatus === "error" ? (
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                {triggerStatus === "success" 
-                  ? "Collecte lancée !" 
-                  : triggerStatus === "error"
-                    ? "Erreur"
-                    : "Collecte standard"
-                }
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Configurer la collecte</DialogTitle>
-              <DialogDescription>
-                Définissez vos critères de recherche pour cibler les opportunités pertinentes.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              {/* Mots-clés / Thème */}
-              <div className="grid gap-2">
-                <Label htmlFor="keywords" className="flex items-center gap-2">
-                  <Search className="h-4 w-4" />
-                  Mots-clés / Thème
-                </Label>
-                <Input
-                  id="keywords"
-                  placeholder="Ex: événement corporate, séminaire, team building..."
-                  value={collectParams.keywords}
-                  onChange={(e) => setCollectParams({ ...collectParams, keywords: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Séparez les mots-clés par des virgules
-                </p>
-              </div>
-
-              {/* Tranche de budget */}
-              <div className="grid gap-2">
-                <Label htmlFor="budget" className="flex items-center gap-2">
-                  <Euro className="h-4 w-4" />
-                  Tranche de budget
-                </Label>
-                <Select 
-                  value={collectParams.budgetRange.toString()} 
-                  onValueChange={(value) => setCollectParams({ ...collectParams, budgetRange: parseInt(value) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez une tranche" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BUDGET_RANGES.map((range, index) => (
-                      <SelectItem key={index} value={index.toString()}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Région */}
-              <div className="grid gap-2">
-                <Label htmlFor="region" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Région
-                </Label>
-                <Select 
-                  value={collectParams.region} 
-                  onValueChange={(value) => setCollectParams({ ...collectParams, region: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez une région" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REGIONS.map((region) => (
-                      <SelectItem key={region} value={region}>
-                        {region}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Ville */}
-              <div className="grid gap-2">
-                <Label htmlFor="city" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Ville (optionnel)
-                </Label>
-                <Input
-                  id="city"
-                  placeholder="Ex: Paris, Lyon, Marseille..."
-                  value={collectParams.city}
-                  onChange={(e) => setCollectParams({ ...collectParams, city: e.target.value })}
-                />
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button onClick={triggerIngestion} disabled={isTriggering}>
-                {isTriggering ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Lancement...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Lancer la collecte
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
         </div>
       </div>
 

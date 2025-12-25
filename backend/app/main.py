@@ -23,6 +23,7 @@ from app.api.sso import router as sso_router
 from app.api.ai_intelligence import router as ai_intelligence_router
 from app.api.collection import router as collection_router
 from app.api.websocket import router as websocket_router
+from app.api.collect import router as collect_router
 
 # Configure logging
 logging.basicConfig(
@@ -93,6 +94,7 @@ app.include_router(enrichment_router, prefix="/api/v1", tags=["Artist Enrichment
 app.include_router(sso_router, prefix="/api/v1", tags=["SSO Authentication"])
 app.include_router(ai_intelligence_router, prefix="/api/v1", tags=["AI Intelligence"])
 app.include_router(collection_router, prefix="/api/v1", tags=["Collection"])
+app.include_router(collect_router, prefix="/api/v1", tags=["Unified Collection"])
 
 # WebSocket routes (no prefix - handled directly at /ws/)
 app.include_router(websocket_router)

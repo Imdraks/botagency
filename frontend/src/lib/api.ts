@@ -390,6 +390,84 @@ export interface CollectionRun {
   error_summary?: string;
 }
 
+// =====================
+// NEW: Unified Collection API
+// =====================
+
+export interface StandardCollectRequest {
+  keywords?: string;
+  source_ids?: string[];
+  region?: string;
+  city?: string;
+  budget_min?: number;
+  budget_max?: number;
+}
+
+export interface StandardCollectResponse {
+  run_ids: string[];
+  source_count: number;
+  message: string;
+}
+
+export interface AdvancedCollectRequest {
+  objective: string;
+  entities: { name: string; type: string }[];
+  secondary_keywords?: string[];
+  timeframe_days?: number;
+  require_contact?: boolean;
+  region?: string;
+  city?: string;
+  budget_min?: number;
+  budget_max?: number;
+}
+
+export interface AdvancedCollectResponse {
+  run_id: string;
+  entities_created: string[];
+  message: string;
+}
+
+export interface CollectionStatus {
+  id: string;
+  type: "standard" | "advanced";
+  status: string;
+  started_at?: string;
+  finished_at?: string;
+  items_found: number;
+  items_new: number;
+  contacts_found: number;
+  error_message?: string;
+  brief_id?: string;
+}
+
+// Unified Collection API (NEW)
+export const collectApi = {
+  // Standard collection (Sources -> Opportunities)
+  startStandard: async (request: StandardCollectRequest): Promise<StandardCollectResponse> => {
+    const response = await api.post("/collect/standard", request);
+    return response.data;
+  },
+
+  // Advanced collection (ChatGPT -> Briefs/Dossiers)
+  startAdvanced: async (request: AdvancedCollectRequest): Promise<AdvancedCollectResponse> => {
+    const response = await api.post("/collect/advanced", request);
+    return response.data;
+  },
+
+  // Get standard collection status
+  getStandardStatus: async (limit = 10): Promise<CollectionStatus[]> => {
+    const response = await api.get("/collect/standard/status", { params: { limit } });
+    return response.data;
+  },
+
+  // Get advanced collection status
+  getAdvancedStatus: async (runId: string): Promise<CollectionStatus> => {
+    const response = await api.get(`/collect/advanced/status/${runId}`);
+    return response.data;
+  },
+};
+
+// Legacy Collection API (keep for backward compatibility)
 export const collectionApi = {
   // Start a collection
   collect: async (request: CollectRequest): Promise<CollectResponse> => {
