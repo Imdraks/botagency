@@ -489,10 +489,7 @@ export default function DossierDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  Résumé
-                </CardTitle>
-                </CardTitle>
+                <CardTitle>Résumé</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-medium mb-4">{dossier.summary_short}</p>
