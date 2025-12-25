@@ -92,7 +92,9 @@ class WebArtistProfile:
     real_name: Optional[str] = None
     genre: str = "Unknown"
     sub_genres: List[str] = field(default_factory=list)
+    genres: List[str] = field(default_factory=list)  # Alias pour sub_genres (compatibilité)
     nationality: str = "France"
+    country: Optional[str] = None  # Pays détecté (Viberate)
     birth_year: Optional[int] = None
     image_url: Optional[str] = None  # Photo de l'artiste (Spotify)
     
@@ -140,7 +142,9 @@ class WebArtistProfile:
             'real_name': self.real_name,
             'genre': self.genre,
             'sub_genres': self.sub_genres,
+            'genres': self.genres,
             'nationality': self.nationality,
+            'country': self.country,
             'birth_year': self.birth_year,
             'image_url': self.image_url,
             'social_metrics': {
@@ -914,11 +918,12 @@ class WebArtistScanner:
                         
                         # === GENRE ET PAYS ===
                         country_info = artist_data.get('country', {})
-                        if country_info and profile.nationality == "France":
-                            # Mettre à jour nationality si on a une info plus précise
+                        if country_info:
                             country_name = country_info.get('name', country_info.get('code', ''))
                             if country_name:
-                                profile.nationality = country_name
+                                profile.country = country_name
+                                if profile.nationality == "France":
+                                    profile.nationality = country_name
                         
                         genre_info = artist_data.get('genre', {})
                         subgenres = artist_data.get('subgenres', [])
@@ -929,8 +934,10 @@ class WebArtistScanner:
                             for sg in subgenres:
                                 if sg.get('name'):
                                     genres.append(sg.get('name'))
-                            if genres and len(profile.sub_genres) == 0:
-                                profile.sub_genres = genres
+                            if genres:
+                                profile.genres = genres
+                                if len(profile.sub_genres) == 0:
+                                    profile.sub_genres = genres
                                 logger.info(f"   🎼 GENRES: {', '.join(genres)}")
                     else:
                         logger.warning(f"   ⚠️ JSON trouvé mais pas de données artiste")
