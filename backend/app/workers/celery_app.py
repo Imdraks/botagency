@@ -10,7 +10,7 @@ celery_app = Celery(
     "opportunities_radar",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.workers.tasks"],
+    include=["app.workers.tasks", "app.workers.collection_tasks"],
 )
 
 # Celery configuration
