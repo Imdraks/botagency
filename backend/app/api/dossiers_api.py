@@ -26,7 +26,7 @@ from app.db.models.collections import (
 from app.api.deps import get_current_user
 from app.schemas.collections import (
     DossierResponse, DossierDetailResponse, DossierListResponse,
-    DossierCreateRequest, DossierUpdateRequest,
+    CreateDossierRequest, DossierUpdateRequest,
     EvidenceSchema, SourceDocumentSchema, DossierStateEnum, DossierObjectiveEnum
 )
 from app.workers.collection_pipeline import run_dossier_builder_task
@@ -186,7 +186,7 @@ def get_dossier(
 @router.post("", response_model=DossierResponse)
 @router.post("/", response_model=DossierResponse)
 def create_dossier(
-    request: DossierCreateRequest,
+    request: CreateDossierRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
