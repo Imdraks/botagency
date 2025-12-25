@@ -114,10 +114,13 @@ export function DeadlinesCalendar() {
     opportunities: Opportunity[];
   } | null>(null);
 
-  const { data: opportunities = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["opportunities", "calendar"],
     queryFn: () => opportunitiesApi.getAll({ limit: 500 }),
   });
+
+  // Extract items from paginated response
+  const opportunities = data?.items || [];
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);

@@ -108,10 +108,13 @@ export function ExportPanel() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
 
-  const { data: opportunities = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["opportunities", "export"],
     queryFn: () => opportunitiesApi.getAll({ limit: 1000 }),
   });
+
+  // Extract items from paginated response
+  const opportunities = data?.items || [];
 
   const handleExport = async () => {
     setIsExporting(true);
