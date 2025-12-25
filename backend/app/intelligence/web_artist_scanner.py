@@ -940,14 +940,24 @@ class WebArtistScanner:
             else:
                 logger.warning(f"   ⚠️ Script __NEXT_DATA__ non trouvé")
             
-            # === UTILISER L'API SPOTIFY AVEC L'ID TROUVÉ ===
-            if spotify_artist_id and profile.spotify_monthly_listeners == 0:
+            # === SCRAPING SPOTIFY POUR LES VRAIS MONTHLY LISTENERS ===
+            # Toujours essayer le scraping Spotify si on a l'ID (priorité sur Viberate)
+            if spotify_artist_id and PLAYWRIGHT_AVAILABLE:
                 logger.info(f"")
-                logger.info(f"🎧 Récupération des monthly listeners via Spotify API...")
+                logger.info(f"🎧 Scraping Spotify pour les VRAIS monthly listeners...")
                 logger.info(f"   Artist ID: {spotify_artist_id}")
                 
-                # Appeler l'API Spotify directement
+                # Sauvegarder la valeur Viberate pour comparaison
+                viberate_listeners = profile.spotify_monthly_listeners
+                
+                # Scraper la page Spotify
                 await self._fetch_spotify_monthly_listeners(spotify_artist_id, profile)
+                
+                # Log la différence si Viberate avait une valeur
+                if viberate_listeners > 0 and profile.spotify_monthly_listeners != viberate_listeners:
+                    logger.info(f"   📊 Comparaison: Viberate={viberate_listeners:,} vs Spotify={profile.spotify_monthly_listeners:,}")
+            elif spotify_artist_id and not PLAYWRIGHT_AVAILABLE:
+                logger.warning(f"   ⚠️ Playwright non disponible - impossible de scraper Spotify")
             
             # === RÉSUMÉ DEBUG ===
             logger.info(f"")
