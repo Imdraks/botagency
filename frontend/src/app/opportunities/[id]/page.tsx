@@ -279,7 +279,7 @@ function OpportunityDetailContent() {
         <TabsList>
           <TabsTrigger value="details">Détails</TabsTrigger>
           <TabsTrigger value="dossier">
-            Dossier IA
+            Dossier
           </TabsTrigger>
           <TabsTrigger value="notes">
             Notes ({notes?.length || 0})
@@ -382,10 +382,7 @@ function OpportunityDetailContent() {
           )}
         </TabsContent>
 
-        {/* Notes Tab */}
-        <TabsContent value="notes" className="space-y-4">
-
-        {/* Dossier IA Tab */}
+        {/* Dossier Tab */}
         <TabsContent value="dossier" className="space-y-4">
           <DossierPanel
             opportunityId={id.toString()}
