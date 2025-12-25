@@ -190,7 +190,7 @@ class LeadItem(Base):
     tags = Column(JSONB, nullable=True)
     assigned_to = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     canonical_hash = Column(String(64), nullable=True, unique=True)
-    metadata = Column(JSONB, nullable=True)
+    extra_data = Column('metadata', JSONB, nullable=True)  # Renamed to avoid SQLAlchemy reserved name
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -267,7 +267,7 @@ class SourceDocument(Base):
     storage_path = Column(String(500), nullable=True)
     content_hash = Column(String(64), nullable=True)
     fetched_at = Column(DateTime(timezone=True), nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    extra_data = Column('metadata', JSONB, nullable=True)  # Renamed to avoid SQLAlchemy reserved name
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relations
