@@ -166,7 +166,7 @@ class LeadItem(Base):
     description = Column(Text, nullable=True)
     organization_name = Column(String(300), nullable=True)
     url_primary = Column(String(2000), nullable=True)
-    source_id = Column(Integer, ForeignKey('source_configs.id', ondelete='SET NULL'), nullable=True)
+    source_id = Column(Integer, nullable=True)  # Reference informative, pas de FK
     source_name = Column(String(255), nullable=True)
     source_type = Column(String(50), nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
@@ -259,7 +259,7 @@ class SourceDocument(Base):
     lead_item_id = Column(UUID(as_uuid=True), ForeignKey('lead_items.id', ondelete='CASCADE'), nullable=True)
     collection_id = Column(UUID(as_uuid=True), ForeignKey('collections.id', ondelete='SET NULL'), nullable=True)
     dossier_id = Column(UUID(as_uuid=True), ForeignKey('dossiers_v2.id', ondelete='SET NULL'), nullable=True)
-    source_id = Column(Integer, ForeignKey('source_configs.id', ondelete='SET NULL'), nullable=True)
+    source_id = Column(Integer, nullable=True)  # Reference informative, pas de FK
     url = Column(String(2000), nullable=True)
     doc_type = Column(String(30), nullable=True)
     raw_html = Column(Text, nullable=True)

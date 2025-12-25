@@ -73,7 +73,7 @@ def upgrade():
         sa.Column('description', sa.Text, nullable=True),
         sa.Column('organization_name', sa.String(300), nullable=True),
         sa.Column('url_primary', sa.String(2000), nullable=True),
-        sa.Column('source_id', sa.Integer, sa.ForeignKey('source_configs.id', ondelete='SET NULL'), nullable=True),
+        sa.Column('source_id', sa.Integer, nullable=True),  # Reference informative, pas de FK
         sa.Column('source_name', sa.String(255), nullable=True),
         sa.Column('source_type', sa.String(50), nullable=True),  # HTML, RSS, EMAIL, API
         sa.Column('published_at', sa.DateTime(timezone=True), nullable=True),
@@ -135,7 +135,7 @@ def upgrade():
         sa.Column('id', UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
         sa.Column('lead_item_id', UUID(as_uuid=True), sa.ForeignKey('lead_items.id', ondelete='CASCADE'), nullable=True),
         sa.Column('collection_id', UUID(as_uuid=True), sa.ForeignKey('collections.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('source_id', sa.Integer, sa.ForeignKey('source_configs.id', ondelete='SET NULL'), nullable=True),
+        sa.Column('source_id', sa.Integer, nullable=True),  # Reference informative, pas de FK
         sa.Column('url', sa.String(2000), nullable=True),
         sa.Column('doc_type', sa.String(30), nullable=True),  # HTML, PDF_TEXT, EMAIL_TEXT, WEB_SNAPSHOT_TEXT, WEB_EXTRACT
         sa.Column('raw_html', sa.Text, nullable=True),  # HTML brut
