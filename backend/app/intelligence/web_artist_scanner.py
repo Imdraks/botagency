@@ -100,6 +100,7 @@ class WebArtistProfile:
     social_metrics: List[SocialMetrics] = field(default_factory=list)
     total_followers: int = 0
     spotify_monthly_listeners: int = 0
+    spotify_followers: int = 0
     youtube_subscribers: int = 0
     youtube_total_views: int = 0
     instagram_followers: int = 0
@@ -145,6 +146,7 @@ class WebArtistProfile:
             'social_metrics': {
                 'total_followers': self.total_followers,
                 'spotify_monthly_listeners': self.spotify_monthly_listeners,
+                'spotify_followers': self.spotify_followers,
                 'youtube_subscribers': self.youtube_subscribers,
                 'youtube_total_views': self.youtube_total_views,
                 'instagram_followers': self.instagram_followers,
@@ -753,6 +755,9 @@ class WebArtistScanner:
                     url=artist_data['spotify_url']
                 ))
                 
+                # Mettre à jour spotify_followers dans le profil
+                profile.spotify_followers = artist_data['followers']
+                
                 # Utiliser la popularité Spotify (0-100) pour améliorer notre score
                 spotify_popularity = artist_data['popularity']
                 profile.popularity_score = max(profile.popularity_score, spotify_popularity)
@@ -953,7 +958,12 @@ class WebArtistScanner:
                 else:
                     formatted = str(profile.spotify_monthly_listeners)
                 logger.info(f"   🎧 Spotify Monthly: {profile.spotify_monthly_listeners:,} ({formatted})")
-            if profile.spotify_followers > 0:
+                
+                # Estimer les followers si pas encore remplis (ratio typique: followers ≈ monthly_listeners / 20)
+                if profile.spotify_followers == 0:
+                    profile.spotify_followers = profile.spotify_monthly_listeners // 20
+                    logger.info(f"   🎧 Spotify Followers (estimé): {profile.spotify_followers:,}")
+            if profile.spotify_followers > 0 and profile.spotify_monthly_listeners > 0 and profile.spotify_followers != profile.spotify_monthly_listeners // 20:
                 logger.info(f"   🎧 Spotify Followers: {profile.spotify_followers:,}")
             if profile.youtube_subscribers > 0:
                 logger.info(f"   🎬 YouTube: {profile.youtube_subscribers:,}")
