@@ -21,7 +21,7 @@ from app.db import get_db
 from app.db.models.user import User
 from app.db.models.collections import (
     LeadItem, LeadItemKind, LeadItemStatus, DossierV2,
-    SourceDocument, Evidence, DossierObjective, DossierState
+    SourceDocumentV2, Evidence, DossierObjective, DossierState
 )
 from app.api.deps import get_current_user
 from app.schemas.collections import (
@@ -234,8 +234,8 @@ def get_opportunity(
     ).all()
 
     # Documents sources
-    documents = db.query(SourceDocument).filter(
-        SourceDocument.lead_item_id == opportunity_id
+    documents = db.query(SourceDocumentV2).filter(
+        SourceDocumentV2.lead_item_id == opportunity_id
     ).all()
 
     # Has dossier

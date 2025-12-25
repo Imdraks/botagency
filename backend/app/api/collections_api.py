@@ -147,10 +147,10 @@ def get_collection(
     ).order_by(desc(CollectionLog.ts)).limit(100).all()
 
     # Sources consultées (depuis les documents)
-    from app.db.models.collections import SourceDocument
-    sources = db.query(SourceDocument.url).filter(
-        SourceDocument.collection_id == collection_id,
-        SourceDocument.url.isnot(None)
+    from app.db.models.collections import SourceDocumentV2
+    sources = db.query(SourceDocumentV2.url).filter(
+        SourceDocumentV2.collection_id == collection_id,
+        SourceDocumentV2.url.isnot(None)
     ).distinct().all()
 
     response = _collection_to_response(collection, db)

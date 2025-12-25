@@ -23,7 +23,7 @@ import openai
 from app.db.session import SessionLocal
 from app.db.models.collections import (
     CollectionV2, CollectionLog, LeadItem, CollectionResult,
-    SourceDocument, DossierV2, Evidence,
+    SourceDocumentV2, DossierV2, Evidence,
     CollectionType, CollectionStatus, LeadItemKind, LeadItemStatus,
     DossierState, EvidenceProvenance
 )
@@ -171,8 +171,8 @@ def _process_source(db: Session, collection_id: str, source: SourceConfig) -> Li
         # Fetch raw content
         raw_content = connector.fetch()
         
-        # Store as SourceDocument
-        doc = SourceDocument(
+        # Store as SourceDocumentV2
+        doc = SourceDocumentV2(
             url=source.url,
             source_id=source.id,
             raw_html=raw_content[:50000] if raw_content else None,  # Limit size
@@ -821,7 +821,7 @@ def _fetch_single_url(
         
         content = response.text[:50000]  # Limit size
         
-        doc = SourceDocument(
+        doc = SourceDocumentV2(
             url=url,
             dossier_id=dossier_id,
             lead_item_id=lead_item_id,

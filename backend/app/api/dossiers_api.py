@@ -21,7 +21,7 @@ from sqlalchemy import desc, asc, func
 from app.db import get_db
 from app.db.models.user import User
 from app.db.models.collections import (
-    DossierV2, LeadItem, LeadItemKind, Evidence, SourceDocument, DossierState
+    DossierV2, LeadItem, LeadItemKind, Evidence, SourceDocumentV2, DossierState
 )
 from app.api.deps import get_current_user
 from app.schemas.collections import (
@@ -150,8 +150,8 @@ def get_dossier(
     ).all()
 
     # Documents sources
-    documents = db.query(SourceDocument).filter(
-        SourceDocument.dossier_id == dossier_id
+    documents = db.query(SourceDocumentV2).filter(
+        SourceDocumentV2.dossier_id == dossier_id
     ).all()
 
     return DossierDetailResponse(
@@ -309,7 +309,7 @@ def delete_dossier(
     db.query(Evidence).filter(Evidence.dossier_id == dossier_id).delete()
 
     # Supprimer documents
-    db.query(SourceDocument).filter(SourceDocument.dossier_id == dossier_id).delete()
+    db.query(SourceDocumentV2).filter(SourceDocumentV2.dossier_id == dossier_id).delete()
 
     # Supprimer dossier
     db.delete(dossier)

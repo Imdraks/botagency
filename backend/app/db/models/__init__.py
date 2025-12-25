@@ -52,7 +52,7 @@ from .collections import (
     CollectionLog,
     LeadItem,
     CollectionResult,
-    SourceDocument as SourceDocumentV2,
+    SourceDocumentV2,
     DossierV2,
     Evidence,
 )

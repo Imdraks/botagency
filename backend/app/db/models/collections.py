@@ -116,7 +116,7 @@ class CollectionV2(Base):
     # Relations
     logs = relationship("CollectionLog", back_populates="collection", cascade="all, delete-orphan")
     results = relationship("CollectionResult", back_populates="collection", cascade="all, delete-orphan")
-    documents = relationship("SourceDocument", back_populates="collection")
+    documents = relationship("SourceDocumentV2", back_populates="collection")
     creator = relationship("User", foreign_keys=[created_by])
 
     def set_running(self):
@@ -196,7 +196,7 @@ class LeadItem(Base):
 
     # Relations
     collection_results = relationship("CollectionResult", back_populates="lead_item", cascade="all, delete-orphan")
-    source_documents = relationship("SourceDocument", back_populates="lead_item", cascade="all, delete-orphan")
+    source_documents = relationship("SourceDocumentV2", back_populates="lead_item", cascade="all, delete-orphan")
     dossier = relationship("DossierV2", back_populates="lead_item", uselist=False, cascade="all, delete-orphan")
     evidence_items = relationship("Evidence", back_populates="lead_item", cascade="all, delete-orphan")
     assignee = relationship("User", foreign_keys=[assigned_to])
@@ -251,7 +251,7 @@ class CollectionResult(Base):
     )
 
 
-class SourceDocument(Base):
+class SourceDocumentV2(Base):
     """Documents bruts servant de preuves"""
     __tablename__ = "source_documents_v2"
 
@@ -308,7 +308,7 @@ class DossierV2(Base):
     # Relations
     lead_item = relationship("LeadItem", back_populates="dossier")
     evidence_items = relationship("Evidence", back_populates="dossier", cascade="all, delete-orphan")
-    source_documents = relationship("SourceDocument", back_populates="dossier")
+    source_documents = relationship("SourceDocumentV2", back_populates="dossier")
 
     def set_ready(self):
         self.state = DossierState.READY.value
@@ -337,4 +337,4 @@ class Evidence(Base):
     # Relations
     lead_item = relationship("LeadItem", back_populates="evidence_items")
     dossier = relationship("DossierV2", back_populates="evidence_items")
-    source_document = relationship("SourceDocument", back_populates="evidence_items")
+    source_document = relationship("SourceDocumentV2", back_populates="evidence_items")
