@@ -4,6 +4,7 @@ Intelligence Engine - Orchestration du moteur intelligent de collecte
 import asyncio
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from urllib.parse import quote_plus
 import logging
 import aiohttp
 from bs4 import BeautifulSoup
@@ -15,6 +16,15 @@ from .artist_analyzer import ArtistAnalyzer, ArtistProfile
 from .opportunity_scorer import OpportunityScorer, ScoringResult
 
 logger = logging.getLogger(__name__)
+
+# Sources par défaut pour la recherche intelligente
+DEFAULT_SEARCH_SOURCES = [
+    "https://www.fnacspectacles.com/recherche/artiste/{query}",
+    "https://www.ticketmaster.fr/search?q={query}",
+    "https://www.infoconcert.com/recherche?q={query}",
+    "https://www.songkick.com/search?query={query}",
+    "https://www.bandsintown.com/a/{query}",
+]
 
 
 class IntelligenceEngine:
@@ -53,7 +63,7 @@ class IntelligenceEngine:
         print(f"{'='*70}", flush=True)
         print(f"   Query: {query}", flush=True)
         print(f"   Params: {search_params}", flush=True)
-        print(f"   Sources: {len(sources) if sources else 0} URLs", flush=True)
+        print(f"   Sources fournies: {len(sources) if sources else 0} URLs", flush=True)
         
         results = {
             'query': query,
@@ -71,12 +81,18 @@ class IntelligenceEngine:
         is_artist_search = self._is_artist_query(query)
         print(f"   Is Artist Search: {is_artist_search}", flush=True)
         
+        # Si pas de sources, utiliser les sources par défaut avec la query
+        if not sources:
+            print(f"   🔄 Pas de sources configurées, génération de sources automatiques...", flush=True)
+            sources = await self._generate_search_sources(query, is_artist_search)
+            print(f"   📡 {len(sources)} sources générées", flush=True)
+        
         if sources:
             print(f"\n   📡 Analyse des {len(sources)} sources...", flush=True)
             # Crawler les sources fournies
             for i, source_url in enumerate(sources):
                 try:
-                    print(f"      [{i+1}/{len(sources)}] {source_url[:50]}...", flush=True)
+                    print(f"      [{i+1}/{len(sources)}] {source_url[:60]}...", flush=True)
                     data = await self._analyze_source(source_url, query, is_artist_search)
                     if data:
                         self._merge_results(results, data)
@@ -87,7 +103,7 @@ class IntelligenceEngine:
                     print(f"         ❌ Erreur: {e}", flush=True)
                     logger.error(f"Error analyzing {source_url}: {e}")
         else:
-            print(f"   ⚠️ Aucune source fournie!", flush=True)
+            print(f"   ⚠️ Aucune source disponible!", flush=True)
         
         # Post-traitement et scoring
         print(f"\n   📊 Post-traitement...", flush=True)
@@ -160,6 +176,47 @@ class IntelligenceEngine:
             logger.error(f"Error in _analyze_source for {url}: {e}")
         
         return result
+    
+    async def _generate_search_sources(self, query: str, is_artist_search: bool) -> List[str]:
+        """
+        Génère automatiquement des URLs de recherche basées sur la query.
+        Utilise des sites de billetterie et d'événements français.
+        """
+        sources = []
+        
+        # Extraire le nom de l'artiste/recherche propre
+        query_encoded = quote_plus(query)
+        query_slug = query.lower().replace(' ', '-').replace("'", "")
+        
+        if is_artist_search:
+            # Sources pour recherche d'artiste
+            artist_sources = [
+                f"https://www.fnacspectacles.com/recherche/{query_encoded}",
+                f"https://www.ticketmaster.fr/search?q={query_encoded}",
+                f"https://www.infoconcert.com/recherche?q={query_encoded}",
+                f"https://www.songkick.com/search?query={query_encoded}&type=artists",
+                f"https://www.bandsintown.com/search?search_term={query_encoded}",
+                f"https://www.setlist.fm/search?query={query_encoded}",
+                f"https://www.viberate.com/artist/{query_slug}/",
+                f"https://www.google.com/search?q={query_encoded}+concert+date+2025",
+            ]
+            sources.extend(artist_sources)
+        else:
+            # Sources génériques pour événements
+            event_sources = [
+                f"https://www.fnacspectacles.com/recherche/{query_encoded}",
+                f"https://www.ticketmaster.fr/search?q={query_encoded}",
+                f"https://www.billetreduc.com/recherche.htm?keywords={query_encoded}",
+                f"https://www.infoconcert.com/recherche?q={query_encoded}",
+                f"https://www.google.com/search?q={query_encoded}+festival+événement+2025",
+            ]
+            sources.extend(event_sources)
+        
+        print(f"   📋 Sources générées:", flush=True)
+        for s in sources[:5]:
+            print(f"      - {s[:70]}...", flush=True)
+        
+        return sources
     
     def _is_artist_query(self, query: str) -> bool:
         """Détecte si la recherche concerne un artiste"""
