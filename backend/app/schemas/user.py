@@ -28,6 +28,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     role: Optional[Role] = None
     is_active: Optional[bool] = None
+    is_whitelisted: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=8)
 
 
@@ -45,6 +46,7 @@ class UserResponse(UserBase):
     """User response schema"""
     id: UUID
     is_superuser: bool
+    is_whitelisted: bool = False
     created_at: datetime
     last_login_at: Optional[datetime] = None
     auth_provider: Optional[str] = None

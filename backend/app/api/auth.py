@@ -75,6 +75,7 @@ def initial_setup(
         role=Role.ADMIN,
         is_active=True,
         is_superuser=True,
+        is_whitelisted=True,  # Super admin is always whitelisted
     )
     db.add(admin)
     db.commit()
@@ -102,6 +103,13 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account",
+        )
+    
+    # Check whitelist - only superusers and whitelisted users can login
+    if not user.is_superuser and not user.is_whitelisted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès refusé. Votre compte n'est pas autorisé. Contactez l'administrateur.",
         )
     
     # Update last login

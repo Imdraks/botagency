@@ -25,6 +25,7 @@ def user_to_response(user: User) -> dict:
         "role": user.role,
         "is_active": user.is_active,
         "is_superuser": user.is_superuser,
+        "is_whitelisted": user.is_whitelisted or False,
         "created_at": user.created_at,
         "last_login_at": user.last_login_at,
         "auth_provider": user.auth_provider,
@@ -95,6 +96,7 @@ def create_user(
         full_name=user_data.full_name,
         role=user_data.role,
         is_active=user_data.is_active,
+        is_whitelisted=True,  # Users created by admin are automatically whitelisted
     )
     db.add(user)
     db.commit()

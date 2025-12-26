@@ -30,6 +30,7 @@ class User(Base):
     role = Column(Enum(Role), default=Role.VIEWER, nullable=False)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+    is_whitelisted = Column(Boolean, default=False)  # Only whitelisted users can login
     
     # SSO fields
     auth_provider = Column(String(50), default='credentials')  # 'credentials' | 'google' | 'apple'
