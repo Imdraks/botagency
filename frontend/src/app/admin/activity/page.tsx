@@ -21,7 +21,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
+import { useAuthStore } from '@/store/auth';
 
 interface ActivityLog {
   id: string;
@@ -74,7 +74,7 @@ const actionLabels: Record<string, string> = {
 };
 
 export default function ActivityLogsPage() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
