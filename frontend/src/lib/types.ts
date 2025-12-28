@@ -213,3 +213,169 @@ export interface LoginResponse {
   refresh_token: string;
   token_type: string;
 }
+
+// ============================================================================
+// RADAR FEATURES TYPES
+// ============================================================================
+
+// Profiles (Fit Score)
+export interface Profile {
+  id: number;
+  name: string;
+  description?: string;
+  objectives: ProfileObjective[];
+  weights: ProfileWeights;
+  criteria?: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export type ProfileObjective = 
+  | "visibility" 
+  | "revenue" 
+  | "networking" 
+  | "artist_development"
+  | "brand_building";
+
+export interface ProfileWeights {
+  score_weight: number;
+  budget_weight: number;
+  deadline_weight: number;
+  category_weight: number;
+  source_weight: number;
+}
+
+export interface OpportunityProfileScore {
+  opportunity_id: number;
+  profile_id: number;
+  fit_score: number;
+  computed_at: string;
+  opportunity?: Opportunity;
+}
+
+// Shortlists (Daily Picks)
+export interface ShortlistReason {
+  emoji: string;
+  label: string;
+  value: string;
+}
+
+export interface ShortlistItem {
+  opportunity_id: number;
+  fit_score: number;
+  reasons: ShortlistReason[];
+  opportunity?: Opportunity;
+}
+
+export interface DailyShortlist {
+  id: number;
+  date: string;
+  profile_id?: number;
+  profile?: Profile;
+  items: ShortlistItem[];
+  count: number;
+  created_at: string;
+}
+
+// Clusters (Deduplication)
+export type ClusterMatchType = "url" | "hash" | "text" | "ai";
+
+export interface ClusterMember {
+  opportunity_id: number;
+  is_canonical: boolean;
+  opportunity?: Opportunity;
+}
+
+export interface OpportunityCluster {
+  id: number;
+  canonical_id: number;
+  canonical?: Opportunity;
+  match_type: ClusterMatchType;
+  confidence: number;
+  members: ClusterMember[];
+  created_at: string;
+}
+
+export interface ClusterStats {
+  total_clusters: number;
+  total_duplicates: number;
+  by_match_type: Record<ClusterMatchType, number>;
+}
+
+// Deadline Alerts
+export type AlertType = "J_7" | "J_3" | "J_1";
+export type AlertStatus = "pending" | "sent" | "acknowledged" | "dismissed";
+
+export interface DeadlineAlert {
+  id: number;
+  opportunity_id: number;
+  opportunity?: Opportunity;
+  deadline: string;
+  alert_type: AlertType;
+  status: AlertStatus;
+  scheduled_at: string;
+  sent_at?: string;
+  acknowledged_at?: string;
+}
+
+export interface UpcomingDeadline {
+  opportunity: Opportunity;
+  days_remaining: number;
+  alerts: DeadlineAlert[];
+}
+
+// Source Health
+export interface SourceHealthMetrics {
+  source_id: number;
+  source?: SourceConfig;
+  date: string;
+  opportunities_found: number;
+  duplicates_found: number;
+  avg_score: number;
+  error_rate: number;
+  freshness_hours: number;
+  health_score: number;
+}
+
+export interface SourceHealthSummary {
+  source: SourceConfig;
+  current_health: number;
+  trend: "up" | "down" | "stable";
+  last_7_days_avg: number;
+  total_opportunities_7d: number;
+  status: "healthy" | "warning" | "critical";
+}
+
+export interface SourceHealthOverview {
+  sources: SourceHealthSummary[];
+  overall_health: number;
+  healthy_count: number;
+  warning_count: number;
+  critical_count: number;
+}
+
+// Contact Finder
+export interface ContactInfo {
+  type: "email" | "phone" | "website" | "linkedin" | "twitter";
+  value: string;
+  confidence: number;
+  source: string;
+}
+
+export interface ContactFinderResult {
+  id: number;
+  opportunity_id: number;
+  contacts: ContactInfo[];
+  evidence: string[];
+  status: "pending" | "searching" | "completed" | "failed";
+  requested_at: string;
+  completed_at?: string;
+}
+
+export interface ContactFinderStats {
+  total_searches: number;
+  successful_searches: number;
+  emails_found: number;
+  phones_found: number;
+}

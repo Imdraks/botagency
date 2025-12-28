@@ -17,7 +17,7 @@ import uuid
 
 # revision identifiers
 revision = '011_refonte_collectes'
-down_revision = '010_dossier_system'
+down_revision = '010d_merge_heads'
 branch_labels = None
 depends_on = None
 

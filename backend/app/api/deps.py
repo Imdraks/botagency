@@ -78,3 +78,15 @@ require_admin = RoleChecker([Role.ADMIN])
 require_bizdev = RoleChecker([Role.ADMIN, Role.BIZDEV])
 require_pm = RoleChecker([Role.ADMIN, Role.BIZDEV, Role.PM])
 require_viewer = RoleChecker([Role.ADMIN, Role.BIZDEV, Role.PM, Role.VIEWER])
+
+
+def get_current_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Get current user only if admin or superuser"""
+    if not current_user.is_superuser and current_user.role != Role.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user

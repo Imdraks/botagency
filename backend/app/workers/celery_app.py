@@ -16,6 +16,7 @@ celery_app = Celery(
         "app.workers.ai_collection",
         "app.workers.dossier_tasks",
         "app.workers.auto_radar_task",
+        "app.workers.radar_features_tasks",
     ],
 )
 
@@ -70,5 +71,28 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.dossier_tasks.auto_build_top_dossiers_task",
         "schedule": crontab(minute="0", hour="2"),
         "kwargs": {"score_threshold": 70, "limit": 20},
+    },
+    # ============================================================================
+    # RADAR FEATURES - Nouvelles fonctionnalités
+    # ============================================================================
+    # 🌅 Daily Shortlist - Génération quotidienne à 08h00
+    "daily-shortlist-generation": {
+        "task": "app.workers.radar_features_tasks.daily_shortlist_job",
+        "schedule": crontab(minute="0", hour="8"),
+    },
+    # 🔄 Cluster Rebuild - Reconstruction nocturne à 03h00
+    "cluster-rebuild-nightly": {
+        "task": "app.workers.radar_features_tasks.cluster_rebuild_job",
+        "schedule": crontab(minute="0", hour="3"),
+    },
+    # ⏰ Deadline Guard - Vérification quotidienne à 07h00
+    "deadline-guard-check": {
+        "task": "app.workers.radar_features_tasks.deadline_guard_job",
+        "schedule": crontab(minute="0", hour="7"),
+    },
+    # 🏥 Source Health Rollup - Calcul quotidien à 01h00
+    "source-health-rollup": {
+        "task": "app.workers.radar_features_tasks.source_health_rollup_job",
+        "schedule": crontab(minute="0", hour="1"),
     },
 }

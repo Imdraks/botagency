@@ -1,7 +1,7 @@
 """Add is_whitelisted field to users
 
 Revision ID: 011_add_whitelist
-Revises: 010_add_ai_found_contact_type
+Revises: 010_add_ai_found
 Create Date: 2025-12-26
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '011_add_whitelist'
-down_revision = '010_add_ai_found_contact_type'
+down_revision = '010d_merge_heads'
 branch_labels = None
 depends_on = None
 

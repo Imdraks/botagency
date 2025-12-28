@@ -32,6 +32,13 @@ from app.api.activity import router as activity_router
 from app.api.collections_api import router as collections_v2_router
 from app.api.opportunities_api import router as opportunities_v2_router
 from app.api.dossiers_api import router as dossiers_v2_router
+# Radar Features - nouvelles fonctionnalités
+from app.api.profiles import router as profiles_router
+from app.api.shortlists import router as shortlists_router
+from app.api.clusters import router as clusters_router
+from app.api.deadlines import router as deadlines_router
+from app.api.source_health import router as source_health_router
+from app.api.contact_finder import router as contact_finder_router
 
 # Configure logging
 logging.basicConfig(
@@ -115,6 +122,14 @@ app.include_router(activity_router, prefix="/api/v1/admin", tags=["Activity Logs
 app.include_router(collections_v2_router, prefix="/api/v2", tags=["Collections V2"])
 app.include_router(opportunities_v2_router, prefix="/api/v2", tags=["Opportunities V2"])
 app.include_router(dossiers_v2_router, prefix="/api/v2", tags=["Dossiers V2"])
+
+# Radar Features - nouvelles fonctionnalités
+app.include_router(profiles_router, prefix="/api/v1", tags=["Profiles"])
+app.include_router(shortlists_router, prefix="/api/v1", tags=["Shortlists"])
+app.include_router(clusters_router, prefix="/api/v1", tags=["Clusters"])
+app.include_router(deadlines_router, prefix="/api/v1", tags=["Deadlines"])
+app.include_router(source_health_router, prefix="/api/v1", tags=["Source Health"])
+app.include_router(contact_finder_router, prefix="/api/v1", tags=["Contact Finder"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])

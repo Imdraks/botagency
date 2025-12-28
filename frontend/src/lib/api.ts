@@ -78,10 +78,11 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, totpCode?: string) => {
     const response = await axios.post(`${API_URL}/api/v1/auth/login`, {
       email,
       password,
+      totp_code: totpCode,
     }, {
       headers: { "Content-Type": "application/json" },
     });
@@ -736,6 +737,177 @@ export const adminApi = {
   // Get activity stats
   getStats: async (hours = 24) => {
     const response = await api.get("/admin/logs/stats", { params: { hours } });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// RADAR FEATURES API
+// ============================================================================
+
+// Profiles API (Fit Score)
+export const profilesApi = {
+  getAll: async () => {
+    const response = await api.get("/profiles");
+    return response.data;
+  },
+  
+  getOne: async (id: number) => {
+    const response = await api.get(`/profiles/${id}`);
+    return response.data;
+  },
+  
+  create: async (data: {
+    name: string;
+    description?: string;
+    objectives?: string[];
+    weights?: Record<string, number>;
+    criteria?: Record<string, unknown>;
+  }) => {
+    const response = await api.post("/profiles", data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: Record<string, unknown>) => {
+    const response = await api.patch(`/profiles/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/profiles/${id}`);
+    return response.data;
+  },
+  
+  recompute: async (id: number) => {
+    const response = await api.post(`/profiles/${id}/recompute`);
+    return response.data;
+  },
+  
+  getScores: async (id: number, limit = 50) => {
+    const response = await api.get(`/profiles/${id}/scores`, { params: { limit } });
+    return response.data;
+  },
+};
+
+// Shortlists API (Daily Picks)
+export const shortlistsApi = {
+  getToday: async (profileId?: number) => {
+    const response = await api.get("/shortlists/today", { 
+      params: profileId ? { profile_id: profileId } : {} 
+    });
+    return response.data;
+  },
+  
+  getAll: async (params?: { 
+    profile_id?: number; 
+    date_from?: string; 
+    date_to?: string;
+    limit?: number;
+  }) => {
+    const response = await api.get("/shortlists", { params });
+    return response.data;
+  },
+  
+  getOne: async (id: number) => {
+    const response = await api.get(`/shortlists/${id}`);
+    return response.data;
+  },
+  
+  generate: async (profileId?: number) => {
+    const response = await api.post("/shortlists/generate", null, { 
+      params: profileId ? { profile_id: profileId } : {} 
+    });
+    return response.data;
+  },
+};
+
+// Clusters API (Deduplication)
+export const clustersApi = {
+  getForOpportunity: async (opportunityId: number) => {
+    const response = await api.get(`/clusters/opportunity/${opportunityId}`);
+    return response.data;
+  },
+  
+  rebuild: async () => {
+    const response = await api.post("/clusters/rebuild");
+    return response.data;
+  },
+  
+  getStats: async () => {
+    const response = await api.get("/clusters/stats");
+    return response.data;
+  },
+};
+
+// Deadlines API (Deadline Guard)
+export const deadlinesApi = {
+  getUpcoming: async (days = 14) => {
+    const response = await api.get("/deadlines/upcoming", { params: { days } });
+    return response.data;
+  },
+  
+  getPast: async (days = 30) => {
+    const response = await api.get("/deadlines/past", { params: { days } });
+    return response.data;
+  },
+  
+  scheduleAll: async () => {
+    const response = await api.post("/deadlines/schedule-all");
+    return response.data;
+  },
+  
+  testNotification: async (opportunityId: number) => {
+    const response = await api.post("/deadlines/test-notification", { opportunity_id: opportunityId });
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/deadlines/${id}`);
+    return response.data;
+  },
+};
+
+// Source Health API
+export const sourceHealthApi = {
+  getAll: async (days = 30) => {
+    const response = await api.get("/sources/health", { params: { days } });
+    return response.data;
+  },
+  
+  getOverview: async () => {
+    const response = await api.get("/sources/health/overview");
+    return response.data;
+  },
+  
+  getOne: async (sourceId: number, days = 30) => {
+    const response = await api.get(`/sources/health/${sourceId}`, { params: { days } });
+    return response.data;
+  },
+  
+  updateSource: async (sourceId: number, data: { is_active?: boolean }) => {
+    const response = await api.patch(`/sources/${sourceId}`, data);
+    return response.data;
+  },
+};
+
+// Contact Finder API
+export const contactFinderApi = {
+  find: async (opportunityId: number, options?: { 
+    search_web?: boolean;
+    search_linkedin?: boolean;
+    max_results?: number;
+  }) => {
+    const response = await api.post(`/contact-finder/opportunities/${opportunityId}/find`, options);
+    return response.data;
+  },
+  
+  getResult: async (opportunityId: number) => {
+    const response = await api.get(`/contact-finder/opportunities/${opportunityId}/result`);
+    return response.data;
+  },
+  
+  getStats: async () => {
+    const response = await api.get("/contact-finder/stats");
     return response.data;
   },
 };

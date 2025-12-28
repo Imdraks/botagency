@@ -18,7 +18,7 @@ from app.core.security import (
 )
 from app.core.two_factor import two_factor_auth
 from app.core.activity_logger import ActivityLogger, Actions
-from app.schemas.user import UserLogin, Token, UserResponse
+from app.schemas.user import UserLogin, Token, UserResponse, LoginResponse
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -85,7 +85,7 @@ def initial_setup(
     return admin
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 def login(
     credentials: UserLogin,
     request: Request,
@@ -114,12 +114,58 @@ def login(
             detail="Accès refusé. Votre compte n'est pas autorisé. Contactez l'administrateur.",
         )
     
+    # Check if 2FA is enabled
+    if user.two_factor_enabled and user.two_factor_secret:
+        # 2FA is enabled - require TOTP code
+        if not credentials.totp_code:
+            # Return temp token for 2FA verification
+            from datetime import timedelta
+            temp_token = create_access_token(
+                data={"sub": str(user.id), "2fa_pending": True},
+                expires_delta=timedelta(minutes=5)  # 5 minutes to enter code
+            )
+            return LoginResponse(
+                requires_2fa=True,
+                temp_token=temp_token,
+            )
+        
+        # Verify the TOTP code
+        if not two_factor_auth.verify_code(user.two_factor_secret, credentials.totp_code):
+            # Check backup codes
+            if user.backup_codes:
+                # backup_codes is stored as JSON list
+                backup_codes = user.backup_codes if isinstance(user.backup_codes, list) else []
+                # Normalize input code for comparison
+                normalized_input = credentials.totp_code.upper().replace(" ", "").replace("-", "")
+                
+                matched_code = None
+                for code in backup_codes:
+                    if code.replace("-", "") == normalized_input:
+                        matched_code = code
+                        break
+                
+                if matched_code:
+                    # Valid backup code - remove it
+                    backup_codes.remove(matched_code)
+                    user.backup_codes = backup_codes
+                    db.commit()
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Code 2FA invalide",
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Code 2FA invalide",
+                )
+    
     # Log successful login
     ActivityLogger.log(
         db=db,
         user=user,
         action=Actions.LOGIN,
-        details={"email": user.email},
+        details={"email": user.email, "2fa_used": user.two_factor_enabled},
         request=request,
     )
     
@@ -131,9 +177,10 @@ def login(
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
-    return Token(
+    return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
+        requires_2fa=False,
     )
 
 

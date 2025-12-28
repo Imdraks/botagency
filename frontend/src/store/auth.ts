@@ -5,21 +5,29 @@ import { persist } from "zustand/middleware";
 import { User } from "@/lib/types";
 import { authApi } from "@/lib/api";
 
+interface LoginResult {
+  success: boolean;
+  requires2FA?: boolean;
+  tempToken?: string;
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   rememberMe: boolean;
   lastLoginEmail: string | null;
+  pending2FA: { email: string; password: string; tempToken: string } | null;
   
   // Actions
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean, totpCode?: string) => Promise<LoginResult>;
   logout: () => void;
   fetchUser: () => Promise<void>;
   setUser: (user: User | null) => void;
   setRememberMe: (value: boolean) => void;
   setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   initializeAuth: () => Promise<void>;
+  clearPending2FA: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,23 +38,40 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
       rememberMe: true,
       lastLoginEmail: null,
+      pending2FA: null,
 
-      login: async (email: string, password: string, rememberMe = true) => {
+      login: async (email: string, password: string, rememberMe = true, totpCode?: string): Promise<LoginResult> => {
         set({ isLoading: true });
         try {
-          const response = await authApi.login(email, password);
+          const response = await authApi.login(email, password, totpCode);
+          
+          // Check if 2FA is required
+          if (response.requires_2fa) {
+            set({ 
+              isLoading: false,
+              pending2FA: { email, password, tempToken: response.temp_token }
+            });
+            return { success: false, requires2FA: true, tempToken: response.temp_token };
+          }
+          
+          // Normal login success
           localStorage.setItem("access_token", response.access_token);
           localStorage.setItem("refresh_token", response.refresh_token);
           
           // Store remember me preference
-          set({ rememberMe, lastLoginEmail: rememberMe ? email : null });
+          set({ rememberMe, lastLoginEmail: rememberMe ? email : null, pending2FA: null });
           
           // Fetch user after login
           await get().fetchUser();
+          return { success: true };
         } catch (error) {
           set({ isLoading: false });
           throw error;
         }
+      },
+      
+      clearPending2FA: () => {
+        set({ pending2FA: null });
       },
 
       logout: () => {

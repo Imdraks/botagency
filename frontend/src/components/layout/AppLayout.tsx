@@ -22,6 +22,10 @@ import {
   ChevronRight,
   Bell,
   Activity,
+  Sparkles,
+  Sliders,
+  Clock,
+  HeartPulse,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -44,14 +48,18 @@ const navigation: {
   isNew?: boolean;
 }[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Daily Picks", href: "/shortlist", icon: Sparkles, isNew: true },
   { name: "Opportunités", href: "/opportunities", icon: Target },
   { name: "Dossiers", href: "/dossiers", icon: FileText, isNew: true },
   { name: "Kanban", href: "/opportunities/kanban", icon: Kanban },
   { name: "Calendrier", href: "/opportunities/calendar", icon: Calendar },
+  { name: "Deadlines", href: "/deadlines", icon: Clock, isNew: true },
+  { name: "Profils", href: "/profiles", icon: Sliders, isNew: true },
   { name: "Artistes", href: "/artist-history", icon: Music },
   { name: "Découverte", href: "/discovery", icon: Search },
   { name: "Comparaison", href: "/comparison", icon: GitCompare },
   { name: "Sources", href: "/sources", icon: Rss },
+  { name: "Source Health", href: "/source-health", icon: HeartPulse, isNew: true },
   { name: "Scoring", href: "/scoring", icon: BarChart3 },
   { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
   { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },

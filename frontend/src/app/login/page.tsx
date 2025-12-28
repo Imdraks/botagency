@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Target, Loader2 } from "lucide-react";
+import { Target, Loader2, Shield, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,12 +53,16 @@ type LoginForm = z.infer<typeof loginSchema>;
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, rememberMe, setRememberMe, lastLoginEmail, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { login, rememberMe, setRememberMe, lastLoginEmail, isAuthenticated, isLoading: authLoading, pending2FA, clearPending2FA } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
   const [ssoProviders, setSsoProviders] = useState<{ id: string; name: string; enabled: boolean }[]>([]);
+  const [show2FA, setShow2FA] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [savedCredentials, setSavedCredentials] = useState<{ email: string; password: string } | null>(null);
+  const totpInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -140,7 +144,18 @@ function LoginContent() {
     setIsLoading(true);
 
     try {
-      await login(data.email, data.password, rememberMe);
+      const result = await login(data.email, data.password, rememberMe);
+      
+      if (result.requires2FA) {
+        // Show 2FA input
+        setSavedCredentials({ email: data.email, password: data.password });
+        setShow2FA(true);
+        setIsLoading(false);
+        // Focus on TOTP input after animation
+        setTimeout(() => totpInputRef.current?.focus(), 300);
+        return;
+      }
+      
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string | object } } };
@@ -157,6 +172,40 @@ function LoginContent() {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handleVerify2FA = async () => {
+    if (!savedCredentials || !totpCode) return;
+    
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const result = await login(savedCredentials.email, savedCredentials.password, rememberMe, totpCode);
+      
+      if (result.success) {
+        router.push("/dashboard");
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string | object } } };
+      const detail = error?.response?.data?.detail;
+      if (typeof detail === "string") {
+        setError(detail);
+      } else {
+        setError("Code 2FA invalide");
+      }
+      setTotpCode("");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleBack = () => {
+    setShow2FA(false);
+    setTotpCode("");
+    setSavedCredentials(null);
+    clearPending2FA();
+    setError(null);
   };
 
   if (checkingSetup || (!authLoading && isAuthenticated)) {
@@ -184,31 +233,107 @@ function LoginContent() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/30 animate-bounce-soft">
-              <Target className="h-8 w-8 text-primary-foreground" />
+              {show2FA ? (
+                <Shield className="h-8 w-8 text-primary-foreground" />
+              ) : (
+                <Target className="h-8 w-8 text-primary-foreground" />
+              )}
             </div>
           </div>
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
-            Radar
+            {show2FA ? "Vérification 2FA" : "Radar"}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            Connectez-vous pour accéder à la plateforme
+            {show2FA 
+              ? "Entrez le code de votre application d'authentification" 
+              : "Connectez-vous pour accéder à la plateforme"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* SSO Buttons - Always show */}
-          <div className="space-y-3">
-            {/* Google SSO */}
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base font-medium hover-lift transition-all duration-200 hover:border-primary/50 hover:bg-primary/5"
-              onClick={() => handleSsoLogin("google")}
-              disabled={ssoLoading !== null}
-            >
-              {ssoLoading === "google" ? (
-                <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-              ) : (
-                <GoogleIcon className="mr-3 h-5 w-5" />
+          {/* 2FA Verification Form */}
+          {show2FA ? (
+            <div className="space-y-4 animate-fade-in">
+              {error && (
+                <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm animate-fade-in flex items-center gap-2">
+                  <svg className="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  {error}
+                </div>
               )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="totp" className="text-sm font-medium">Code à 6 chiffres</Label>
+                <Input
+                  ref={totpInputRef}
+                  id="totp"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="000000"
+                  className="h-14 text-center text-2xl font-mono tracking-[0.5em]"
+                  value={totpCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    setTotpCode(value);
+                    // Auto-submit when 6 digits entered
+                    if (value.length === 6) {
+                      setTimeout(() => handleVerify2FA(), 100);
+                    }
+                  }}
+                  disabled={isLoading}
+                  autoComplete="one-time-code"
+                />
+                <p className="text-xs text-muted-foreground text-center">
+                  Vous pouvez aussi utiliser un code de récupération
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-12"
+                  onClick={handleBack}
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Retour
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 h-12 font-semibold"
+                  onClick={handleVerify2FA}
+                  disabled={isLoading || totpCode.length < 6}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Vérification...
+                    </>
+                  ) : (
+                    "Vérifier"
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* SSO Buttons - Always show */}
+              <div className="space-y-3">
+                {/* Google SSO */}
+                <Button
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium hover-lift transition-all duration-200 hover:border-primary/50 hover:bg-primary/5"
+                  onClick={() => handleSsoLogin("google")}
+                  disabled={ssoLoading !== null}
+                >
+                  {ssoLoading === "google" ? (
+                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                  ) : (
+                    <GoogleIcon className="mr-3 h-5 w-5" />
+                  )}
               Continuer avec Google
             </Button>
             
@@ -300,6 +425,8 @@ function LoginContent() {
               )}
             </Button>
           </form>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

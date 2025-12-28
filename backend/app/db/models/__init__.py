@@ -41,6 +41,22 @@ from .dossier import (
 # Activity Log
 from .activity_log import ActivityLog
 
+# Radar Features (nouvelles fonctionnalités)
+from .radar_features import (
+    Profile,
+    ProfileObjective,
+    OpportunityProfileScore,
+    DailyShortlist,
+    ShortlistReason,
+    OpportunityCluster,
+    OpportunityClusterMember,
+    DeadlineAlert,
+    AlertType,
+    AlertStatus,
+    SourceHealth,
+    ContactFinderResult,
+)
+
 # Nouveaux modèles refonte v2
 from .collections import (
     CollectionType,
