@@ -19,6 +19,10 @@ from app.schemas.radar_features import (
     SourceHealthOverview,
     SourceUpdateRequest,
 )
+from app.core.cache import cache_get, cache_set
+
+# Cache TTLs
+HEALTH_OVERVIEW_TTL = 300  # 5 minutes
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -138,6 +142,12 @@ def get_sources_health_overview(
     current_user = Depends(get_current_user),
 ):
     """Get overview of all sources health"""
+    # Check cache first
+    cache_key = "source_health:overview"
+    cached = cache_get(cache_key)
+    if cached:
+        return SourceHealthOverview(**cached)
+    
     # Get all sources
     sources = db.query(SourceConfig).all()
     
@@ -188,13 +198,18 @@ def get_sources_health_overview(
     
     active_count = sum(1 for s in sources if s.is_active)
     
-    return SourceHealthOverview(
+    result = SourceHealthOverview(
         sources=summaries,
         total_active=active_count,
         total_inactive=len(sources) - active_count,
         avg_health_score=round(total_health / len(sources), 1) if sources else 0,
         sources_needing_attention=sources_needing_attention,
     )
+    
+    # Cache the result
+    cache_set(cache_key, result.model_dump(mode="json"), HEALTH_OVERVIEW_TTL)
+    
+    return result
 
 
 @router.get("/health/{source_id}", response_model=List[SourceHealthMetrics])

@@ -1,14 +1,17 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ToastProvider } from "@/components/ui/toaster";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 
-// Onboarding components - temporarily disabled for debugging
-// import { OnboardingProvider, OnboardingTour, WelcomeModal } from "@/components/onboarding";
+// Lazy load devtools only in development
+const ReactQueryDevtools = dynamic(
+  () => import("@tanstack/react-query-devtools").then((mod) => mod.ReactQueryDevtools),
+  { ssr: false }
+);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -16,8 +19,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000,
+            // Increase stale time to reduce refetches
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            gcTime: 30 * 60 * 1000, // 30 minutes cache
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            retry: 1, // Only retry once
+            retryDelay: 1000,
+          },
+          mutations: {
+            retry: 0,
           },
         },
       })
@@ -31,13 +42,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem={false}
         disableTransitionOnChange
       >
-        <TooltipProvider>
+        <TooltipProvider delayDuration={300}>
           <ToastProvider>
             {children}
           </ToastProvider>
         </TooltipProvider>
       </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === "development" && (
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+      )}
     </QueryClientProvider>
   );
 }

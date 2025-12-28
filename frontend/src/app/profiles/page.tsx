@@ -47,7 +47,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toaster";
 import { profilesApi } from "@/lib/api";
-import type { Profile, ProfileWeights, ProfileObjective } from "@/lib/types";
+import type { Profile, ProfileWeights } from "@/lib/types";
+
+type ProfileObjective = "visibility" | "revenue" | "networking" | "artist_development" | "brand_building";
 
 const OBJECTIVES: { value: ProfileObjective; label: string; emoji: string }[] = [
   { value: "visibility", label: "Visibilité", emoji: "👁️" },
@@ -58,19 +60,24 @@ const OBJECTIVES: { value: ProfileObjective; label: string; emoji: string }[] = 
 ];
 
 const DEFAULT_WEIGHTS: ProfileWeights = {
-  score_weight: 0.3,
-  budget_weight: 0.2,
-  deadline_weight: 0.2,
-  category_weight: 0.15,
-  source_weight: 0.15,
+  score_base: 0.4,
+  budget_match: 0.2,
+  deadline_proximity: 0.15,
+  contact_present: 0.15,
+  location_match: 0.1,
 };
 
 interface ProfileFormData {
   name: string;
   description: string;
   objectives: ProfileObjective[];
+  keywords_include: string[];
+  keywords_exclude: string[];
+  regions: string[];
+  cities: string[];
+  budget_min?: number;
+  budget_max?: number;
   weights: ProfileWeights;
-  criteria: Record<string, unknown>;
 }
 
 function ProfileForm({
@@ -87,9 +94,14 @@ function ProfileForm({
   const [formData, setFormData] = useState<ProfileFormData>({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    objectives: initialData?.objectives || [],
+    objectives: (initialData?.objectives || []) as ProfileObjective[],
+    keywords_include: initialData?.keywords_include || [],
+    keywords_exclude: initialData?.keywords_exclude || [],
+    regions: initialData?.regions || [],
+    cities: initialData?.cities || [],
+    budget_min: initialData?.budget_min,
+    budget_max: initialData?.budget_max,
     weights: initialData?.weights || DEFAULT_WEIGHTS,
-    criteria: initialData?.criteria || {},
   });
 
   const handleObjectiveToggle = (objective: ProfileObjective) => {
@@ -157,59 +169,59 @@ function ProfileForm({
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span>Score de base</span>
-              <span>{Math.round(formData.weights.score_weight * 100)}%</span>
+              <span>{Math.round(formData.weights.score_base * 100)}%</span>
             </div>
             <Slider
-              value={[formData.weights.score_weight * 100]}
-              onValueChange={([v]) => handleWeightChange("score_weight", v)}
+              value={[formData.weights.score_base * 100]}
+              onValueChange={([v]) => handleWeightChange("score_base", v)}
               max={100}
               step={5}
             />
           </div>
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span>Budget</span>
-              <span>{Math.round(formData.weights.budget_weight * 100)}%</span>
+              <span>Correspondance budget</span>
+              <span>{Math.round(formData.weights.budget_match * 100)}%</span>
             </div>
             <Slider
-              value={[formData.weights.budget_weight * 100]}
-              onValueChange={([v]) => handleWeightChange("budget_weight", v)}
+              value={[formData.weights.budget_match * 100]}
+              onValueChange={([v]) => handleWeightChange("budget_match", v)}
               max={100}
               step={5}
             />
           </div>
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span>Urgence deadline</span>
-              <span>{Math.round(formData.weights.deadline_weight * 100)}%</span>
+              <span>Proximité deadline</span>
+              <span>{Math.round(formData.weights.deadline_proximity * 100)}%</span>
             </div>
             <Slider
-              value={[formData.weights.deadline_weight * 100]}
-              onValueChange={([v]) => handleWeightChange("deadline_weight", v)}
+              value={[formData.weights.deadline_proximity * 100]}
+              onValueChange={([v]) => handleWeightChange("deadline_proximity", v)}
               max={100}
               step={5}
             />
           </div>
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span>Catégorie</span>
-              <span>{Math.round(formData.weights.category_weight * 100)}%</span>
+              <span>Présence contact</span>
+              <span>{Math.round(formData.weights.contact_present * 100)}%</span>
             </div>
             <Slider
-              value={[formData.weights.category_weight * 100]}
-              onValueChange={([v]) => handleWeightChange("category_weight", v)}
+              value={[formData.weights.contact_present * 100]}
+              onValueChange={([v]) => handleWeightChange("contact_present", v)}
               max={100}
               step={5}
             />
           </div>
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span>Source préférée</span>
-              <span>{Math.round(formData.weights.source_weight * 100)}%</span>
+              <span>Correspondance lieu</span>
+              <span>{Math.round(formData.weights.location_match * 100)}%</span>
             </div>
             <Slider
-              value={[formData.weights.source_weight * 100]}
-              onValueChange={([v]) => handleWeightChange("source_weight", v)}
+              value={[formData.weights.location_match * 100]}
+              onValueChange={([v]) => handleWeightChange("location_match", v)}
               max={100}
               step={5}
             />

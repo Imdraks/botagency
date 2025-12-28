@@ -1,5 +1,5 @@
 """
-Dashboard endpoints
+Dashboard endpoints with Redis caching for performance
 """
 from datetime import datetime, timedelta
 from typing import Dict, Any
@@ -13,8 +13,13 @@ from app.db.models.user import User
 from app.db.models.opportunity import Opportunity, OpportunityStatus, OpportunityCategory
 from app.db.models.ingestion import IngestionRun, IngestionStatus
 from app.api.deps import get_current_user
+from app.core.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+# Cache TTL constants
+STATS_CACHE_TTL = 60  # 1 minute for dashboard stats
+TOP_OPPS_CACHE_TTL = 120  # 2 minutes for top opportunities
 
 
 @router.get("/stats")
@@ -22,7 +27,14 @@ def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Get dashboard statistics"""
+    """Get dashboard statistics with caching"""
+    cache_key = f"dashboard:stats:{current_user.id}"
+    
+    # Try cache first
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    
     now = datetime.utcnow()
     
     # Total opportunities by status
@@ -88,7 +100,7 @@ def get_dashboard_stats(
         Opportunity.budget_amount.isnot(None)
     ).scalar() or 0
     
-    return {
+    result = {
         "totals": {
             "all": sum(status_counts.values()),
             "new": status_counts.get(OpportunityStatus.NEW, 0),
@@ -108,6 +120,11 @@ def get_dashboard_stats(
         "budget_won": float(total_budget_won),
         "budget_pipeline": float(total_budget_pipeline),
     }
+    
+    # Cache the result
+    cache_set(cache_key, result, STATS_CACHE_TTL)
+    
+    return result
 
 
 @router.get("/top-opportunities")
@@ -116,7 +133,14 @@ def get_top_opportunities(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get top scored opportunities"""
+    """Get top scored opportunities with caching"""
+    cache_key = f"dashboard:top:{current_user.id}:{limit}"
+    
+    # Try cache first
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    
     opportunities = db.query(Opportunity).filter(
         Opportunity.status.in_([
             OpportunityStatus.NEW,
@@ -125,7 +149,7 @@ def get_top_opportunities(
         ])
     ).order_by(Opportunity.score.desc()).limit(limit).all()
     
-    return [
+    result = [
         {
             "id": str(o.id),
             "title": o.title,
@@ -138,6 +162,11 @@ def get_top_opportunities(
         }
         for o in opportunities
     ]
+    
+    # Cache the result
+    cache_set(cache_key, result, TOP_OPPS_CACHE_TTL)
+    
+    return result
 
 
 @router.get("/upcoming-deadlines")

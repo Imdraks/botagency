@@ -220,15 +220,20 @@ export interface LoginResponse {
 
 // Profiles (Fit Score)
 export interface Profile {
-  id: number;
+  id: string;
   name: string;
   description?: string;
-  objectives: ProfileObjective[];
-  weights: ProfileWeights;
-  criteria?: Record<string, unknown>;
   is_active: boolean;
+  keywords_include: string[];
+  keywords_exclude: string[];
+  regions: string[];
+  cities: string[];
+  budget_min?: number;
+  budget_max?: number;
+  objectives: string[];
+  weights: ProfileWeights;
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
 }
 
 export type ProfileObjective = 
@@ -239,11 +244,11 @@ export type ProfileObjective =
   | "brand_building";
 
 export interface ProfileWeights {
-  score_weight: number;
-  budget_weight: number;
-  deadline_weight: number;
-  category_weight: number;
-  source_weight: number;
+  score_base: number;
+  budget_match: number;
+  deadline_proximity: number;
+  contact_present: number;
+  location_match: number;
 }
 
 export interface OpportunityProfileScore {
@@ -255,26 +260,26 @@ export interface OpportunityProfileScore {
 }
 
 // Shortlists (Daily Picks)
-export interface ShortlistReason {
-  emoji: string;
-  label: string;
-  value: string;
-}
-
 export interface ShortlistItem {
-  opportunity_id: number;
+  opportunity_id: string;
+  title: string;
+  organization?: string;
+  score: number;
   fit_score: number;
-  reasons: ShortlistReason[];
-  opportunity?: Opportunity;
+  reasons: string[];
+  deadline_at?: string;
+  url?: string;
+  category?: string;
 }
 
 export interface DailyShortlist {
-  id: number;
+  id: string;
   date: string;
-  profile_id?: number;
-  profile?: Profile;
+  profile_id: string;
+  profile_name: string;
   items: ShortlistItem[];
-  count: number;
+  total_candidates: number;
+  items_count: number;
   created_at: string;
 }
 
@@ -282,25 +287,28 @@ export interface DailyShortlist {
 export type ClusterMatchType = "url" | "hash" | "text" | "ai";
 
 export interface ClusterMember {
-  opportunity_id: number;
-  is_canonical: boolean;
-  opportunity?: Opportunity;
+  opportunity_id: string;
+  title: string;
+  source_name: string;
+  url?: string;
+  similarity_score: number;
+  match_type: string;
 }
 
 export interface OpportunityCluster {
-  id: number;
-  canonical_id: number;
-  canonical?: Opportunity;
-  match_type: ClusterMatchType;
-  confidence: number;
+  cluster_id: string;
+  canonical_opportunity_id: string;
+  canonical_title: string;
+  member_count: number;
+  cluster_score: number;
   members: ClusterMember[];
-  created_at: string;
 }
 
-export interface ClusterStats {
-  total_clusters: number;
-  total_duplicates: number;
-  by_match_type: Record<ClusterMatchType, number>;
+export interface ClusterRebuildResponse {
+  clusters_created: number;
+  clusters_updated: number;
+  opportunities_clustered: number;
+  duration_seconds: number;
 }
 
 // Deadline Alerts
@@ -339,20 +347,21 @@ export interface SourceHealthMetrics {
 }
 
 export interface SourceHealthSummary {
-  source: SourceConfig;
-  current_health: number;
-  trend: "up" | "down" | "stable";
-  last_7_days_avg: number;
-  total_opportunities_7d: number;
-  status: "healthy" | "warning" | "critical";
+  source_id: string;
+  source_name: string;
+  is_active: boolean;
+  avg_health_score: number;
+  total_items_last_7_days: number;
+  error_rate_last_7_days: number;
+  recommendation?: "disable" | "repair" | "prioritize" | null;
 }
 
 export interface SourceHealthOverview {
   sources: SourceHealthSummary[];
-  overall_health: number;
-  healthy_count: number;
-  warning_count: number;
-  critical_count: number;
+  total_active: number;
+  total_inactive: number;
+  avg_health_score: number;
+  sources_needing_attention: number;
 }
 
 // Contact Finder

@@ -43,19 +43,21 @@ function ShortlistContent() {
     queryFn: profilesApi.getAll,
   });
 
-  // Fetch today's shortlist
+  // Fetch today's shortlist (only when profile is selected)
   const { data: todayShortlist, isLoading: shortlistLoading } = useQuery<DailyShortlist | null>({
     queryKey: ["shortlists", "today", selectedProfileId],
     queryFn: () => shortlistsApi.getToday(selectedProfileId),
+    enabled: !!selectedProfileId,
   });
 
-  // Fetch historical shortlists
+  // Fetch historical shortlists (only when profile is selected)
   const { data: historicalShortlists, isLoading: historyLoading } = useQuery<DailyShortlist[]>({
     queryKey: ["shortlists", "history", selectedProfileId],
     queryFn: () => shortlistsApi.getAll({ 
       profile_id: selectedProfileId, 
       limit: 7 
     }),
+    enabled: !!selectedProfileId,
   });
 
   // Generate shortlist mutation
@@ -78,15 +80,13 @@ function ShortlistContent() {
     },
   });
 
-  const renderReasonBadge = (reason: { emoji: string; label: string; value: string }) => (
+  const renderReasonBadge = (reason: string, index: number) => (
     <Badge
-      key={reason.label}
+      key={index}
       variant="secondary"
       className="flex items-center gap-1 text-xs"
     >
-      <span>{reason.emoji}</span>
-      <span>{reason.label}:</span>
-      <span className="font-semibold">{reason.value}</span>
+      {reason}
     </Badge>
   );
 
@@ -113,19 +113,25 @@ function ShortlistContent() {
                 href={`/opportunities/${item.opportunity_id}`}
                 className="font-semibold text-lg hover:text-primary truncate"
               >
-                {item.opportunity?.title || `Opportunité #${item.opportunity_id}`}
+                {item.title}
               </Link>
             </div>
 
             <div className="text-sm text-muted-foreground mb-2">
-              {item.opportunity?.organization_name && (
-                <span>{item.opportunity.organization_name}</span>
+              {item.organization && (
+                <span>{item.organization}</span>
+              )}
+              {item.deadline_at && (
+                <span className="ml-2">
+                  <Clock className="h-3 w-3 inline mr-1" />
+                  {new Date(item.deadline_at).toLocaleDateString("fr-FR")}
+                </span>
               )}
             </div>
 
             {/* Reasons */}
             <div className="flex flex-wrap gap-1.5">
-              {item.reasons.map(renderReasonBadge)}
+              {item.reasons.map((reason, i) => renderReasonBadge(reason, i))}
             </div>
           </div>
 
@@ -133,7 +139,7 @@ function ShortlistContent() {
           <div className="flex-shrink-0 text-right">
             <div className="flex items-center gap-1 mb-1">
               <Star className="h-4 w-4 text-yellow-500" />
-              <span className="font-bold text-lg">{item.fit_score.toFixed(0)}%</span>
+              <span className="font-bold text-lg">{item.fit_score}%</span>
             </div>
             <Progress 
               value={item.fit_score} 
@@ -172,7 +178,7 @@ function ShortlistContent() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les profils</SelectItem>
-              {profiles?.map((profile) => (
+              {Array.isArray(profiles) && profiles.map((profile) => (
                 <SelectItem key={profile.id} value={profile.id.toString()}>
                   {profile.name}
                 </SelectItem>
@@ -182,7 +188,7 @@ function ShortlistContent() {
 
           <Button
             onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
+            disabled={generateMutation.isPending || !selectedProfileId}
           >
             {generateMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -202,7 +208,7 @@ function ShortlistContent() {
             Aujourd&apos;hui
           </CardTitle>
           <CardDescription>
-            {todayShortlist?.count || 0} opportunités sélectionnées
+            {todayShortlist?.items_count || 0} opportunités sélectionnées
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -219,14 +225,24 @@ function ShortlistContent() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Aucune shortlist pour aujourd&apos;hui</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => generateMutation.mutate()}
-              >
-                Générer maintenant
-              </Button>
+              <p>
+                {selectedProfileId 
+                  ? "Aucune shortlist pour aujourd'hui" 
+                  : "Sélectionnez un profil pour voir la shortlist"}
+              </p>
+              {selectedProfileId && (
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => generateMutation.mutate()}
+                  disabled={generateMutation.isPending}
+                >
+                  {generateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Générer maintenant
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -264,12 +280,12 @@ function ShortlistContent() {
                         month: "long",
                       })}
                     </span>
-                    {shortlist.profile && (
-                      <Badge variant="outline">{shortlist.profile.name}</Badge>
+                    {shortlist.profile_name && (
+                      <Badge variant="outline">{shortlist.profile_name}</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{shortlist.count} picks</Badge>
+                    <Badge variant="secondary">{shortlist.items_count} picks</Badge>
                     <Link href={`/shortlist/${shortlist.id}`}>
                       <Button size="sm" variant="ghost">
                         <ArrowRight className="h-4 w-4" />

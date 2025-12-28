@@ -3,12 +3,21 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "ax
 // Use relative URL in production (empty string), localhost in development
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-// Create axios instance
+// Request deduplication cache
+const pendingRequests = new Map<string, Promise<unknown>>();
+
+function getRequestKey(config: InternalAxiosRequestConfig): string {
+  return `${config.method}:${config.url}:${JSON.stringify(config.params || {})}`;
+}
+
+// Create axios instance with optimized config
 export const api: AxiosInstance = axios.create({
   baseURL: `${API_URL}/api/v1`,
   headers: {
     "Content-Type": "application/json",
+    "Accept-Encoding": "gzip, deflate, br", // Explicitly request compression
   },
+  timeout: 30000, // 30 second timeout
 });
 
 // Request interceptor - add auth token
@@ -749,7 +758,8 @@ export const adminApi = {
 export const profilesApi = {
   getAll: async () => {
     const response = await api.get("/profiles");
-    return response.data;
+    // API returns {profiles: [...], total: N}, extract the array
+    return response.data.profiles || response.data;
   },
   
   getOne: async (id: number) => {
@@ -842,12 +852,12 @@ export const clustersApi = {
 // Deadlines API (Deadline Guard)
 export const deadlinesApi = {
   getUpcoming: async (days = 14) => {
-    const response = await api.get("/deadlines/upcoming", { params: { days } });
+    const response = await api.get("/deadlines/upcoming", { params: { days_ahead: days } });
     return response.data;
   },
   
   getPast: async (days = 30) => {
-    const response = await api.get("/deadlines/past", { params: { days } });
+    const response = await api.get("/deadlines/past", { params: { days_back: days } });
     return response.data;
   },
   

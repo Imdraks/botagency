@@ -9,17 +9,11 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   RefreshCw,
   Loader2,
-  Power,
   PowerOff,
   BarChart3,
   Clock,
-  FileWarning,
-  Copy,
 } from "lucide-react";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -63,14 +57,16 @@ function getStatusIcon(status: "healthy" | "warning" | "critical") {
   }
 }
 
-function getTrendIcon(trend: "up" | "down" | "stable") {
-  switch (trend) {
-    case "up":
-      return <TrendingUp className="h-4 w-4 text-green-500" />;
-    case "down":
-      return <TrendingDown className="h-4 w-4 text-red-500" />;
-    case "stable":
-      return <Minus className="h-4 w-4 text-gray-400" />;
+function getRecommendationBadge(rec: string | null | undefined) {
+  switch (rec) {
+    case "disable":
+      return <Badge variant="destructive">À désactiver</Badge>;
+    case "repair":
+      return <Badge className="bg-yellow-500 text-white">À réparer</Badge>;
+    case "prioritize":
+      return <Badge className="bg-green-500 text-white">À prioriser</Badge>;
+    default:
+      return null;
   }
 }
 
@@ -80,29 +76,27 @@ function SourceHealthCard({
   isToggling,
 }: {
   summary: SourceHealthSummary;
-  onToggle: (sourceId: number, isActive: boolean) => void;
+  onToggle: (sourceId: string, isActive: boolean) => void;
   isToggling: boolean;
 }) {
-  const { source, current_health, trend, last_7_days_avg, total_opportunities_7d, status } = summary;
+  const { source_id, source_name, is_active, avg_health_score, total_items_last_7_days, error_rate_last_7_days, recommendation } = summary;
+  const status = avg_health_score >= 80 ? "healthy" : avg_health_score >= 50 ? "warning" : "critical";
 
   return (
-    <Card className={`border-l-4 ${getHealthBgColor(current_health)} hover:shadow-md transition-shadow`}>
+    <Card className={`border-l-4 ${getHealthBgColor(avg_health_score)} hover:shadow-md transition-shadow`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             {getStatusIcon(status)}
             <div>
-              <h3 className="font-semibold">{source.name}</h3>
-              <p className="text-sm text-muted-foreground capitalize">
-                {source.source_type}
-              </p>
+              <h3 className="font-semibold">{source_name}</h3>
+              {getRecommendationBadge(recommendation)}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {getTrendIcon(trend)}
             <Switch
-              checked={source.is_active}
-              onCheckedChange={(checked) => onToggle(source.id, checked)}
+              checked={is_active}
+              onCheckedChange={(checked) => onToggle(source_id, checked)}
               disabled={isToggling}
             />
           </div>
@@ -112,32 +106,26 @@ function SourceHealthCard({
         <div className="mb-4">
           <div className="flex items-center justify-between text-sm mb-1">
             <span>Santé</span>
-            <span className={`font-bold ${getHealthColor(current_health)}`}>
-              {current_health.toFixed(0)}%
+            <span className={`font-bold ${getHealthColor(avg_health_score)}`}>
+              {avg_health_score.toFixed(0)}%
             </span>
           </div>
-          <Progress value={current_health} className="h-2" />
+          <Progress value={avg_health_score} className="h-2" />
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-muted-foreground">Moy. 7j</p>
-            <p className="font-semibold">{last_7_days_avg.toFixed(0)}%</p>
+            <p className="text-muted-foreground">Items 7j</p>
+            <p className="font-semibold">{total_items_last_7_days}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Opportunités 7j</p>
-            <p className="font-semibold">{total_opportunities_7d}</p>
+            <p className="text-muted-foreground">Taux erreur</p>
+            <p className={`font-semibold ${error_rate_last_7_days > 0.1 ? 'text-red-500' : 'text-green-500'}`}>
+              {(error_rate_last_7_days * 100).toFixed(1)}%
+            </p>
           </div>
         </div>
-
-        {/* Last poll */}
-        {source.last_polled_at && (
-          <div className="mt-3 pt-3 border-t text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            Dernière collecte: {new Date(source.last_polled_at).toLocaleString("fr-FR")}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -223,14 +211,14 @@ function SourceHealthContent() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${getHealthBgColor(overview.overall_health)} bg-opacity-20`}>
-                    <Activity className={`h-5 w-5 ${getHealthColor(overview.overall_health)}`} />
+                  <div className={`p-2 rounded-lg ${getHealthBgColor(overview.avg_health_score)} bg-opacity-20`}>
+                    <Activity className={`h-5 w-5 ${getHealthColor(overview.avg_health_score)}`} />
                   </div>
                   <div>
-                    <p className={`text-2xl font-bold ${getHealthColor(overview.overall_health)}`}>
-                      {overview.overall_health.toFixed(0)}%
+                    <p className={`text-2xl font-bold ${getHealthColor(overview.avg_health_score)}`}>
+                      {overview.avg_health_score.toFixed(0)}%
                     </p>
-                    <p className="text-sm text-muted-foreground">Santé globale</p>
+                    <p className="text-sm text-muted-foreground">Santé moyenne</p>
                   </div>
                 </div>
               </CardContent>
@@ -242,8 +230,8 @@ function SourceHealthContent() {
                     <CheckCircle className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-600">{overview.healthy_count}</p>
-                    <p className="text-sm text-muted-foreground">Sources saines</p>
+                    <p className="text-2xl font-bold text-green-600">{overview.total_active}</p>
+                    <p className="text-sm text-muted-foreground">Sources actives</p>
                   </div>
                 </div>
               </CardContent>
@@ -251,25 +239,25 @@ function SourceHealthContent() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-yellow-100">
-                    <AlertCircle className="h-5 w-5 text-yellow-600" />
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <PowerOff className="h-5 w-5 text-gray-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-yellow-600">{overview.warning_count}</p>
+                    <p className="text-2xl font-bold text-gray-600">{overview.total_inactive}</p>
+                    <p className="text-sm text-muted-foreground">Sources inactives</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-orange-100">
+                    <AlertCircle className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">{overview.sources_needing_attention}</p>
                     <p className="text-sm text-muted-foreground">À surveiller</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-red-100">
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-red-600">{overview.critical_count}</p>
-                    <p className="text-sm text-muted-foreground">Critiques</p>
                   </div>
                 </div>
               </CardContent>
@@ -280,14 +268,14 @@ function SourceHealthContent() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {overview.sources.map((summary) => (
               <div
-                key={summary.source.id}
-                onClick={() => setSelectedSourceId(summary.source.id)}
+                key={summary.source_id}
+                onClick={() => setSelectedSourceId(Number(summary.source_id))}
                 className="cursor-pointer"
               >
                 <SourceHealthCard
                   summary={summary}
                   onToggle={(sourceId, isActive) =>
-                    toggleMutation.mutate({ sourceId, isActive })
+                    toggleMutation.mutate({ sourceId: Number(sourceId), isActive })
                   }
                   isToggling={toggleMutation.isPending}
                 />

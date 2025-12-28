@@ -25,7 +25,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toaster";
 import { deadlinesApi } from "@/lib/api";
 import { formatRelativeDate, truncate } from "@/lib/utils";
-import type { UpcomingDeadline, DeadlineAlert, AlertStatus } from "@/lib/types";
+import type { DeadlineAlert, AlertStatus } from "@/lib/types";
+
+// Backend alert type
+interface DeadlineAlertResponse {
+  id: string;
+  opportunity_id: string;
+  opportunity_title: string;
+  organization?: string;
+  alert_type: string;
+  scheduled_for: string;
+  deadline_at: string;
+  status: AlertStatus;
+  sent_at?: string;
+}
+
+interface DeadlinesResponse {
+  alerts: DeadlineAlertResponse[];
+  total: number;
+}
+
+// Calculate days remaining from deadline
+function getDaysRemaining(deadlineAt: string): number {
+  const now = new Date();
+  const deadline = new Date(deadlineAt);
+  const diffTime = deadline.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
 
 function getUrgencyColor(days: number): string {
   if (days <= 1) return "bg-red-500";
@@ -78,8 +105,8 @@ function getStatusBadge(status: AlertStatus) {
   }
 }
 
-function DeadlineCard({ deadline }: { deadline: UpcomingDeadline }) {
-  const { opportunity, days_remaining, alerts } = deadline;
+function DeadlineAlertCard({ alert }: { alert: DeadlineAlertResponse }) {
+  const days_remaining = getDaysRemaining(alert.deadline_at);
 
   return (
     <Card className={`border-l-4 ${getUrgencyColor(days_remaining)} hover:shadow-md transition-shadow`}>
@@ -96,50 +123,43 @@ function DeadlineCard({ deadline }: { deadline: UpcomingDeadline }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Link
-                href={`/opportunities/${opportunity.id}`}
+                href={`/opportunities/${alert.opportunity_id}`}
                 className="font-semibold text-lg hover:text-primary truncate"
               >
-                {truncate(opportunity.title, 60)}
+                {truncate(alert.opportunity_title, 60)}
               </Link>
               {getUrgencyBadge(days_remaining)}
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2">
-              {opportunity.organization_name && (
-                <span>🏢 {opportunity.organization_name}</span>
+              {alert.organization && (
+                <span>🏢 {alert.organization}</span>
               )}
-              {opportunity.deadline_at && (
+              {alert.deadline_at && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {new Date(opportunity.deadline_at).toLocaleDateString("fr-FR", {
+                  {new Date(alert.deadline_at).toLocaleDateString("fr-FR", {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
                   })}
                 </span>
               )}
-              {opportunity.budget_amount && (
-                <span>💰 {opportunity.budget_amount.toLocaleString()}€</span>
-              )}
             </div>
 
-            {/* Alerts status */}
-            {alerts && alerts.length > 0 && (
-              <div className="flex gap-2">
-                {alerts.map((alert) => (
-                  <div key={alert.id} className="flex items-center gap-1">
-                    <Bell className="h-3 w-3" />
-                    <span className="text-xs">{alert.alert_type.replace("_", "-")}</span>
-                    {getStatusBadge(alert.status)}
-                  </div>
-                ))}
+            {/* Alert status */}
+            <div className="flex gap-2">
+              <div className="flex items-center gap-1">
+                <Bell className="h-3 w-3" />
+                <span className="text-xs">{alert.alert_type}</span>
+                {getStatusBadge(alert.status)}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Actions */}
           <div className="flex-shrink-0">
-            <Link href={`/opportunities/${opportunity.id}`}>
+            <Link href={`/opportunities/${alert.opportunity_id}`}>
               <Button size="sm" variant="outline">
                 Voir
                 <ArrowRight className="h-4 w-4 ml-1" />
@@ -158,19 +178,13 @@ function DeadlinesContent() {
   const [activeTab, setActiveTab] = useState("upcoming");
 
   // Fetch upcoming deadlines
-  const { data: upcomingDeadlines, isLoading: upcomingLoading } = useQuery<{
-    deadlines: UpcomingDeadline[];
-    total: number;
-  }>({
+  const { data: upcomingDeadlines, isLoading: upcomingLoading } = useQuery<DeadlinesResponse>({
     queryKey: ["deadlines", "upcoming"],
     queryFn: () => deadlinesApi.getUpcoming(30),
   });
 
   // Fetch past deadlines
-  const { data: pastDeadlines, isLoading: pastLoading } = useQuery<{
-    deadlines: UpcomingDeadline[];
-    total: number;
-  }>({
+  const { data: pastDeadlines, isLoading: pastLoading } = useQuery<DeadlinesResponse>({
     queryKey: ["deadlines", "past"],
     queryFn: () => deadlinesApi.getPast(30),
     enabled: activeTab === "past",
@@ -196,11 +210,15 @@ function DeadlinesContent() {
     },
   });
 
-  // Group deadlines by urgency
-  const groupedDeadlines = {
-    urgent: upcomingDeadlines?.deadlines.filter((d) => d.days_remaining <= 3) || [],
-    soon: upcomingDeadlines?.deadlines.filter((d) => d.days_remaining > 3 && d.days_remaining <= 7) || [],
-    later: upcomingDeadlines?.deadlines.filter((d) => d.days_remaining > 7) || [],
+  // Group alerts by urgency (calculate days remaining from deadline)
+  const alerts = upcomingDeadlines?.alerts ?? [];
+  const groupedAlerts = {
+    urgent: alerts.filter((a) => getDaysRemaining(a.deadline_at) <= 3),
+    soon: alerts.filter((a) => {
+      const days = getDaysRemaining(a.deadline_at);
+      return days > 3 && days <= 7;
+    }),
+    later: alerts.filter((a) => getDaysRemaining(a.deadline_at) > 7),
   };
 
   return (
@@ -239,7 +257,7 @@ function DeadlinesContent() {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{groupedDeadlines.urgent.length}</p>
+                <p className="text-2xl font-bold">{groupedAlerts.urgent.length}</p>
                 <p className="text-sm text-muted-foreground">Urgentes (J-3)</p>
               </div>
             </div>
@@ -252,7 +270,7 @@ function DeadlinesContent() {
                 <Clock className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{groupedDeadlines.soon.length}</p>
+                <p className="text-2xl font-bold">{groupedAlerts.soon.length}</p>
                 <p className="text-sm text-muted-foreground">Cette semaine</p>
               </div>
             </div>
@@ -265,7 +283,7 @@ function DeadlinesContent() {
                 <Calendar className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{groupedDeadlines.later.length}</p>
+                <p className="text-2xl font-bold">{groupedAlerts.later.length}</p>
                 <p className="text-sm text-muted-foreground">À venir</p>
               </div>
             </div>
@@ -307,52 +325,52 @@ function DeadlinesContent() {
           ) : (
             <>
               {/* Urgent section */}
-              {groupedDeadlines.urgent.length > 0 && (
+              {groupedAlerts.urgent.length > 0 && (
                 <div>
                   <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-red-500" />
                     Urgent (J-3 ou moins)
                   </h2>
                   <div className="space-y-3">
-                    {groupedDeadlines.urgent.map((deadline) => (
-                      <DeadlineCard key={deadline.opportunity.id} deadline={deadline} />
+                    {groupedAlerts.urgent.map((alert) => (
+                      <DeadlineAlertCard key={alert.id} alert={alert} />
                     ))}
                   </div>
                 </div>
               )}
 
               {/* This week section */}
-              {groupedDeadlines.soon.length > 0 && (
+              {groupedAlerts.soon.length > 0 && (
                 <div>
                   <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <Clock className="h-5 w-5 text-orange-500" />
                     Cette semaine
                   </h2>
                   <div className="space-y-3">
-                    {groupedDeadlines.soon.map((deadline) => (
-                      <DeadlineCard key={deadline.opportunity.id} deadline={deadline} />
+                    {groupedAlerts.soon.map((alert) => (
+                      <DeadlineAlertCard key={alert.id} alert={alert} />
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Later section */}
-              {groupedDeadlines.later.length > 0 && (
+              {groupedAlerts.later.length > 0 && (
                 <div>
                   <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-green-500" />
                     Plus tard
                   </h2>
                   <div className="space-y-3">
-                    {groupedDeadlines.later.map((deadline) => (
-                      <DeadlineCard key={deadline.opportunity.id} deadline={deadline} />
+                    {groupedAlerts.later.map((alert) => (
+                      <DeadlineAlertCard key={alert.id} alert={alert} />
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
-              {upcomingDeadlines?.deadlines.length === 0 && (
+              {alerts.length === 0 && (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -372,23 +390,23 @@ function DeadlinesContent() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : pastDeadlines?.deadlines && pastDeadlines.deadlines.length > 0 ? (
+          ) : pastDeadlines?.alerts && pastDeadlines.alerts.length > 0 ? (
             <div className="space-y-3">
-              {pastDeadlines.deadlines.map((deadline) => (
-                <Card key={deadline.opportunity.id} className="opacity-75">
+              {pastDeadlines.alerts.map((alert) => (
+                <Card key={alert.id} className="opacity-75">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <X className="h-5 w-5 text-red-500" />
                         <div>
                           <Link
-                            href={`/opportunities/${deadline.opportunity.id}`}
+                            href={`/opportunities/${alert.opportunity_id}`}
                             className="font-medium hover:text-primary"
                           >
-                            {truncate(deadline.opportunity.title, 50)}
+                            {truncate(alert.opportunity_title, 50)}
                           </Link>
                           <p className="text-sm text-muted-foreground">
-                            Expirée il y a {Math.abs(deadline.days_remaining)} jours
+                            Expirée il y a {Math.abs(getDaysRemaining(alert.deadline_at))} jours
                           </p>
                         </div>
                       </div>

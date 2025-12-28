@@ -3,8 +3,11 @@ FastAPI Application - Opportunities Radar
 """
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import logging
+import time
 
 from app.core.config import settings
 from app.api import (
@@ -47,6 +50,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# Performance monitoring middleware
+class TimingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))
+        # Log slow requests (>1s)
+        if process_time > 1.0:
+            logger.warning(f"Slow request: {request.method} {request.url.path} took {process_time:.2f}s")
+        return response
+
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.app_name,
@@ -69,12 +86,20 @@ cors_origins = [
 if settings.app_env == "development":
     cors_origins.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
 
+# Add GZip compression for responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Add timing middleware for performance monitoring
+app.add_middleware(TimingMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Process-Time"],
+    max_age=600,  # Cache preflight for 10 minutes
 )
 
 

@@ -28,17 +28,25 @@ interface Notification {
 
 const STORAGE_KEY = "notifications_cache";
 
-// Build WebSocket URL dynamically based on API URL
+// Build WebSocket URL dynamically - ALWAYS use relative path via nginx proxy
+// This avoids localhost issues in production
 const getWsUrl = () => {
   if (typeof window === 'undefined') return '';
   
-  // Use the API URL from environment or fallback to backend port
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  
-  // Convert http(s) to ws(s)
-  const wsUrl = apiUrl.replace(/^http/, 'ws');
-  
-  return `${wsUrl}/ws`;
+  // Always use current host - nginx will proxy /ws to backend
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws`;
+};
+
+// Check if token is expired
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Add 60 second buffer
+    return payload.exp * 1000 < Date.now() + 60000;
+  } catch {
+    return true;
+  }
 };
 
 export function NotificationCenter() {
@@ -48,7 +56,8 @@ export function NotificationCenter() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 3; // Limit reconnection attempts
+  const maxReconnectAttempts = 2; // Limit reconnection attempts (reduced from 3)
+  const wsDisabled = useRef(false); // Flag to stop all WS attempts after failures
   
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -75,8 +84,16 @@ export function NotificationCenter() {
 
   // WebSocket connection
   const connectWebSocket = useCallback(() => {
+    // Skip if WebSocket has been disabled due to repeated failures
+    if (wsDisabled.current) return;
+    
     const token = getToken();
     if (!token || !user) return;
+
+    // Check if token is expired - don't attempt connection with expired token
+    if (isTokenExpired(token)) {
+      return; // Silently skip - no console log needed
+    }
 
     // Avoid creating multiple connections (React StrictMode double-mount)
     if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
@@ -140,15 +157,19 @@ export function NotificationCenter() {
           reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket();
           }, 5000 * reconnectAttempts.current); // Exponential backoff
+        } else {
+          // Disable WebSocket completely after max failures to stop spamming
+          wsDisabled.current = true;
         }
-        // After max attempts, stop trying (WebSocket not available on server)
       };
 
       ws.onerror = () => {
+        // Silently close on error - onclose will handle reconnection logic
         ws.close();
       };
     } catch {
-      // Silently ignore WebSocket creation errors
+      // Silently ignore WebSocket creation errors - WS may not be available
+      wsDisabled.current = true;
     }
   }, [user, queryClient]);
 
