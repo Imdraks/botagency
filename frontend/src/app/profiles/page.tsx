@@ -484,7 +484,10 @@ function ProfilesContent() {
               </DialogDescription>
             </DialogHeader>
             <ProfileForm
-              onSubmit={(data) => createMutation.mutate(data)}
+              onSubmit={(data) => createMutation.mutate({
+                ...data,
+                weights: data.weights as Record<string, number>,
+              })}
               onCancel={() => setIsCreateDialogOpen(false)}
               isLoading={createMutation.isPending}
             />
@@ -535,7 +538,10 @@ function ProfilesContent() {
             <ProfileForm
               initialData={editingProfile}
               onSubmit={(data) =>
-                updateMutation.mutate({ id: editingProfile.id, data })
+                updateMutation.mutate({ 
+                  id: editingProfile.id, 
+                  data: { ...data, weights: data.weights as Record<string, number> }
+                })
               }
               onCancel={() => setEditingProfile(null)}
               isLoading={updateMutation.isPending}
