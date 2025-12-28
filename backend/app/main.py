@@ -141,15 +141,9 @@ app.include_router(websocket_router)
 @app.on_event("startup")
 async def startup_event():
     logger.info(f"Starting {settings.app_name}")
-    
-    # Create database tables if they don't exist
-    from app.db.base import Base
-    from app.db.session import engine
-    from app.db import models  # Import all models
-    
-    # checkfirst=True prevents errors if tables/indexes already exist
-    Base.metadata.create_all(bind=engine, checkfirst=True)
-    logger.info("Database tables verified")
+    # Database tables are managed by Alembic migrations
+    # No need for create_all() - it causes conflicts with existing indexes
+    logger.info("Application started successfully")
 
 
 @app.on_event("shutdown")
