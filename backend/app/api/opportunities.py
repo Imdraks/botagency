@@ -49,7 +49,7 @@ def list_opportunities(
     min_budget: Optional[Decimal] = None,
     max_budget: Optional[Decimal] = None,
     has_budget: Optional[bool] = None,
-    assigned_to_user_id: Optional[UUID] = None,
+    assigned_to_user_id: Optional[int] = None,
     created_after: Optional[datetime] = None,
     # Sorting
     sort_by: str = Query("score", regex="^(score|deadline_at|created_at|budget_amount)$"),
@@ -246,7 +246,7 @@ def get_budget_stats(
 
 @router.get("/{opportunity_id}", response_model=OpportunityResponse)
 def get_opportunity(
-    opportunity_id: UUID,
+    opportunity_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -262,7 +262,7 @@ def get_opportunity(
 
 @router.patch("/{opportunity_id}", response_model=OpportunityResponse)
 def update_opportunity(
-    opportunity_id: UUID,
+    opportunity_id: int,
     update_data: OpportunityUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_bizdev),
@@ -286,8 +286,8 @@ def update_opportunity(
 
 @router.post("/{opportunity_id}/merge")
 def merge_opportunities(
-    opportunity_id: UUID,
-    merge_into_id: UUID,
+    opportunity_id: int,
+    merge_into_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -335,7 +335,7 @@ def merge_opportunities(
 # Notes endpoints
 @router.get("/{opportunity_id}/notes", response_model=List[NoteResponse])
 def list_notes(
-    opportunity_id: UUID,
+    opportunity_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -348,7 +348,7 @@ def list_notes(
 
 @router.post("/{opportunity_id}/notes", response_model=NoteResponse)
 def create_note(
-    opportunity_id: UUID,
+    opportunity_id: int,
     note_data: NoteCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_bizdev),
@@ -375,7 +375,7 @@ def create_note(
 # Tasks endpoints
 @router.get("/{opportunity_id}/tasks", response_model=List[TaskResponse])
 def list_tasks(
-    opportunity_id: UUID,
+    opportunity_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -388,7 +388,7 @@ def list_tasks(
 
 @router.post("/{opportunity_id}/tasks", response_model=TaskResponse)
 def create_task(
-    opportunity_id: UUID,
+    opportunity_id: int,
     task_data: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_bizdev),
@@ -416,8 +416,8 @@ def create_task(
 
 @router.patch("/{opportunity_id}/tasks/{task_id}", response_model=TaskResponse)
 def update_task(
-    opportunity_id: UUID,
-    task_id: UUID,
+    opportunity_id: int,
+    task_id: int,
     task_data: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_bizdev),
