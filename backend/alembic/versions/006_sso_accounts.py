@@ -24,10 +24,10 @@ def upgrade() -> None:
     
     if 'accounts' not in inspector.get_table_names():
         # Create accounts table for SSO providers
-        # Note: user_id is Integer to match users.id type
+        # Note: id is UUID, user_id is Integer to match users.id type
         op.create_table(
             'accounts',
-            sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column('id', sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
             sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
             sa.Column('provider', sa.String(50), nullable=False),  # 'google' | 'apple' | 'credentials'
             sa.Column('provider_account_id', sa.String(255), nullable=False),  # OIDC 'sub' claim
@@ -40,7 +40,7 @@ def upgrade() -> None:
             sa.Column('token_type', sa.String(50), nullable=True),
             sa.Column('scope', sa.String(500), nullable=True),
             sa.Column('created_at', sa.DateTime, server_default=sa.text('NOW()')),
-            sa.Column('updated_at', sa.DateTime, server_default=sa.text('NOW()'), onupdate=sa.text('NOW()')),
+            sa.Column('updated_at', sa.DateTime, server_default=sa.text('NOW()')),
         )
         
         # Unique constraint: one provider account per provider
