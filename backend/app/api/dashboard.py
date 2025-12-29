@@ -177,7 +177,8 @@ def get_upcoming_deadlines(
     current_user: User = Depends(get_current_user),
 ):
     """Get opportunities with upcoming deadlines"""
-    now = datetime.utcnow()
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
     
     opportunities = db.query(Opportunity).filter(
         and_(
@@ -198,7 +199,7 @@ def get_upcoming_deadlines(
             "score": o.score,
             "status": o.status.value,
             "deadline_at": o.deadline_at.isoformat() if o.deadline_at else None,
-            "days_remaining": (o.deadline_at - now).days if o.deadline_at else None,
+            "days_remaining": (o.deadline_at.replace(tzinfo=timezone.utc) - now).days if o.deadline_at else None,
             "organization": o.organization,
         }
         for o in opportunities
