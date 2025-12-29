@@ -27,7 +27,7 @@ class IngestionRun(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Source reference
-    source_config_id = Column(UUID(as_uuid=True), ForeignKey('source_configs.id'), nullable=True)
+    source_config_id = Column(Integer, ForeignKey('source_configs.id'), nullable=True)
     source_name = Column(String(255), nullable=False)  # For quick access
     
     # Status

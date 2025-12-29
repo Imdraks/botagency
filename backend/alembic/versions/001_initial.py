@@ -210,7 +210,7 @@ def upgrade() -> None:
     op.create_table(
         'ingestion_runs',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text('gen_random_uuid()')),
-        sa.Column('source_config_id', postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column('source_config_id', sa.Integer(), nullable=True),
         sa.Column('source_name', sa.String(length=255), nullable=False),
         sa.Column('status', postgresql.ENUM('PENDING', 'RUNNING', 'SUCCESS', 'PARTIAL', 'FAILED', name='ingestionstatus', create_type=False), server_default='PENDING', nullable=False),
         sa.Column('started_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
