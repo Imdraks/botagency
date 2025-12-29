@@ -324,31 +324,31 @@ function ProfileCard({
           <div>
             <div className="text-muted-foreground">Score</div>
             <div className="font-semibold">
-              {Math.round((profile.weights?.score_weight || 0) * 100)}%
+              {Math.round((profile.weights?.score_base || 0) * 100)}%
             </div>
           </div>
           <div>
             <div className="text-muted-foreground">Budget</div>
             <div className="font-semibold">
-              {Math.round((profile.weights?.budget_weight || 0) * 100)}%
+              {Math.round((profile.weights?.budget_match || 0) * 100)}%
             </div>
           </div>
           <div>
             <div className="text-muted-foreground">Deadline</div>
             <div className="font-semibold">
-              {Math.round((profile.weights?.deadline_weight || 0) * 100)}%
+              {Math.round((profile.weights?.deadline_proximity || 0) * 100)}%
             </div>
           </div>
           <div>
-            <div className="text-muted-foreground">Catégorie</div>
+            <div className="text-muted-foreground">Contact</div>
             <div className="font-semibold">
-              {Math.round((profile.weights?.category_weight || 0) * 100)}%
+              {Math.round((profile.weights?.contact_present || 0) * 100)}%
             </div>
           </div>
           <div>
-            <div className="text-muted-foreground">Source</div>
+            <div className="text-muted-foreground">Location</div>
             <div className="font-semibold">
-              {Math.round((profile.weights?.source_weight || 0) * 100)}%
+              {Math.round((profile.weights?.location_match || 0) * 100)}%
             </div>
           </div>
         </div>
