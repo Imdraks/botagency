@@ -381,4 +381,4 @@ export function LeadFilters() {
   );
 }
 
-export default OpportunityFilters;
+export default LeadFilters;
