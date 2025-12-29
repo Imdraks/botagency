@@ -23,7 +23,7 @@ class ScoringRule(Base):
     """Configurable scoring rules"""
     __tablename__ = "scoring_rules"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # Rule identification
     name = Column(String(100), unique=True, nullable=False)

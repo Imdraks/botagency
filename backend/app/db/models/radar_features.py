@@ -41,7 +41,7 @@ class Profile(Base):
     """
     __tablename__ = "profiles"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # Basic info
     name = Column(String(100), nullable=False, unique=True)
@@ -91,9 +91,9 @@ class OpportunityProfileScore(Base):
     """
     __tablename__ = "opportunity_profile_scores"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False)
-    profile_id = Column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    opportunity_id = Column(Integer, ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False)
+    profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False)
     
     # Score result
     fit_score = Column(Integer, default=0)  # 0-100
@@ -144,11 +144,11 @@ class DailyShortlist(Base):
     """
     __tablename__ = "daily_shortlists"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # Date and profile
     date = Column(Date, nullable=False, index=True)
-    profile_id = Column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False)
+    profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False)
     
     # Shortlist items (JSON array)
     items = Column(JSON, nullable=False, default=list)
@@ -195,11 +195,11 @@ class OpportunityCluster(Base):
     """
     __tablename__ = "opportunity_clusters"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # The main/canonical opportunity to display
     canonical_opportunity_id = Column(
-        UUID(as_uuid=True), 
+        Integer, 
         ForeignKey('opportunities.id', ondelete='CASCADE'), 
         nullable=False,
         index=True
@@ -229,10 +229,10 @@ class OpportunityClusterMember(Base):
     """
     __tablename__ = "opportunity_cluster_members"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
-    cluster_id = Column(UUID(as_uuid=True), ForeignKey('opportunity_clusters.id', ondelete='CASCADE'), nullable=False)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False, unique=True)
+    cluster_id = Column(Integer, ForeignKey('opportunity_clusters.id', ondelete='CASCADE'), nullable=False)
+    opportunity_id = Column(Integer, ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False, unique=True)
     
     # Similarity to canonical
     similarity_score = Column(Float, default=1.0)  # 0.0 - 1.0
@@ -278,9 +278,9 @@ class DeadlineAlert(Base):
     """
     __tablename__ = "deadline_alerts"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False)
+    opportunity_id = Column(Integer, ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False)
     
     # Alert configuration
     alert_type = Column(Enum(AlertType), nullable=False)
@@ -320,9 +320,9 @@ class SourceHealth(Base):
     """
     __tablename__ = "source_health"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
-    source_id = Column(UUID(as_uuid=True), ForeignKey('source_configs.id', ondelete='CASCADE'), nullable=False)
+    source_id = Column(Integer, ForeignKey('source_configs.id', ondelete='CASCADE'), nullable=False)
     date = Column(Date, nullable=False, index=True)
     
     # Request metrics
@@ -376,9 +376,9 @@ class ContactFinderResult(Base):
     """
     __tablename__ = "contact_finder_results"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False)
+    opportunity_id = Column(Integer, ForeignKey('opportunities.id', ondelete='CASCADE'), nullable=False)
     
     # Status
     status = Column(String(20), default="pending")  # pending, found, not_found, error

@@ -3,7 +3,7 @@ Scoring rule schemas
 """
 from datetime import datetime
 from typing import Optional, Dict, Any
-from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from app.db.models.scoring import RuleType
@@ -41,7 +41,7 @@ class ScoringRuleUpdate(BaseModel):
 
 class ScoringRuleResponse(ScoringRuleBase):
     """Scoring rule response schema"""
-    id: UUID
+    id: int
     created_at: datetime
     updated_at: datetime
 

@@ -3,7 +3,7 @@ Source configuration schemas
 """
 from datetime import datetime
 from typing import Optional, Dict, Any
-from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from app.db.models.opportunity import SourceType
@@ -47,7 +47,7 @@ class SourceConfigUpdate(BaseModel):
 
 class SourceConfigResponse(SourceConfigBase):
     """Source config response schema"""
-    id: UUID
+    id: int
     last_run_at: Optional[datetime] = None
     next_run_at: Optional[datetime] = None
     total_items_fetched: int

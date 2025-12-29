@@ -16,7 +16,7 @@ class SourceConfig(Base):
     """Configuration for data sources"""
     __tablename__ = "source_configs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # Basic info
     name = Column(String(255), unique=True, nullable=False)

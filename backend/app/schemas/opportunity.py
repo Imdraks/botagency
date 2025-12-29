@@ -4,7 +4,7 @@ Opportunity schemas
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
-from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from app.db.models.opportunity import (
@@ -57,20 +57,20 @@ class OpportunityUpdate(BaseModel):
     contact_phone: Optional[str] = None
     contact_url: Optional[str] = None
     status: Optional[OpportunityStatus] = None
-    assigned_to_user_id: Optional[UUID] = None
+    assigned_to_user_id: Optional[int] = None
     possible_duplicate: Optional[bool] = None
 
 
 class OpportunityResponse(OpportunityBase):
     """Opportunity response schema"""
-    id: UUID
+    id: int
     external_id: str
     source_type: SourceType
     source_name: str
     score: int
     score_breakdown: Dict[str, Any]
     status: OpportunityStatus
-    assigned_to_user_id: Optional[UUID] = None
+    assigned_to_user_id: Optional[int] = None
     possible_duplicate: bool
     created_at: datetime
     updated_at: datetime
@@ -104,7 +104,7 @@ class OpportunityFilters(BaseModel):
     deadline_after: Optional[datetime] = None
     min_budget: Optional[Decimal] = None
     max_budget: Optional[Decimal] = None
-    assigned_to_user_id: Optional[UUID] = None
+    assigned_to_user_id: Optional[int] = None
     has_budget: Optional[bool] = None
     created_after: Optional[datetime] = None
 
@@ -117,9 +117,9 @@ class NoteCreate(BaseModel):
 
 class NoteResponse(BaseModel):
     """Note response schema"""
-    id: UUID
+    id: int
     content: str
-    author_id: UUID
+    author_id: int
     created_at: datetime
     updated_at: datetime
 
@@ -133,7 +133,7 @@ class TaskCreate(BaseModel):
     title: str = Field(..., max_length=255)
     description: Optional[str] = None
     due_date: Optional[datetime] = None
-    assigned_to_id: Optional[UUID] = None
+    assigned_to_id: Optional[int] = None
 
 
 class TaskUpdate(BaseModel):
@@ -142,17 +142,17 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     status: Optional[TaskStatus] = None
-    assigned_to_id: Optional[UUID] = None
+    assigned_to_id: Optional[int] = None
 
 
 class TaskResponse(BaseModel):
     """Task response schema"""
-    id: UUID
+    id: int
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     status: TaskStatus
-    assigned_to_id: Optional[UUID] = None
+    assigned_to_id: Optional[int] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
 
@@ -169,7 +169,7 @@ class TagCreate(BaseModel):
 
 class TagResponse(BaseModel):
     """Tag response schema"""
-    id: UUID
+    id: int
     name: str
     color: str
 

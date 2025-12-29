@@ -3,7 +3,6 @@ User schemas
 """
 from datetime import datetime
 from typing import Optional, List
-from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 from app.db.models.user import Role
@@ -44,7 +43,7 @@ class LinkedAccountResponse(BaseModel):
 
 class UserResponse(UserBase):
     """User response schema"""
-    id: UUID
+    id: int
     is_superuser: bool
     is_whitelisted: bool = False
     created_at: datetime

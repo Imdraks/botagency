@@ -9,7 +9,6 @@ Schemas for Radar Features APIs:
 """
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
-from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -63,7 +62,7 @@ class ProfileUpdate(BaseModel):
 
 class ProfileResponse(ProfileBase):
     """Profile response schema"""
-    id: UUID
+    id: int
     created_at: datetime
     updated_at: datetime
 
@@ -83,8 +82,8 @@ class ProfileListResponse(BaseModel):
 
 class OpportunityFitScore(BaseModel):
     """Fit score for an opportunity against a profile"""
-    opportunity_id: UUID
-    profile_id: UUID
+    opportunity_id: int
+    profile_id: int
     profile_name: str
     fit_score: int = Field(..., ge=0, le=100)
     reasons: Dict[str, Any] = {}
@@ -100,7 +99,7 @@ class OpportunityFitScore(BaseModel):
 
 class ShortlistItem(BaseModel):
     """Single item in a shortlist"""
-    opportunity_id: UUID
+    opportunity_id: int
     title: str
     organization: Optional[str] = None
     score: int
@@ -113,9 +112,9 @@ class ShortlistItem(BaseModel):
 
 class DailyShortlistResponse(BaseModel):
     """Daily shortlist response"""
-    id: UUID
+    id: int
     date: date
-    profile_id: UUID
+    profile_id: int
     profile_name: str
     items: List[ShortlistItem]
     total_candidates: int
@@ -138,7 +137,7 @@ class ShortlistListResponse(BaseModel):
 
 class ClusterMember(BaseModel):
     """Member of a cluster"""
-    opportunity_id: UUID
+    opportunity_id: int
     title: str
     source_name: str
     url: Optional[str] = None
@@ -148,8 +147,8 @@ class ClusterMember(BaseModel):
 
 class ClusterResponse(BaseModel):
     """Cluster information for an opportunity"""
-    cluster_id: UUID
-    canonical_opportunity_id: UUID
+    cluster_id: int
+    canonical_opportunity_id: int
     canonical_title: str
     member_count: int
     cluster_score: float
@@ -173,8 +172,8 @@ class ClusterRebuildResponse(BaseModel):
 
 class DeadlineAlertResponse(BaseModel):
     """Deadline alert information"""
-    id: UUID
-    opportunity_id: UUID
+    id: int
+    opportunity_id: int
     opportunity_title: str
     organization: Optional[str] = None
     alert_type: str  # D7, D3, D1
@@ -195,7 +194,7 @@ class UpcomingDeadlinesResponse(BaseModel):
 
 class TestNotificationRequest(BaseModel):
     """Request to test deadline notification"""
-    opportunity_id: UUID
+    opportunity_id: int
     channel: str = "email"  # email, webhook
 
 
@@ -212,7 +211,7 @@ class TestNotificationResponse(BaseModel):
 
 class SourceHealthMetrics(BaseModel):
     """Health metrics for a source"""
-    source_id: UUID
+    source_id: int
     source_name: str
     date: date
     requests: int
@@ -240,7 +239,7 @@ class SourceHealthListResponse(BaseModel):
 
 class SourceHealthSummary(BaseModel):
     """Summary of source health"""
-    source_id: UUID
+    source_id: int
     source_name: str
     is_active: bool
     avg_health_score: float
@@ -276,8 +275,8 @@ class ContactFinderRequest(BaseModel):
 
 class ContactFinderResponse(BaseModel):
     """Response from contact finder"""
-    id: UUID
-    opportunity_id: UUID
+    id: int
+    opportunity_id: int
     status: str  # pending, found, not_found, error
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
@@ -306,6 +305,6 @@ class RecomputeRequest(BaseModel):
 
 class RecomputeResponse(BaseModel):
     """Response from recompute operation"""
-    profile_id: UUID
+    profile_id: int
     opportunities_processed: int
     duration_seconds: float

@@ -6,7 +6,7 @@ Schemas Pydantic pour le système de collectes refondé
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from uuid import UUID
+
 from enum import Enum
 
 from pydantic import BaseModel, Field, validator
@@ -108,7 +108,7 @@ class CollectionStatsSchema(BaseModel):
 
 class CollectionLogSchema(BaseModel):
     """Log d'une collecte"""
-    id: UUID
+    id: int
     ts: datetime
     level: str
     message: str
@@ -120,7 +120,7 @@ class CollectionLogSchema(BaseModel):
 
 class CollectionResponse(BaseModel):
     """Réponse collecte"""
-    id: UUID
+    id: int
     type: str
     status: str
     name: Optional[str] = None
@@ -171,7 +171,7 @@ class EvidenceSchema(BaseModel):
 
 class SourceDocumentSchema(BaseModel):
     """Document source"""
-    id: UUID
+    id: int
     doc_type: str
     source_url: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
@@ -183,7 +183,7 @@ class SourceDocumentSchema(BaseModel):
 
 class OpportunityResponse(BaseModel):
     """Réponse opportunité"""
-    id: UUID
+    id: int
     title: str
     description: Optional[str] = None
     organization_name: Optional[str] = None
@@ -207,7 +207,7 @@ class OpportunityResponse(BaseModel):
     score_breakdown: Optional[Dict[str, Any]] = None
     status: str
     tags: Optional[List[str]] = None
-    assigned_to: Optional[UUID] = None
+    assigned_to: Optional[int] = None
     has_dossier: bool = False
     created_at: datetime
     updated_at: datetime
@@ -253,24 +253,24 @@ class OpportunityFilters(BaseModel):
     has_deadline: Optional[bool] = None
     has_dossier: Optional[bool] = None
     tags: Optional[List[str]] = None
-    assigned_to: Optional[UUID] = None
+    assigned_to: Optional[int] = None
 
 
 class UpdateOpportunityRequest(BaseModel):
     """Mise à jour d'une opportunité"""
     status: Optional[LeadItemStatusEnum] = None
     tags: Optional[List[str]] = None
-    assigned_to: Optional[UUID] = None
+    assigned_to: Optional[int] = None
     notes: Optional[str] = None
 
 
 class BulkUpdateOpportunitiesRequest(BaseModel):
     """Mise à jour en masse"""
-    ids: List[UUID]
+    ids: List[int]
     status: Optional[LeadItemStatusEnum] = None
     tags_add: Optional[List[str]] = None
     tags_remove: Optional[List[str]] = None
-    assigned_to: Optional[UUID] = None
+    assigned_to: Optional[int] = None
 
 
 # ================================================================
@@ -306,8 +306,8 @@ class FactSchema(BaseModel):
 
 class DossierResponse(BaseModel):
     """Réponse dossier"""
-    id: UUID
-    lead_item_id: UUID
+    id: int
+    lead_item_id: int
     lead_item_title: Optional[str] = None
     lead_item_url: Optional[str] = None
     objective: str
@@ -325,8 +325,8 @@ class DossierResponse(BaseModel):
 
 class DossierDetailResponse(BaseModel):
     """Détail complet d'un dossier"""
-    id: UUID
-    lead_item_id: UUID
+    id: int
+    lead_item_id: int
     lead_item_title: Optional[str] = None
     lead_item_url: Optional[str] = None
     objective: str
@@ -371,7 +371,7 @@ class DossierFilters(BaseModel):
 
 class CreateDossierRequest(BaseModel):
     """Créer un dossier depuis une opportunité"""
-    lead_item_id: Optional[UUID] = None
+    lead_item_id: Optional[int] = None
     objective: DossierObjectiveEnum
     target_entities: Optional[List[str]] = None
     title: Optional[str] = None

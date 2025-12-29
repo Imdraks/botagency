@@ -3,7 +3,7 @@ Account model for SSO providers (Google, Apple)
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, BigInteger, Text, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, BigInteger, Text, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -20,7 +20,7 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     
     # Provider info
     provider = Column(String(50), nullable=False)  # 'google' | 'apple' | 'credentials'

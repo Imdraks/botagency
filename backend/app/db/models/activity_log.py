@@ -3,7 +3,7 @@ Activity Log model for tracking user actions
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -17,7 +17,7 @@ class ActivityLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # User info
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     user_tracking_id = Column(String(10), nullable=False, index=True)  # Hidden ID like "USR-A1B2C3"
     
     # Action details

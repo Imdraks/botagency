@@ -3,7 +3,7 @@ Ingestion run schemas
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from uuid import UUID
+
 from pydantic import BaseModel
 
 from app.db.models.ingestion import IngestionStatus
@@ -20,8 +20,8 @@ class IngestionSearchParams(BaseModel):
 
 class IngestionRunResponse(BaseModel):
     """Ingestion run response schema"""
-    id: UUID
-    source_config_id: Optional[UUID] = None
+    id: int
+    source_config_id: Optional[int] = None
     source_name: str
     status: IngestionStatus
     started_at: datetime
@@ -41,6 +41,6 @@ class IngestionRunResponse(BaseModel):
 
 class IngestionTriggerRequest(BaseModel):
     """Request to trigger ingestion"""
-    source_ids: Optional[List[UUID]] = None  # If None, run all active sources
+    source_ids: Optional[List[int]] = None  # If None, run all active sources
     source_types: Optional[List[str]] = None  # Filter by type
     search_params: Optional[IngestionSearchParams] = None  # Search criteria

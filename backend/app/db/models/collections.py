@@ -107,7 +107,7 @@ class CollectionV2(Base):
     params = Column(JSONB, nullable=True)  # Inputs utilisateur
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
-    created_by = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_by = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     stats = Column(JSONB, nullable=True)  # pages_fetched, results_count, errors_count, tokens_used
     error = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -188,7 +188,7 @@ class LeadItem(Base):
     score_breakdown = Column(JSONB, nullable=True)
     status = Column(String(30), nullable=False, default=LeadItemStatus.NEW.value)
     tags = Column(JSONB, nullable=True)
-    assigned_to = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    assigned_to = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     canonical_hash = Column(String(64), nullable=True, unique=True)
     extra_data = Column('metadata', JSONB, nullable=True)  # Renamed to avoid SQLAlchemy reserved name
     created_at = Column(DateTime(timezone=True), server_default=func.now())

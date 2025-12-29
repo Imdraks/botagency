@@ -57,8 +57,8 @@ class TaskStatus(str, PyEnum):
 opportunity_tags = Table(
     'opportunity_tag_associations',
     Base.metadata,
-    Column('opportunity_id', UUID(as_uuid=True), ForeignKey('opportunities.id'), primary_key=True),
-    Column('tag_id', UUID(as_uuid=True), ForeignKey('opportunity_tags.id'), primary_key=True)
+    Column('opportunity_id', Integer, ForeignKey('opportunities.id'), primary_key=True),
+    Column('tag_id', Integer, ForeignKey('opportunity_tags.id'), primary_key=True)
 )
 
 
@@ -66,7 +66,7 @@ class Opportunity(Base):
     """Main opportunity model"""
     __tablename__ = "opportunities"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # External identification (for deduplication)
     external_id = Column(String(255), unique=True, index=True, nullable=False)
@@ -74,7 +74,7 @@ class Opportunity(Base):
     # Source information
     source_type = Column(Enum(SourceType), nullable=False)
     source_name = Column(String(255), nullable=False, index=True)
-    source_config_id = Column(UUID(as_uuid=True), ForeignKey('source_configs.id'), nullable=True)
+    source_config_id = Column(Integer, ForeignKey('source_configs.id'), nullable=True)
     
     # Core content
     title = Column(String(500), nullable=False)
@@ -112,11 +112,11 @@ class Opportunity(Base):
     
     # Pipeline status
     status = Column(Enum(OpportunityStatus), default=OpportunityStatus.NEW, index=True)
-    assigned_to_user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True)
+    assigned_to_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     
     # Deduplication
     possible_duplicate = Column(Boolean, default=False)
-    duplicate_of_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id'), nullable=True)
+    duplicate_of_id = Column(Integer, ForeignKey('opportunities.id'), nullable=True)
     
     # Raw data (for debugging)
     raw_content_hash = Column(String(64), nullable=True)
@@ -152,9 +152,9 @@ class OpportunityNote(Base):
     """Notes on opportunities"""
     __tablename__ = "opportunity_notes"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id'), nullable=False)
-    author_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    opportunity_id = Column(Integer, ForeignKey('opportunities.id'), nullable=False)
+    author_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -168,9 +168,9 @@ class OpportunityTask(Base):
     """Tasks / reminders on opportunities"""
     __tablename__ = "opportunity_tasks"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id'), nullable=False)
-    assigned_to_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    opportunity_id = Column(Integer, ForeignKey('opportunities.id'), nullable=False)
+    assigned_to_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     due_date = Column(DateTime, nullable=True)
@@ -188,7 +188,7 @@ class OpportunityTag(Base):
     """Tags for opportunities"""
     __tablename__ = "opportunity_tags"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), unique=True, nullable=False)
     color = Column(String(7), default="#6366f1")  # Hex color
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -77,10 +77,10 @@ class CollectRequest(BaseModel):
 
 class CollectResponse(BaseModel):
     """Response from POST /collect"""
-    run_id: UUID
+    run_id: int
     source_count: int
     task_ids: List[str]
-    entities_created: List[UUID]
+    entities_created: List[int]
     message: str
 
 
@@ -90,7 +90,7 @@ class CollectResponse(BaseModel):
 
 class SourceRunStatus(BaseModel):
     """Status of a single source run"""
-    source_id: Optional[UUID]
+    source_id: Optional[int]
     source_name: str
     status: str
     items_found: int = 0
@@ -101,7 +101,7 @@ class SourceRunStatus(BaseModel):
 
 class CollectionRunResponse(BaseModel):
     """Response from GET /runs/{run_id}"""
-    id: UUID
+    id: int
     status: str
     objective: ObjectiveType
     
@@ -119,7 +119,7 @@ class CollectionRunResponse(BaseModel):
     contacts_found: int
     
     # Generated brief
-    brief_id: Optional[UUID] = None
+    brief_id: Optional[int] = None
     error_message: Optional[str] = None
     
     # Details
@@ -144,7 +144,7 @@ class EntityCreate(EntityBase):
 
 
 class EntityResponse(EntityBase):
-    id: UUID
+    id: int
     normalized_name: str
     official_urls: List[Dict[str, str]] = []
     image_url: Optional[str] = None
@@ -170,8 +170,8 @@ class ContactBase(BaseModel):
 
 
 class ContactResponse(ContactBase):
-    id: UUID
-    entity_id: UUID
+    id: int
+    entity_id: int
     source_url: Optional[str]
     source_name: Optional[str]
     reliability_score: int
@@ -198,8 +198,8 @@ class ContactRanked(BaseModel):
 # ========================
 
 class DocumentResponse(BaseModel):
-    id: UUID
-    entity_id: UUID
+    id: int
+    entity_id: int
     source_name: str
     title: str
     url: Optional[str]
@@ -240,8 +240,8 @@ class SourceUsed(BaseModel):
 
 class BriefResponse(BaseModel):
     """Complete brief for an entity"""
-    id: UUID
-    entity_id: UUID
+    id: int
+    entity_id: int
     entity_name: Optional[str] = None
     entity_type: Optional[EntityType] = None
     
@@ -272,7 +272,7 @@ class BriefResponse(BaseModel):
 
 class OpportunityEnhanced(BaseModel):
     """Opportunity with brief data"""
-    id: UUID
+    id: int
     title: str
     source_name: str
     category: Optional[str]
@@ -280,8 +280,8 @@ class OpportunityEnhanced(BaseModel):
     score: Optional[int]
     
     # Enhanced fields
-    entity_id: Optional[UUID] = None
-    brief_id: Optional[UUID] = None
+    entity_id: Optional[int] = None
+    brief_id: Optional[int] = None
     has_contacts: bool = False
     top_contact: Optional[ContactRanked] = None
     
