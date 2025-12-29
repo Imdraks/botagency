@@ -10,7 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.db.models.source import Source, SourceType
+from app.db.models.source import SourceConfig
+from app.db.models.opportunity import SourceType
 
 # Sources organisées par catégorie
 SOURCES = [
@@ -310,8 +311,8 @@ def add_sources():
         for source_data in SOURCES:
             try:
                 # Vérifier si la source existe déjà
-                existing = db.query(Source).filter(
-                    Source.url == source_data["url"]
+                existing = db.query(SourceConfig).filter(
+                    SourceConfig.url == source_data["url"]
                 ).first()
                 
                 if existing:
@@ -320,14 +321,12 @@ def add_sources():
                     continue
                 
                 # Créer la source
-                source = Source(
+                source = SourceConfig(
                     name=source_data["name"],
                     source_type=SourceType(source_data["type"]),
                     url=source_data["url"],
-                    category=source_data.get("category", "other"),
-                    is_active=True,
-                    priority=1,
-                    config={}
+                    description=source_data.get("category", "other"),
+                    is_active=True
                 )
                 
                 db.add(source)
@@ -346,7 +345,7 @@ def add_sources():
         print(f"   ✅ Ajoutées: {added}")
         print(f"   ⏭️  Skippées: {skipped}")
         print(f"   ❌ Erreurs: {errors}")
-        print(f"   📁 Total sources: {db.query(Source).count()}")
+        print(f"   📁 Total sources: {db.query(SourceConfig).count()}")
         print("="*50)
         
     finally:
