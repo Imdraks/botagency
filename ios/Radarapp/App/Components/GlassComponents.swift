@@ -314,6 +314,42 @@ struct EmptyStateView: View {
     }
 }
 
+// MARK: - Skeleton View (Loading Placeholder)
+struct SkeletonView: View {
+    let height: CGFloat
+    let cornerRadius: CGFloat
+    
+    @State private var isAnimating = false
+    
+    init(height: CGFloat = 20, cornerRadius: CGFloat = 4) {
+        self.height = height
+        self.cornerRadius = cornerRadius
+    }
+    
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(Color(.systemGray5))
+            .frame(height: height)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, Color.white.opacity(0.3), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .offset(x: isAnimating ? 200 : -200)
+            )
+            .clipped()
+            .onAppear {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    isAnimating = true
+                }
+            }
+    }
+}
+
 // MARK: - Section Header
 struct SectionHeader: View {
     let title: String

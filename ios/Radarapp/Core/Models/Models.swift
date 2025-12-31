@@ -434,7 +434,7 @@ struct OpportunityFilters: Equatable, Sendable {
     }
 }
 
-enum OpportunitySortOption: String, CaseIterable, Sendable {
+enum OpportunitySortOption: String, CaseIterable, Identifiable, Equatable, Sendable {
     case scoreDesc = "score_desc"
     case scoreAsc = "score_asc"
     case deadlineAsc = "deadline_asc"
@@ -443,6 +443,10 @@ enum OpportunitySortOption: String, CaseIterable, Sendable {
     case budgetAsc = "budget_asc"
     case createdDesc = "created_desc"
     case createdAsc = "created_asc"
+    
+    var id: String { rawValue }
+    
+    var title: String { displayName }
     
     var displayName: String {
         switch self {

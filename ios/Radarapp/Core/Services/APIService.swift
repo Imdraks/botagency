@@ -160,14 +160,7 @@ class APIService: ObservableObject {
     }
 }
 
-// MARK: - Response Types
-struct PaginatedResponse<T: Decodable>: Decodable {
-    let items: [T]
-    let total: Int
-    let page: Int
-    let pages: Int
-}
-
+// MARK: - Request/Response Types
 struct CreateSourceRequest: Encodable {
     let name: String
     let type: String
@@ -180,6 +173,6 @@ struct DashboardData: Decodable {
     let activeOpportunities: Int
     let totalDossiers: Int
     let pendingDossiers: Int
-    let recentOpportunities: [Opportunity]
-    let recentDossiers: [Dossier]
+    let recentOpportunities: [Opportunity]?
+    let recentDossiers: [Dossier]?
 }
