@@ -94,7 +94,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statsLoading ? "..." : stats?.total_leads || stats?.total_opportunities || 0}
+              {statsLoading ? "..." : stats?.total_opportunities || 0}
             </div>
           </CardContent>
         </Card>
