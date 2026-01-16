@@ -73,7 +73,7 @@ class AuditLog(Base):
     description = Column(Text, nullable=True)
     old_value = Column(JSON, nullable=True)  # État avant modification
     new_value = Column(JSON, nullable=True)  # État après modification
-    metadata = Column(JSON, nullable=True)   # Données additionnelles
+    extra_data = Column(JSON, nullable=True)   # Données additionnelles
     
     # Quand
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
@@ -106,7 +106,7 @@ class AuditService:
         description: Optional[str] = None,
         old_value: Optional[Dict] = None,
         new_value: Optional[Dict] = None,
-        metadata: Optional[Dict] = None,
+        extra_data: Optional[Dict] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> AuditLog:
@@ -121,7 +121,7 @@ class AuditService:
             description=description,
             old_value=old_value,
             new_value=new_value,
-            metadata=metadata,
+            extra_data=extra_data,
             ip_address=ip_address,
             user_agent=user_agent
         )
@@ -152,7 +152,7 @@ class AuditService:
             description=f"Status changé de {old_status} à {new_status}",
             old_value={"status": old_status},
             new_value={"status": new_status},
-            metadata={"reason": reason} if reason else None
+            extra_data={"reason": reason} if reason else None
         )
     
     def log_opportunity_update(
@@ -265,7 +265,7 @@ def audit_log_to_dict(log: AuditLog) -> Dict[str, Any]:
         "description": log.description,
         "old_value": log.old_value,
         "new_value": log.new_value,
-        "metadata": log.metadata,
+        "extra_data": log.extra_data,
         "created_at": log.created_at.isoformat() if log.created_at else None,
         "ip_address": log.ip_address
     }

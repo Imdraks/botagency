@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('old_value', sa.JSON(), nullable=True),
         sa.Column('new_value', sa.JSON(), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
+        sa.Column('extra_data', sa.JSON(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('NOW()'), nullable=True),
         sa.Column('ip_address', sa.String(45), nullable=True),
         sa.Column('user_agent', sa.String(500), nullable=True),
