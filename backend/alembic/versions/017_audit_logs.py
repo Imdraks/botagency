@@ -1,7 +1,7 @@
 """Add audit_logs table
 
-Revision ID: 010_audit_logs
-Revises: 009_entity_brief_system
+Revision ID: 017_audit_logs
+Revises: 016_fix_computed_cols
 Create Date: 2026-01-16
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '010_audit_logs'
-down_revision = '009_entity_brief_system'
+revision = '017_audit_logs'
+down_revision = '016_fix_computed_cols'
 branch_labels = None
 depends_on = None
 
