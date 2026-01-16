@@ -54,6 +54,7 @@ from app.api.clusters import router as clusters_router
 from app.api.deadlines import router as deadlines_router
 from app.api.source_health import router as source_health_router
 from app.api.contact_finder import router as contact_finder_router
+from app.api.advanced_features import router as advanced_features_router
 
 # Configure logging
 logging.basicConfig(
@@ -169,6 +170,7 @@ app.include_router(clusters_router, prefix="/api/v1", tags=["Clusters"])
 app.include_router(deadlines_router, prefix="/api/v1", tags=["Deadlines"])
 app.include_router(source_health_router, prefix="/api/v1", tags=["Source Health"])
 app.include_router(contact_finder_router, prefix="/api/v1", tags=["Contact Finder"])
+app.include_router(advanced_features_router, prefix="/api/v1", tags=["Advanced Features"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])
