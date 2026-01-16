@@ -1,5 +1,5 @@
 """
-Scoring rules endpoints + Artist scoring API
+Scoring rules endpoints + Artist scoring API + Advanced Opportunity Scoring
 """
 from typing import List, Optional
 from uuid import UUID
@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.db import get_db
 from app.db.models.user import User
 from app.db.models.scoring import ScoringRule, RuleType
+from app.db.models.opportunity import Opportunity
 from app.schemas.scoring import (
     ScoringRuleCreate, ScoringRuleUpdate, ScoringRuleResponse
 )
@@ -22,6 +23,13 @@ from app.scoring import (
     LiveData,
     Trend,
     format_score_report
+)
+from app.scoring.advanced_engine import (
+    AdvancedScoringEngine,
+    advanced_scorer,
+    AgencyConfig,
+    configure_agency,
+    get_agency_config
 )
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
@@ -341,3 +349,264 @@ def delete_scoring_rule(
     db.delete(rule)
     db.commit()
     return {"message": "Scoring rule deleted successfully"}
+
+
+# =============================================================================
+# ADVANCED OPPORTUNITY SCORING - Moteur survitaminé
+# =============================================================================
+
+class AdvancedScoreResponse(BaseModel):
+    """Réponse du scoring avancé"""
+    total: float = Field(..., description="Score total 0-100")
+    confidence: float = Field(..., description="Fiabilité du score 0-100%")
+    
+    # Détail par catégorie
+    urgency: float = Field(..., description="Score urgence 0-20")
+    budget: float = Field(..., description="Score budget 0-20")
+    business_fit: float = Field(..., description="Score fit métier 0-25")
+    client_quality: float = Field(..., description="Score qualité client 0-20")
+    potential: float = Field(..., description="Score potentiel 0-15")
+    risk: float = Field(..., description="Pénalités -20 à 0")
+    
+    # Insights
+    signals: List[str] = []
+    warnings: List[str] = []
+    recommendations: List[str] = []
+    
+    # Détails complets
+    details: dict = {}
+
+
+class AgencyConfigUpdate(BaseModel):
+    """Mise à jour de la config agence"""
+    services: Optional[dict] = None
+    preferred_sectors: Optional[dict] = None
+    min_budget_interest: Optional[int] = None
+    ideal_budget_min: Optional[int] = None
+    ideal_budget_max: Optional[int] = None
+    high_value_keywords: Optional[List[str]] = None
+
+
+@router.post("/opportunity/{opportunity_id}/advanced", response_model=AdvancedScoreResponse)
+def score_opportunity_advanced(
+    opportunity_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    🚀 Score une opportunité avec le moteur avancé
+    
+    Analyse multi-critères:
+    - **Urgence** (0-20): Deadline et timing
+    - **Budget** (0-20): Détection intelligente du budget
+    - **Fit métier** (0-25): Correspondance services agence
+    - **Qualité client** (0-20): Type d'organisation, prestige
+    - **Potentiel** (0-15): Récurrence, visibilité, développement
+    - **Risques** (-20 à 0): Pénalités signaux négatifs
+    """
+    opp = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    if not opp:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Opportunity not found"
+        )
+    
+    result = advanced_scorer.calculate(opp)
+    
+    return AdvancedScoreResponse(
+        total=round(result.total, 1),
+        confidence=round(result.confidence, 1),
+        urgency=round(result.urgency, 1),
+        budget=round(result.budget, 1),
+        business_fit=round(result.business_fit, 1),
+        client_quality=round(result.client_quality, 1),
+        potential=round(result.potential, 1),
+        risk=round(result.risk, 1),
+        signals=result.signals,
+        warnings=result.warnings,
+        recommendations=result.recommendations,
+        details=result.details
+    )
+
+
+@router.post("/opportunities/rescore-advanced")
+def rescore_all_opportunities_advanced(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """
+    🔄 Rescorer TOUTES les opportunités avec le moteur avancé
+    
+    Met à jour le score et le breakdown de chaque opportunité.
+    """
+    opportunities = db.query(Opportunity).all()
+    updated = 0
+    
+    for opp in opportunities:
+        try:
+            score, breakdown = advanced_scorer.score_opportunity(opp)
+            opp.score = score
+            opp.score_breakdown = breakdown
+            updated += 1
+        except Exception as e:
+            # Log mais continue
+            pass
+    
+    db.commit()
+    
+    return {
+        "message": f"Rescored {updated}/{len(opportunities)} opportunities",
+        "updated": updated,
+        "total": len(opportunities)
+    }
+
+
+@router.get("/config/agency")
+def get_current_agency_config(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    📋 Récupère la configuration actuelle de l'agence
+    
+    Montre les services, secteurs préférés et seuils de budget.
+    """
+    config = get_agency_config()
+    return {
+        "services": config.services,
+        "preferred_sectors": config.preferred_sectors,
+        "min_budget_interest": config.min_budget_interest,
+        "ideal_budget_min": config.ideal_budget_min,
+        "ideal_budget_max": config.ideal_budget_max,
+        "high_value_keywords": config.high_value_keywords,
+    }
+
+
+@router.put("/config/agency")
+def update_agency_config(
+    update: AgencyConfigUpdate,
+    current_user: User = Depends(require_admin),
+):
+    """
+    ⚙️ Met à jour la configuration de scoring de l'agence
+    
+    Permet de personnaliser:
+    - Services proposés et leur poids
+    - Secteurs d'activité privilégiés
+    - Seuils de budget
+    - Mots-clés haute valeur
+    """
+    current = get_agency_config()
+    
+    # Mettre à jour les champs fournis
+    if update.services is not None:
+        current.services = update.services
+    if update.preferred_sectors is not None:
+        current.preferred_sectors = update.preferred_sectors
+    if update.min_budget_interest is not None:
+        current.min_budget_interest = update.min_budget_interest
+    if update.ideal_budget_min is not None:
+        current.ideal_budget_min = update.ideal_budget_min
+    if update.ideal_budget_max is not None:
+        current.ideal_budget_max = update.ideal_budget_max
+    if update.high_value_keywords is not None:
+        current.high_value_keywords = update.high_value_keywords
+    
+    # Reconfigurer le scorer
+    configure_agency(current)
+    
+    return {
+        "message": "Agency configuration updated",
+        "config": {
+            "services": current.services,
+            "preferred_sectors": current.preferred_sectors,
+            "min_budget_interest": current.min_budget_interest,
+            "ideal_budget_min": current.ideal_budget_min,
+            "ideal_budget_max": current.ideal_budget_max,
+            "high_value_keywords": current.high_value_keywords,
+        }
+    }
+
+
+@router.get("/scoring-guide")
+def get_scoring_guide():
+    """
+    📖 Guide du système de scoring avancé
+    
+    Explique comment les scores sont calculés.
+    """
+    return {
+        "title": "Guide du Scoring Avancé",
+        "total_max": 100,
+        "categories": {
+            "urgency": {
+                "max": 20,
+                "description": "Score basé sur la deadline",
+                "rules": [
+                    {"condition": "< 7 jours", "points": 20, "label": "🔴 URGENT"},
+                    {"condition": "7-14 jours", "points": 15, "label": "🟠 Proche"},
+                    {"condition": "14-30 jours", "points": 10, "label": "🟡 Normal"},
+                    {"condition": "30-60 jours", "points": 5, "label": "🟢 Confortable"},
+                    {"condition": "> 60 jours", "points": 2, "label": "⚪ Lointain"},
+                ]
+            },
+            "budget": {
+                "max": 20,
+                "description": "Score basé sur le budget détecté",
+                "rules": [
+                    {"condition": "Budget idéal (50k-500k€)", "points": 20, "label": "💰 Idéal"},
+                    {"condition": "Gros budget (>500k€)", "points": 18, "label": "💎 Large"},
+                    {"condition": "Budget intéressant (10k-50k€)", "points": 12, "label": "💵 Intéressant"},
+                    {"condition": "Petit budget (5k-10k€)", "points": 6, "label": "💸 Petit"},
+                    {"condition": "Non détecté", "points": 2, "label": "❓ Inconnu"},
+                ]
+            },
+            "business_fit": {
+                "max": 25,
+                "description": "Correspondance avec les services de l'agence",
+                "components": [
+                    "Services matchés (jusqu'à 15 pts)",
+                    "Secteur privilégié (jusqu'à 10 pts)",
+                    "Mots-clés haute valeur (bonus)"
+                ]
+            },
+            "client_quality": {
+                "max": 20,
+                "description": "Type et qualité de l'organisation",
+                "examples": [
+                    {"type": "Institution publique", "points": "15-18"},
+                    {"type": "Grande entreprise CAC40", "points": "16-20"},
+                    {"type": "Festival/Salle de spectacle", "points": "15-19"},
+                    {"type": "PME/ETI", "points": "10-14"},
+                    {"type": "Association", "points": "5-8"},
+                ]
+            },
+            "potential": {
+                "max": 15,
+                "description": "Potentiel business additionnel",
+                "signals": [
+                    "Événement récurrent",
+                    "Forte visibilité médiatique",
+                    "Lieu prestigieux",
+                    "Projet en croissance"
+                ]
+            },
+            "risk": {
+                "max": 0,
+                "min": -20,
+                "description": "Pénalités pour signaux négatifs",
+                "penalties": [
+                    "Contenu promotionnel",
+                    "Budget très limité",
+                    "Événement annulé",
+                    "Offre d'emploi",
+                    "Spam"
+                ]
+            }
+        },
+        "interpretation": {
+            "70-100": "🎯 Prioritaire - Contacter immédiatement",
+            "50-69": "✅ Bonne opportunité - Traiter cette semaine",
+            "30-49": "📋 Moyenne - Évaluer si temps disponible",
+            "0-29": "⏸️ Secondaire - Basse priorité"
+        }
+    }
