@@ -24,18 +24,21 @@ router = APIRouter(prefix="/tags", tags=["tags"])
 # ============================================================================
 
 # Association table for opportunity-tags many-to-many
+# Use extend_existing to avoid conflicts if already defined elsewhere
 opportunity_tags = Table(
     'opportunity_tags',
     Base.metadata,
     Column('opportunity_id', Integer, ForeignKey('opportunities.id', ondelete='CASCADE'), primary_key=True),
     Column('tag_id', Integer, ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True),
-    Column('created_at', DateTime, default=datetime.utcnow)
+    Column('created_at', DateTime, default=datetime.utcnow),
+    extend_existing=True
 )
 
 
 class Tag(Base):
     """Custom tag/label model"""
     __tablename__ = "tags"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
@@ -57,6 +60,7 @@ class Tag(Base):
 class Comment(Base):
     """Comment on an opportunity"""
     __tablename__ = "comments"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     opportunity_id = Column(Integer, ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False)
@@ -76,17 +80,12 @@ class Comment(Base):
 class Favorite(Base):
     """User favorites/starred opportunities"""
     __tablename__ = "favorites"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     opportunity_id = Column(Integer, ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Unique constraint
-    __table_args__ = (
-        # Unique user-opportunity pair
-        {'sqlite_autoincrement': True},
-    )
 
 
 # ============================================================================
