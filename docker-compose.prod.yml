@@ -107,9 +107,11 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=
+        - NEXT_PUBLIC_PUBLIC_MODE=${NEXT_PUBLIC_PUBLIC_MODE:-false}
     container_name: radar_frontend_prod
     environment:
       - NEXT_PUBLIC_API_URL=
+      - NEXT_PUBLIC_PUBLIC_MODE=${NEXT_PUBLIC_PUBLIC_MODE:-false}
       - INTERNAL_API_URL=http://backend:8000
       - NODE_ENV=production
     expose:

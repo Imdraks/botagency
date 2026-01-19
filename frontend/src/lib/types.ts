@@ -148,7 +148,7 @@ export interface User {
   updated_at?: string;
 }
 
-export type UserRole = "admin" | "bizdev" | "pm" | "viewer";
+export type UserRole = "admin" | "bizdev" | "pm" | "viewer" | "guest";
 
 export interface NotificationPreferences {
   email?: boolean;

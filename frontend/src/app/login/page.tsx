@@ -15,6 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import api from "@/lib/api";
 
+// Check if public mode is enabled
+const isPublicMode = process.env.NEXT_PUBLIC_PUBLIC_MODE === "true";
+
 // SSO Icons
 const GoogleIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24">
@@ -53,11 +56,19 @@ type LoginForm = z.infer<typeof loginSchema>;
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, rememberMe, setRememberMe, lastLoginEmail, isAuthenticated, isLoading: authLoading, pending2FA, clearPending2FA } = useAuthStore();
+  const { login, rememberMe, setRememberMe, lastLoginEmail, isAuthenticated, isLoading: authLoading, pending2FA, clearPending2FA, setGuestUser } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
+
+  // In public mode, redirect to dashboard immediately as guest
+  useEffect(() => {
+    if (isPublicMode) {
+      setGuestUser();
+      router.push("/dashboard");
+    }
+  }, [router, setGuestUser]);
   const [ssoProviders, setSsoProviders] = useState<{ id: string; name: string; enabled: boolean }[]>([]);
   const [show2FA, setShow2FA] = useState(false);
   const [totpCode, setTotpCode] = useState("");

@@ -18,6 +18,7 @@ interface AuthState {
   rememberMe: boolean;
   lastLoginEmail: string | null;
   pending2FA: { email: string; password: string; tempToken: string } | null;
+  isGuest: boolean;
   
   // Actions
   login: (email: string, password: string, rememberMe?: boolean, totpCode?: string) => Promise<LoginResult>;
@@ -28,6 +29,7 @@ interface AuthState {
   setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   initializeAuth: () => Promise<void>;
   clearPending2FA: () => void;
+  setGuestUser: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -39,6 +41,26 @@ export const useAuthStore = create<AuthState>()(
       rememberMe: true,
       lastLoginEmail: null,
       pending2FA: null,
+      isGuest: false,
+
+      // Set guest user for public mode
+      setGuestUser: () => {
+        const guestUser: User = {
+          id: 0,
+          email: "guest@radar.local",
+          full_name: "Invité",
+          role: "viewer" as any,
+          is_active: true,
+          is_superuser: false,
+          created_at: new Date().toISOString(),
+        };
+        set({ 
+          user: guestUser, 
+          isAuthenticated: true, 
+          isLoading: false,
+          isGuest: true 
+        });
+      },
 
       login: async (email: string, password: string, rememberMe = true, totpCode?: string): Promise<LoginResult> => {
         set({ isLoading: true });
@@ -77,7 +99,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({ user: null, isAuthenticated: false, isLoading: false, isGuest: false });
       },
 
       fetchUser: async () => {
@@ -146,6 +168,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         rememberMe: state.rememberMe,
         lastLoginEmail: state.lastLoginEmail,
+        isGuest: state.isGuest,
       }),
     }
   )
