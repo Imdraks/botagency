@@ -70,7 +70,7 @@ export default function CalendarPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       
       // Get events for current month ± 1 month
       const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
@@ -111,7 +111,7 @@ export default function CalendarPage() {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/v1/agency/calendar', {
         method: 'POST',
         headers: {
@@ -140,7 +140,7 @@ export default function CalendarPage() {
     if (!confirm('Supprimer cet événement ?')) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       await fetch(`/api/v1/agency/calendar/${eventId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },

@@ -76,7 +76,7 @@ export default function ProductionPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const [productionRes, projectsRes] = await Promise.all([
         fetch('/api/v1/agency/production', {
           headers: { 'Authorization': `Bearer ${token}` },
@@ -118,7 +118,7 @@ export default function ProductionPage() {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       await fetch(`/api/v1/agency/deliverables/${draggedItem.id}/status?status=${newStatus}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -136,7 +136,7 @@ export default function ProductionPage() {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/v1/agency/deliverables', {
         method: 'POST',
         headers: {
@@ -162,7 +162,7 @@ export default function ProductionPage() {
 
   const requestApproval = async (deliverableId: number) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       await fetch('/api/v1/agency/approvals', {
         method: 'POST',
         headers: {

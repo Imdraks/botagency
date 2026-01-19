@@ -72,7 +72,7 @@ export default function CockpitPage() {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/v1/agency/dashboard', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -95,7 +95,7 @@ export default function CockpitPage() {
   const generateFollowups = async () => {
     setGenerating(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       await fetch('/api/v1/agency/tasks/generate-followups', {
         method: 'POST',
         headers: {

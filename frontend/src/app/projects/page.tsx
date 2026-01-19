@@ -71,7 +71,7 @@ export default function ProjectsPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams();
       if (filterStatus) params.append('status', filterStatus);
       
@@ -111,7 +111,7 @@ export default function ProjectsPage() {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/v1/agency/projects', {
         method: 'POST',
         headers: {

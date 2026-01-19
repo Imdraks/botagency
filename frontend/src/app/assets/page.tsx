@@ -61,7 +61,7 @@ export default function AssetsPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams();
       if (filterProject) params.append('project_id', filterProject);
       if (filterKind) params.append('kind', filterKind);
@@ -96,7 +96,7 @@ export default function AssetsPage() {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/v1/agency/assets', {
         method: 'POST',
         headers: {
@@ -123,7 +123,7 @@ export default function AssetsPage() {
     if (!confirm('Supprimer cet asset ?')) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('access_token');
       await fetch(`/api/v1/agency/assets/${assetId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
