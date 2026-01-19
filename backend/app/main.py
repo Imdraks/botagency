@@ -57,6 +57,8 @@ from app.api.contact_finder import router as contact_finder_router
 from app.api.advanced_features import router as advanced_features_router
 from app.api.analytics import router as analytics_router
 from app.api.competitive import router as competitive_router
+from app.api.map_calendar import router as map_router, calendar_router
+from app.api.tags_comments import router as tags_router, comments_router, favorites_router
 
 # Configure logging
 logging.basicConfig(
@@ -175,6 +177,11 @@ app.include_router(contact_finder_router, prefix="/api/v1", tags=["Contact Finde
 app.include_router(advanced_features_router, prefix="/api/v1", tags=["Advanced Features"])
 app.include_router(analytics_router, prefix="/api/v1", tags=["Analytics Dashboard"])
 app.include_router(competitive_router, prefix="/api/v1", tags=["Competitive Intelligence"])
+app.include_router(map_router, prefix="/api/v1", tags=["Map"])
+app.include_router(calendar_router, prefix="/api/v1", tags=["Calendar"])
+app.include_router(tags_router, prefix="/api/v1", tags=["Tags"])
+app.include_router(comments_router, prefix="/api/v1", tags=["Comments"])
+app.include_router(favorites_router, prefix="/api/v1", tags=["Favorites"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])

@@ -28,6 +28,8 @@ import {
   HeartPulse,
   TrendingUp,
   Eye,
+  Map,
+  Brain,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -64,6 +66,8 @@ const navigation: {
   { name: "Source Health", href: "/source-health", icon: HeartPulse, isNew: true },
   { name: "Analytics", href: "/analytics", icon: TrendingUp, isNew: true },
   { name: "Veille Concur.", href: "/competitive", icon: Eye, isNew: true },
+  { name: "Carte", href: "/map", icon: Map, isNew: true },
+  { name: "Prédictions IA", href: "/predictions", icon: Brain, isNew: true },
   { name: "Scoring", href: "/scoring", icon: BarChart3 },
   { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
   { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },
