@@ -48,7 +48,12 @@ async def list_projects(
     query = db.query(Project).join(Client)
     
     if status:
-        query = query.filter(Project.status == status)
+        # Convert string to enum (case-insensitive)
+        try:
+            status_enum = ProjectStatus(status.lower())
+            query = query.filter(Project.status == status_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
     if client_id:
         query = query.filter(Project.client_id == client_id)
     
@@ -278,7 +283,12 @@ async def list_deliverables(
     if project_id:
         query = query.filter(Deliverable.project_id == project_id)
     if status:
-        query = query.filter(Deliverable.status == status)
+        # Convert string to enum (case-insensitive)
+        try:
+            status_enum = DeliverableStatus(status.lower())
+            query = query.filter(Deliverable.status == status_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
     
     deliverables = query.offset(skip).limit(limit).all()
     now = datetime.utcnow()
@@ -553,7 +563,12 @@ async def list_approvals(
     query = db.query(Approval).join(Deliverable).join(Project).join(Client)
     
     if status:
-        query = query.filter(Approval.status == status)
+        # Convert string to enum (case-insensitive)
+        try:
+            status_enum = ApprovalStatus(status.lower())
+            query = query.filter(Approval.status == status_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
     if deliverable_id:
         query = query.filter(Approval.deliverable_id == deliverable_id)
     

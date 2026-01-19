@@ -519,7 +519,12 @@ async def list_deals(
     query = db.query(Deal).join(Client)
     
     if status:
-        query = query.filter(Deal.status == status)
+        # Convert string to enum (case-insensitive)
+        try:
+            status_enum = DealStatus(status.lower())
+            query = query.filter(Deal.status == status_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
     if client_id:
         query = query.filter(Deal.client_id == client_id)
     

@@ -52,12 +52,22 @@ async def list_tasks(
     query = db.query(AgencyTask)
     
     if status:
-        query = query.filter(AgencyTask.status == status)
+        # Convert string to enum (case-insensitive)
+        try:
+            status_enum = TaskStatus(status.lower())
+            query = query.filter(AgencyTask.status == status_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
     elif not include_done:
         query = query.filter(AgencyTask.status != TaskStatus.DONE)
     
     if priority:
-        query = query.filter(AgencyTask.priority == priority)
+        # Convert string to enum (case-insensitive)
+        try:
+            priority_enum = TaskPriority(priority.lower())
+            query = query.filter(AgencyTask.priority == priority_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid priority: {priority}")
     if project_id:
         query = query.filter(AgencyTask.project_id == project_id)
     if deal_id:
