@@ -15,6 +15,7 @@ import {
   Eye,
 } from 'lucide-react';
 import Link from 'next/link';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface ProductionItem {
   id: number;
@@ -58,6 +59,16 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ProductionPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <ProductionContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function ProductionContent() {
   const [data, setData] = useState<ProductionData | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

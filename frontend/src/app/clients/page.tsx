@@ -17,6 +17,7 @@ import {
   User,
   Briefcase,
 } from "lucide-react";
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,16 @@ const getAuthHeaders = (): Record<string, string> => {
 };
 
 export default function ClientsPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <ClientsContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function ClientsContent() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);

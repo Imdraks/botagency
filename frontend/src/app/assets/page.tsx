@@ -17,6 +17,7 @@ import {
   File,
   Filter,
 } from 'lucide-react';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface Asset {
   id: number;
@@ -42,6 +43,16 @@ const KIND_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function AssetsPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <AssetsContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function AssetsContent() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

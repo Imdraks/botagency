@@ -14,6 +14,7 @@ import {
   X,
   Clock,
 } from 'lucide-react';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface Deal {
   id: number;
@@ -58,6 +59,16 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PipelinePage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <PipelineContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function PipelineContent() {
   const [data, setData] = useState<PipelineData | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);

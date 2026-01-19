@@ -17,6 +17,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface Project {
   id: number;
@@ -51,6 +52,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
 };
 
 export default function ProjectsPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <ProjectsContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function ProjectsContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);

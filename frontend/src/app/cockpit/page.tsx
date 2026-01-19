@@ -14,6 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface TodoItem {
   id: number;
@@ -64,6 +65,16 @@ interface DashboardData {
 }
 
 export default function CockpitPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <CockpitContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function CockpitContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

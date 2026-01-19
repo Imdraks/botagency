@@ -11,6 +11,7 @@ import {
   MapPin,
   Clock,
 } from 'lucide-react';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface CalendarEvent {
   id: number;
@@ -49,6 +50,16 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 export default function CalendarPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <CalendarContent />
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
+  );
+}
+
+function CalendarContent() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
