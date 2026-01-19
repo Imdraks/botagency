@@ -1,17 +1,16 @@
 """Add tags, comments, and favorites tables
 
-Revision ID: 010_tags_comments_favorites
-Revises: 009_entity_brief_system
-Create Date: 2025-01-28
+Revision ID: 018_tags_comments_favorites
+Revises: 017_audit_logs
+Create Date: 2026-01-19
 
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '010_tags_comments_favorites'
-down_revision = '009_entity_brief_system'
+revision = '018_tags_comments_favorites'
+down_revision = '017_audit_logs'
 branch_labels = None
 depends_on = None
 
@@ -26,7 +25,7 @@ def upgrade() -> None:
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), onupdate=sa.text('now()')),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('name', 'user_id', name='uq_tag_name_user')
     )
@@ -54,7 +53,7 @@ def upgrade() -> None:
         sa.Column('parent_id', sa.Integer(), sa.ForeignKey('comments.id', ondelete='CASCADE'), nullable=True),
         sa.Column('is_edited', sa.Boolean(), server_default='false', nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), onupdate=sa.text('now()')),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_comments_opportunity_id', 'comments', ['opportunity_id'])
