@@ -48,12 +48,13 @@ class Tag(Base):
     is_system = Column(Boolean, default=False)  # System tags can't be deleted
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", backref="tags")
+    # Relationships - use unique backref names to avoid conflicts
+    user = relationship("User", backref="user_tags")
     opportunities = relationship(
         "Opportunity",
         secondary=opportunity_tags,
-        backref="tags"
+        backref="opportunity_tags_rel",
+        lazy="dynamic"
     )
 
 
@@ -71,10 +72,10 @@ class Comment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", backref="comments")
-    opportunity = relationship("Opportunity", backref="comments")
-    replies = relationship("Comment", backref="parent", remote_side=[id])
+    # Relationships - use unique backref names to avoid conflicts
+    user = relationship("User", backref="user_comments")
+    opportunity = relationship("Opportunity", backref="opportunity_comments")
+    replies = relationship("Comment", backref="comment_parent", remote_side=[id])
 
 
 class Favorite(Base):
