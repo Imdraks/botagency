@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuthStore } from "@/store/auth";
 
 interface ClientContact {
   name: string;
@@ -59,8 +58,13 @@ interface Client {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Helper to get auth headers
+const getAuthHeaders = () => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export default function ClientsPage() {
-  const { token } = useAuthStore();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -78,12 +82,11 @@ export default function ClientsPage() {
     queryKey: ["clients"],
     queryFn: async () => {
       const res = await fetch(`${API_URL}/api/v1/agency/clients`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to fetch clients");
       return res.json();
     },
-    enabled: !!token,
   });
 
   // Create client mutation
@@ -93,7 +96,7 @@ export default function ClientsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(data),
       });
@@ -114,7 +117,7 @@ export default function ClientsPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(data),
       });
@@ -133,7 +136,7 @@ export default function ClientsPage() {
     mutationFn: async (id: number) => {
       const res = await fetch(`${API_URL}/api/v1/agency/clients/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to delete client");
     },
