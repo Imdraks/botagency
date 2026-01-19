@@ -378,7 +378,7 @@ function LeadsContent() {
                     key={lead.id} 
                     lead={lead} 
                     isSelected={selectedLeads.has(lead.id)}
-                    isFavorite={favorites.has(lead.id) || favoritesData?.has(lead.id)}
+                    isFavorite={favorites.has(lead.id) || (favoritesData?.has(lead.id) ?? false)}
                     onToggleSelect={toggleSelect}
                     onToggleFavorite={toggleFavorite}
                   />
