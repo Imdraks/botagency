@@ -80,12 +80,18 @@ const markPageAsVisited = (href: string): void => {
 // ============================================================================
 // NAVIGATION V2 - Agency Cockpit (6 main items)
 // ============================================================================
-const mainNavigation: {
+
+// Common navigation item type
+interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
   isNew?: boolean;
-}[] = [
+  adminOnly?: boolean;
+  superadminOnly?: boolean;
+}
+
+const mainNavigation: NavItem[] = [
   { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard },
   { name: "Pipeline", href: "/pipeline", icon: DollarSign, isNew: true },
   { name: "Clients", href: "/clients", icon: Briefcase, isNew: true },
@@ -96,13 +102,7 @@ const mainNavigation: {
 ];
 
 // Secondary tools navigation (collapsible)
-const toolsNavigation: {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  adminOnly?: boolean;
-  superadminOnly?: boolean;
-}[] = [
+const toolsNavigation: NavItem[] = [
   { name: "Daily Picks", href: "/shortlist", icon: Sparkles },
   { name: "Leads", href: "/leads", icon: Target },
   { name: "Dossiers", href: "/dossiers", icon: FileText },
@@ -122,13 +122,7 @@ const toolsNavigation: {
 ];
 
 // Admin navigation
-const adminNavigation: {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  adminOnly?: boolean;
-  superadminOnly?: boolean;
-}[] = [
+const adminNavigation: NavItem[] = [
   { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
   { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },
   { name: "Paramètres", href: "/settings", icon: Settings },
