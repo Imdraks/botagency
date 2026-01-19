@@ -59,7 +59,7 @@ interface Client {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Helper to get auth headers
-const getAuthHeaders = () => {
+const getAuthHeaders = (): Record<string, string> => {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
