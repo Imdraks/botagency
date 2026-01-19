@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Calendar, ExternalLink, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/toaster";
 
 // Google Calendar API types
 interface CalendarConnectionStatus {
@@ -28,7 +28,7 @@ const STORAGE_KEY = "google_calendar_config";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export function GoogleCalendarIntegration() {
-  const { toast } = useToast();
+  const { addToast } = useToast();
   const searchParams = useSearchParams();
   
   const [status, setStatus] = useState<CalendarConnectionStatus | null>(null);
@@ -79,9 +79,10 @@ export function GoogleCalendarIntegration() {
     const error = searchParams.get("error");
 
     if (connected === "true") {
-      toast({
+      addToast({
         title: "Google Calendar connecté !",
         description: "Vous pouvez maintenant synchroniser vos deadlines.",
+        type: "success",
       });
       checkStatus();
       // Clean URL
@@ -89,15 +90,15 @@ export function GoogleCalendarIntegration() {
     }
 
     if (error) {
-      toast({
+      addToast({
         title: "Erreur de connexion",
         description: error,
-        variant: "destructive",
+        type: "error",
       });
       // Clean URL
       window.history.replaceState({}, "", "/settings?tab=calendar");
     }
-  }, [searchParams, toast, checkStatus]);
+  }, [searchParams, addToast, checkStatus]);
 
   // Load settings from localStorage
   useEffect(() => {
@@ -129,10 +130,10 @@ export function GoogleCalendarIntegration() {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        toast({
+        addToast({
           title: "Non authentifié",
           description: "Veuillez vous connecter d'abord.",
-          variant: "destructive",
+          type: "error",
         });
         return;
       }
@@ -153,10 +154,10 @@ export function GoogleCalendarIntegration() {
       window.location.href = data.auth_url;
     } catch (error) {
       console.error("Failed to connect to Google Calendar:", error);
-      toast({
+      addToast({
         title: "Erreur",
         description: "Impossible d'initialiser la connexion Google Calendar.",
-        variant: "destructive",
+        type: "error",
       });
       setIsLoading(false);
     }
@@ -176,9 +177,10 @@ export function GoogleCalendarIntegration() {
       if (response.ok) {
         setStatus({ connected: false });
         setSyncResult(null);
-        toast({
+        addToast({
           title: "Déconnecté",
           description: "Google Calendar a été déconnecté.",
+          type: "info",
         });
       }
     } catch (error) {
@@ -209,23 +211,24 @@ export function GoogleCalendarIntegration() {
       setSyncResult(result);
 
       if (result.success) {
-        toast({
+        addToast({
           title: "Synchronisation réussie !",
           description: `${result.events_created} événements créés.`,
+          type: "success",
         });
       } else {
-        toast({
+        addToast({
           title: "Synchronisation partielle",
           description: `${result.events_created} événements créés, ${result.errors.length} erreurs.`,
-          variant: "destructive",
+          type: "warning",
         });
       }
     } catch (error) {
       console.error("Failed to sync deadlines:", error);
-      toast({
+      addToast({
         title: "Erreur",
         description: "Impossible de synchroniser les deadlines.",
-        variant: "destructive",
+        type: "error",
       });
     } finally {
       setIsSyncing(false);
@@ -405,7 +408,7 @@ export function GoogleCalendarIntegration() {
 
 // Hook for syncing single opportunity to calendar
 export function useGoogleCalendar() {
-  const { toast } = useToast();
+  const { addToast } = useToast();
 
   const syncToCalendar = async (opportunityId: number | string) => {
     try {
@@ -432,9 +435,10 @@ export function useGoogleCalendar() {
       const result = await response.json();
       
       if (result.success && result.events_created > 0) {
-        toast({
+        addToast({
           title: "Ajouté au calendrier",
           description: "La deadline a été synchronisée avec Google Calendar.",
+          type: "success",
         });
         return true;
       }
@@ -442,10 +446,10 @@ export function useGoogleCalendar() {
       return false;
     } catch (error: any) {
       console.error("Failed to sync to calendar:", error);
-      toast({
+      addToast({
         title: "Erreur",
         description: error.message || "Impossible de synchroniser avec le calendrier.",
-        variant: "destructive",
+        type: "error",
       });
       return false;
     }
