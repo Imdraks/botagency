@@ -114,7 +114,6 @@ services:
     container_name: radar_frontend
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
-      - NEXT_PUBLIC_PUBLIC_MODE=${NEXT_PUBLIC_PUBLIC_MODE:-false}
       - INTERNAL_API_URL=http://backend:8000
     expose:
       - "3000"

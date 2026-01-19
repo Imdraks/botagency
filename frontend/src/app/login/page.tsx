@@ -53,7 +53,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, rememberMe, setRememberMe, lastLoginEmail, isAuthenticated, isLoading: authLoading, pending2FA, clearPending2FA, setGuestUser } = useAuthStore();
+  const { login, rememberMe, setRememberMe, lastLoginEmail, isAuthenticated, isLoading: authLoading, pending2FA, clearPending2FA } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
@@ -65,13 +65,6 @@ function LoginContent() {
     setMounted(true);
   }, []);
 
-  // In public mode, redirect to dashboard immediately as guest
-  useEffect(() => {
-    if (mounted && process.env.NEXT_PUBLIC_PUBLIC_MODE === "true") {
-      setGuestUser();
-      router.push("/dashboard");
-    }
-  }, [mounted, router, setGuestUser]);
   const [ssoProviders, setSsoProviders] = useState<{ id: string; name: string; enabled: boolean }[]>([]);
   const [show2FA, setShow2FA] = useState(false);
   const [totpCode, setTotpCode] = useState("");
