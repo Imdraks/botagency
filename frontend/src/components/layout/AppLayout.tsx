@@ -31,7 +31,7 @@ import {
   Map,
   Brain,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,6 +41,34 @@ import { NotificationCenter } from "@/components/notifications/NotificationCente
 import { BackgroundTasksIndicator } from "@/components/tasks/BackgroundTasksIndicator";
 import { OnboardingProvider, OnboardingTour, OnboardingTrigger, WelcomeModal } from "@/components/onboarding";
 import { MobileBottomNav } from "./MobileBottomNav";
+
+// Storage key for visited pages
+const VISITED_PAGES_KEY = "radar_visited_pages";
+
+// Helper to get visited pages from localStorage
+const getVisitedPages = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(VISITED_PAGES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Helper to mark a page as visited
+const markPageAsVisited = (href: string): void => {
+  if (typeof window === "undefined") return;
+  try {
+    const visited = getVisitedPages();
+    if (!visited.includes(href)) {
+      visited.push(href);
+      localStorage.setItem(VISITED_PAGES_KEY, JSON.stringify(visited));
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
 
 // Navigation structure
 const navigation: {
@@ -82,6 +110,33 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [visitedPages, setVisitedPages] = useState<string[]>([]);
+
+  // Load visited pages on mount
+  useEffect(() => {
+    setVisitedPages(getVisitedPages());
+  }, []);
+
+  // Mark current page as visited when pathname changes
+  useEffect(() => {
+    if (pathname) {
+      // Find matching navigation item
+      const navItem = navigation.find(
+        (item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
+      );
+      if (navItem?.isNew) {
+        markPageAsVisited(navItem.href);
+        setVisitedPages((prev) => 
+          prev.includes(navItem.href) ? prev : [...prev, navItem.href]
+        );
+      }
+    }
+  }, [pathname]);
+
+  // Check if a page should show "New" badge
+  const shouldShowNewBadge = useCallback((item: typeof navigation[0]) => {
+    return item.isNew && !visitedPages.includes(item.href);
+  }, [visitedPages]);
 
   const isAdmin = user?.role === "admin";
   const isSuperuser = user?.is_superuser === true;
@@ -159,7 +214,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                       isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
                     )} />
                     <span className="flex-1">{item.name}</span>
-                    {item.isNew && !isActive && (
+                    {shouldShowNewBadge(item) && !isActive && (
                       <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-blue-100 dark:bg-blue-900/50 text-[#0000FF] dark:text-blue-400 rounded-full">
                         New
                       </span>
