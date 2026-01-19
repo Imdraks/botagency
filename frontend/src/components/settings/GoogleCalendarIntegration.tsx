@@ -1,59 +1,111 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Calendar, ChevronLeft, ChevronRight, ExternalLink, Loader2, CheckCircle } from "lucide-react";
+import { Calendar, ExternalLink, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 // Google Calendar API types
-interface CalendarEvent {
-  id: string;
-  summary: string;
-  description?: string;
-  start: { dateTime?: string; date?: string };
-  end: { dateTime?: string; date?: string };
-  htmlLink: string;
+interface CalendarConnectionStatus {
+  connected: boolean;
+  email?: string;
+  calendar_id?: string;
+  last_sync?: string;
 }
 
-interface Opportunity {
-  id: string;
-  title: string;
-  organization?: string;
-  deadline_at?: string;
-  description?: string;
+interface SyncResult {
+  success: boolean;
+  events_created: number;
+  events_updated: number;
+  errors: string[];
 }
 
 const STORAGE_KEY = "google_calendar_config";
-const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export function GoogleCalendarIntegration() {
-  const [isConnected, setIsConnected] = useState(false);
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  
+  const [status, setStatus] = useState<CalendarConnectionStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [autoSync, setAutoSync] = useState(true);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [syncSuccess, setSyncSuccess] = useState(false);
-  const [selectedCalendar, setSelectedCalendar] = useState("primary");
   const [reminderMinutes, setReminderMinutes] = useState(60);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
-  // Load config from localStorage
+  // Check connection status on mount
+  const checkStatus = useCallback(async () => {
+    setCheckingStatus(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setStatus({ connected: false });
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/v1/calendar/google/status`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data: CalendarConnectionStatus = await response.json();
+        setStatus(data);
+      } else {
+        setStatus({ connected: false });
+      }
+    } catch (error) {
+      console.error("Failed to check calendar status:", error);
+      setStatus({ connected: false });
+    } finally {
+      setCheckingStatus(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
+
+  // Handle OAuth callback params
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const error = searchParams.get("error");
+
+    if (connected === "true") {
+      toast({
+        title: "Google Calendar connecté !",
+        description: "Vous pouvez maintenant synchroniser vos deadlines.",
+      });
+      checkStatus();
+      // Clean URL
+      window.history.replaceState({}, "", "/settings?tab=calendar");
+    }
+
+    if (error) {
+      toast({
+        title: "Erreur de connexion",
+        description: error,
+        variant: "destructive",
+      });
+      // Clean URL
+      window.history.replaceState({}, "", "/settings?tab=calendar");
+    }
+  }, [searchParams, toast, checkStatus]);
+
+  // Load settings from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const config = JSON.parse(stored);
-        setIsConnected(config.isConnected || false);
         setAutoSync(config.autoSync ?? true);
-        setSelectedCalendar(config.selectedCalendar || "primary");
         setReminderMinutes(config.reminderMinutes || 60);
       } catch (e) {
         console.error("Failed to parse calendar config:", e);
@@ -61,115 +113,140 @@ export function GoogleCalendarIntegration() {
     }
   }, []);
 
-  // Save config to localStorage
+  // Save settings to localStorage
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        isConnected,
         autoSync,
-        selectedCalendar,
         reminderMinutes,
       })
     );
-  }, [isConnected, autoSync, selectedCalendar, reminderMinutes]);
+  }, [autoSync, reminderMinutes]);
 
   const handleConnect = async () => {
     setIsLoading(true);
-
-    // In a real implementation, this would use Google OAuth
-    // For demo, we simulate the connection
     try {
-      // Simulate OAuth flow
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      setIsConnected(true);
-      
-      // Load some sample events
-      setEvents([
-        {
-          id: "1",
-          summary: "Deadline: Appel d'offres Festival",
-          start: { dateTime: new Date(Date.now() + 86400000 * 3).toISOString() },
-          end: { dateTime: new Date(Date.now() + 86400000 * 3 + 3600000).toISOString() },
-          htmlLink: "https://calendar.google.com",
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Non authentifié",
+          description: "Veuillez vous connecter d'abord.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/v1/calendar/google/init`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: "2",
-          summary: "Deadline: Concert Mairie Paris",
-          start: { dateTime: new Date(Date.now() + 86400000 * 7).toISOString() },
-          end: { dateTime: new Date(Date.now() + 86400000 * 7 + 3600000).toISOString() },
-          htmlLink: "https://calendar.google.com",
-        },
-      ]);
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to initialize OAuth");
+      }
+
+      const data = await response.json();
+      
+      // Redirect to Google OAuth
+      window.location.href = data.auth_url;
     } catch (error) {
       console.error("Failed to connect to Google Calendar:", error);
-    } finally {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'initialiser la connexion Google Calendar.",
+        variant: "destructive",
+      });
       setIsLoading(false);
     }
   };
 
-  const handleDisconnect = () => {
-    setIsConnected(false);
-    setEvents([]);
-  };
-
-  const handleSyncOpportunity = async (opportunity: Opportunity) => {
-    if (!isConnected || !opportunity.deadline_at) return;
-
+  const handleDisconnect = async () => {
     setIsLoading(true);
     try {
-      // Simulate creating calendar event
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const newEvent: CalendarEvent = {
-        id: opportunity.id,
-        summary: `Deadline: ${opportunity.title}`,
-        description: `Organisation: ${opportunity.organization || "N/A"}`,
-        start: { dateTime: opportunity.deadline_at },
-        end: {
-          dateTime: new Date(
-            new Date(opportunity.deadline_at).getTime() + 3600000
-          ).toISOString(),
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE}/api/v1/calendar/google/disconnect`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        htmlLink: "https://calendar.google.com",
-      };
+      });
 
-      setEvents((prev) => [...prev.filter((e) => e.id !== opportunity.id), newEvent]);
-      setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 3000);
+      if (response.ok) {
+        setStatus({ connected: false });
+        setSyncResult(null);
+        toast({
+          title: "Déconnecté",
+          description: "Google Calendar a été déconnecté.",
+        });
+      }
     } catch (error) {
-      console.error("Failed to sync opportunity:", error);
+      console.error("Failed to disconnect:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSyncAllDeadlines = async () => {
-    setIsLoading(true);
+    setIsSyncing(true);
+    setSyncResult(null);
     try {
-      // Simulate syncing all deadlines
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 3000);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE}/api/v1/calendar/google/sync`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Sync failed");
+      }
+
+      const result: SyncResult = await response.json();
+      setSyncResult(result);
+
+      if (result.success) {
+        toast({
+          title: "Synchronisation réussie !",
+          description: `${result.events_created} événements créés.`,
+        });
+      } else {
+        toast({
+          title: "Synchronisation partielle",
+          description: `${result.events_created} événements créés, ${result.errors.length} erreurs.`,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error("Failed to sync all deadlines:", error);
+      console.error("Failed to sync deadlines:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de synchroniser les deadlines.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
   };
 
-  const formatEventDate = (event: CalendarEvent) => {
-    const dateStr = event.start.dateTime || event.start.date;
-    if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("fr-FR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  if (checkingStatus) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Intégration Google Calendar
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -185,39 +262,39 @@ export function GoogleCalendarIntegration() {
           <div className="flex items-center gap-3">
             <div
               className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                isConnected ? "bg-green-100" : "bg-gray-100"
+                status?.connected ? "bg-green-100" : "bg-gray-100"
               }`}
             >
               <Calendar
                 className={`h-5 w-5 ${
-                  isConnected ? "text-green-600" : "text-gray-400"
+                  status?.connected ? "text-green-600" : "text-gray-400"
                 }`}
               />
             </div>
             <div>
               <p className="font-medium">
-                {isConnected ? "Connecté à Google Calendar" : "Non connecté"}
+                {status?.connected ? "Connecté à Google Calendar" : "Non connecté"}
               </p>
               <p className="text-sm text-muted-foreground">
-                {isConnected
-                  ? `Calendrier: ${selectedCalendar}`
+                {status?.connected && status?.email
+                  ? `Compte: ${status.email}`
                   : "Connectez-vous pour synchroniser les deadlines"}
               </p>
             </div>
           </div>
           <Button
-            variant={isConnected ? "outline" : "default"}
-            onClick={isConnected ? handleDisconnect : handleConnect}
+            variant={status?.connected ? "outline" : "default"}
+            onClick={status?.connected ? handleDisconnect : handleConnect}
             disabled={isLoading}
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            {isConnected ? "Déconnecter" : "Connecter"}
+            {status?.connected ? "Déconnecter" : "Connecter"}
           </Button>
         </div>
 
-        {isConnected && (
+        {status?.connected && (
           <>
             {/* Settings */}
             <div className="space-y-4">
@@ -255,55 +332,61 @@ export function GoogleCalendarIntegration() {
             </div>
 
             {/* Sync actions */}
-            <div className="flex gap-2">
+            <div className="space-y-3">
               <Button
                 onClick={handleSyncAllDeadlines}
-                disabled={isLoading}
-                className="flex-1"
+                disabled={isSyncing}
+                className="w-full"
               >
-                {isLoading ? (
+                {isSyncing ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : syncSuccess ? (
-                  <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                 ) : (
-                  <Calendar className="h-4 w-4 mr-2" />
+                  <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                {syncSuccess ? "Synchronisé !" : "Synchroniser toutes les deadlines"}
+                Synchroniser toutes les deadlines
               </Button>
-            </div>
 
-            {/* Upcoming events */}
-            <div className="space-y-2">
-              <h4 className="font-medium">Événements à venir</h4>
-              {events.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  Aucun événement synchronisé
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{event.summary}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatEventDate(event)}
-                        </p>
-                      </div>
-                      <a
-                        href={event.htmlLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </div>
-                  ))}
+              {/* Sync result */}
+              {syncResult && (
+                <div
+                  className={`p-3 rounded-lg flex items-start gap-2 ${
+                    syncResult.success
+                      ? "bg-green-50 text-green-700"
+                      : "bg-yellow-50 text-yellow-700"
+                  }`}
+                >
+                  {syncResult.success ? (
+                    <CheckCircle className="h-5 w-5 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 mt-0.5" />
+                  )}
+                  <div>
+                    <p className="font-medium">
+                      {syncResult.events_created} événements créés
+                    </p>
+                    {syncResult.errors.length > 0 && (
+                      <ul className="text-xs mt-1 space-y-0.5">
+                        {syncResult.errors.slice(0, 3).map((err, i) => (
+                          <li key={i}>• {err}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* Open Google Calendar */}
+            <div className="pt-2">
+              <a
+                href="https://calendar.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                Ouvrir Google Calendar
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </>
         )}
@@ -320,12 +403,74 @@ export function GoogleCalendarIntegration() {
   );
 }
 
-// Hook for syncing opportunities to calendar
+// Hook for syncing single opportunity to calendar
 export function useGoogleCalendar() {
-  const syncToCalendar = async (opportunity: Opportunity) => {
-    // TODO: Implement Google Calendar API integration
-    // For now, this is a placeholder
+  const { toast } = useToast();
+
+  const syncToCalendar = async (opportunityId: number | string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(
+        `${API_BASE}/api/v1/calendar/google/sync-single/${opportunityId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Sync failed");
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.events_created > 0) {
+        toast({
+          title: "Ajouté au calendrier",
+          description: "La deadline a été synchronisée avec Google Calendar.",
+        });
+        return true;
+      }
+
+      return false;
+    } catch (error: any) {
+      console.error("Failed to sync to calendar:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de synchroniser avec le calendrier.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
-  return { syncToCalendar };
+  const checkConnection = async (): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
+
+      const response = await fetch(`${API_BASE}/api/v1/calendar/google/status`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.connected;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  return { syncToCalendar, checkConnection };
 }

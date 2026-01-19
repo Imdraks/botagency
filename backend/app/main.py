@@ -59,6 +59,7 @@ from app.api.analytics import router as analytics_router
 from app.api.competitive import router as competitive_router
 from app.api.map_calendar import router as map_router, calendar_router
 from app.api.tags_comments import router as tags_router, comments_router, favorites_router
+from app.api.google_calendar import router as google_calendar_router
 
 # Configure logging
 logging.basicConfig(
@@ -179,6 +180,7 @@ app.include_router(analytics_router, prefix="/api/v1", tags=["Analytics Dashboar
 app.include_router(competitive_router, prefix="/api/v1", tags=["Competitive Intelligence"])
 app.include_router(map_router, prefix="/api/v1", tags=["Map"])
 app.include_router(calendar_router, prefix="/api/v1", tags=["Calendar"])
+app.include_router(google_calendar_router, prefix="/api/v1", tags=["Google Calendar"])
 app.include_router(tags_router, prefix="/api/v1", tags=["Tags"])
 app.include_router(comments_router, prefix="/api/v1", tags=["Comments"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["Favorites"])
