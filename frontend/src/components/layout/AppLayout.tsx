@@ -26,6 +26,8 @@ import {
   Sliders,
   Clock,
   HeartPulse,
+  TrendingUp,
+  Eye,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,8 @@ const navigation: {
   { name: "Comparaison", href: "/comparison", icon: GitCompare },
   { name: "Sources", href: "/sources", icon: Rss },
   { name: "Source Health", href: "/source-health", icon: HeartPulse, isNew: true },
+  { name: "Analytics", href: "/analytics", icon: TrendingUp, isNew: true },
+  { name: "Veille Concur.", href: "/competitive", icon: Eye, isNew: true },
   { name: "Scoring", href: "/scoring", icon: BarChart3 },
   { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
   { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },

@@ -976,4 +976,87 @@ export const contactFinderApi = {
   },
 };
 
+// Analytics Dashboard API
+export const analyticsApi = {
+  getTimeline: async (period: "7d" | "30d" | "90d" | "12m" = "30d") => {
+    const response = await api.get("/analytics/timeline", { params: { period } });
+    return response.data;
+  },
+  
+  getConversion: async (period: "7d" | "30d" | "90d" | "all" = "30d") => {
+    const response = await api.get("/analytics/conversion", { params: { period } });
+    return response.data;
+  },
+  
+  getDeadlineHeatmap: async () => {
+    const response = await api.get("/analytics/deadline-heatmap");
+    return response.data;
+  },
+  
+  getComparison: async () => {
+    const response = await api.get("/analytics/comparison");
+    return response.data;
+  },
+  
+  getKpis: async () => {
+    const response = await api.get("/analytics/kpis");
+    return response.data;
+  },
+  
+  getTopPerformers: async (period: "30d" | "90d" | "all" = "30d") => {
+    const response = await api.get("/analytics/top-performers", { params: { period } });
+    return response.data;
+  },
+};
+
+// Competitive Intelligence API
+export const competitiveApi = {
+  // Competitors management
+  getCompetitors: async () => {
+    const response = await api.get("/competitive/competitors");
+    return response.data;
+  },
+  
+  addCompetitor: async (data: { name: string; keywords?: string[]; website?: string; notes?: string }) => {
+    const response = await api.post("/competitive/competitors", data);
+    return response.data;
+  },
+  
+  updateCompetitor: async (id: number, data: { name?: string; keywords?: string[]; is_active?: boolean }) => {
+    const response = await api.put(`/competitive/competitors/${id}`, data);
+    return response.data;
+  },
+  
+  deleteCompetitor: async (id: number) => {
+    const response = await api.delete(`/competitive/competitors/${id}`);
+    return response.data;
+  },
+  
+  // Analysis
+  getMentions: async (period: "7d" | "30d" | "90d" = "30d") => {
+    const response = await api.get("/competitive/mentions", { params: { period } });
+    return response.data;
+  },
+  
+  getWinnersAnalysis: async (period: "30d" | "90d" | "12m" = "90d") => {
+    const response = await api.get("/competitive/winners-analysis", { params: { period } });
+    return response.data;
+  },
+  
+  getPricingBenchmark: async (category?: string) => {
+    const response = await api.get("/competitive/pricing-benchmark", { params: { category } });
+    return response.data;
+  },
+  
+  getAlerts: async () => {
+    const response = await api.get("/competitive/alerts");
+    return response.data;
+  },
+  
+  getMarketShare: async (period: "30d" | "90d" | "12m" = "90d") => {
+    const response = await api.get("/competitive/market-share", { params: { period } });
+    return response.data;
+  },
+};
+
 export default api;
