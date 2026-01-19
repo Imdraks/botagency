@@ -57,8 +57,6 @@ interface Client {
   total_value?: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 // Helper to get auth headers
 const getAuthHeaders = (): Record<string, string> => {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -92,7 +90,7 @@ function ClientsContent() {
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["clients"],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/v1/agency/clients`, {
+      const res = await fetch(`/api/v1/agency/clients`, {
         headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to fetch clients");
@@ -103,7 +101,7 @@ function ClientsContent() {
   // Create client mutation
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; contacts: ClientContact[]; notes: string | null }) => {
-      const res = await fetch(`${API_URL}/api/v1/agency/clients`, {
+      const res = await fetch(`/api/v1/agency/clients`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -124,7 +122,7 @@ function ClientsContent() {
   // Update client mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: { name: string; contacts: ClientContact[]; notes: string | null } }) => {
-      const res = await fetch(`${API_URL}/api/v1/agency/clients/${id}`, {
+      const res = await fetch(`/api/v1/agency/clients/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -145,7 +143,7 @@ function ClientsContent() {
   // Delete client mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`${API_URL}/api/v1/agency/clients/${id}`, {
+      const res = await fetch(`/api/v1/agency/clients/${id}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
