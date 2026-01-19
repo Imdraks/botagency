@@ -15,9 +15,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import api from "@/lib/api";
 
-// Check if public mode is enabled
-const isPublicMode = process.env.NEXT_PUBLIC_PUBLIC_MODE === "true";
-
 // SSO Icons
 const GoogleIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24">
@@ -61,14 +58,20 @@ function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Wait for mount before checking env
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // In public mode, redirect to dashboard immediately as guest
   useEffect(() => {
-    if (isPublicMode) {
+    if (mounted && process.env.NEXT_PUBLIC_PUBLIC_MODE === "true") {
       setGuestUser();
       router.push("/dashboard");
     }
-  }, [router, setGuestUser]);
+  }, [mounted, router, setGuestUser]);
   const [ssoProviders, setSsoProviders] = useState<{ id: string; name: string; enabled: boolean }[]>([]);
   const [show2FA, setShow2FA] = useState(false);
   const [totpCode, setTotpCode] = useState("");
