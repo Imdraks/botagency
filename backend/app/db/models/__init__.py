@@ -75,3 +75,23 @@ from .collections import (
     DossierV2,
     Evidence,
 )
+
+# Agency Cockpit V2 - New models
+from .agency import (
+    Client,
+    Deal,
+    Project,
+    Deliverable,
+    Approval,
+    Asset,
+    AgencyTask,
+    CalendarEvent,
+    DealStatus,
+    ProjectStatus,
+    DeliverableStatus,
+    ApprovalStatus,
+    AssetKind,
+    TaskStatus as AgencyTaskStatus,
+    TaskPriority,
+    CalendarEventType,
+)

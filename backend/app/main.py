@@ -61,6 +61,13 @@ from app.api.map_calendar import router as map_router, calendar_router
 from app.api.tags_comments import router as tags_router, comments_router, favorites_router
 from app.api.google_calendar import router as google_calendar_router
 
+# ============================================================================
+# AGENCY COCKPIT V2 - New Agency Management System
+# ============================================================================
+from app.api.agency import router as agency_router
+from app.api.agency_projects import router as agency_projects_router
+from app.api.agency_tasks import router as agency_tasks_router
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -184,6 +191,13 @@ app.include_router(google_calendar_router, prefix="/api/v1", tags=["Google Calen
 app.include_router(tags_router, prefix="/api/v1", tags=["Tags"])
 app.include_router(comments_router, prefix="/api/v1", tags=["Comments"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["Favorites"])
+
+# ============================================================================
+# AGENCY COCKPIT V2 - Commercial + Production + Assets + Calendar
+# ============================================================================
+app.include_router(agency_router, prefix="/api/v1", tags=["Agency Cockpit"])
+app.include_router(agency_projects_router, prefix="/api/v1", tags=["Agency Projects"])
+app.include_router(agency_tasks_router, prefix="/api/v1", tags=["Agency Tasks & Assets"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])

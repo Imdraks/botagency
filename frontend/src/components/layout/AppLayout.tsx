@@ -30,6 +30,13 @@ import {
   Eye,
   Map,
   Brain,
+  ChevronDown,
+  Briefcase,
+  FolderOpen,
+  Palette,
+  Wrench,
+  DollarSign,
+  Package,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
@@ -70,37 +77,65 @@ const markPageAsVisited = (href: string): void => {
   }
 };
 
-// Navigation structure
-const navigation: {
+// ============================================================================
+// NAVIGATION V2 - Agency Cockpit (6 main items)
+// ============================================================================
+const mainNavigation: {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  isNew?: boolean;
+}[] = [
+  { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard },
+  { name: "Pipeline", href: "/pipeline", icon: DollarSign, isNew: true },
+  { name: "Clients", href: "/clients", icon: Briefcase, isNew: true },
+  { name: "Projets", href: "/projects", icon: FolderOpen, isNew: true },
+  { name: "Production", href: "/production", icon: Palette, isNew: true },
+  { name: "Assets", href: "/assets", icon: Package, isNew: true },
+  { name: "Calendrier", href: "/agency-calendar", icon: Calendar, isNew: true },
+];
+
+// Secondary tools navigation (collapsible)
+const toolsNavigation: {
   name: string;
   href: string;
   icon: LucideIcon;
   adminOnly?: boolean;
   superadminOnly?: boolean;
-  isNew?: boolean;
 }[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Daily Picks", href: "/shortlist", icon: Sparkles, isNew: true },
+  { name: "Daily Picks", href: "/shortlist", icon: Sparkles },
   { name: "Leads", href: "/leads", icon: Target },
-  { name: "Dossiers", href: "/dossiers", icon: FileText, isNew: true },
-  { name: "Kanban", href: "/leads/kanban", icon: Kanban },
-  { name: "Calendrier", href: "/leads/calendar", icon: Calendar },
-  { name: "Deadlines", href: "/deadlines", icon: Clock, isNew: true },
-  { name: "Profils", href: "/profiles", icon: Sliders, isNew: true },
+  { name: "Dossiers", href: "/dossiers", icon: FileText },
+  { name: "Kanban Leads", href: "/leads/kanban", icon: Kanban },
+  { name: "Deadlines", href: "/deadlines", icon: Clock },
+  { name: "Profils", href: "/profiles", icon: Sliders },
   { name: "Artistes", href: "/artist-history", icon: Music },
   { name: "Découverte", href: "/discovery", icon: Search },
   { name: "Comparaison", href: "/comparison", icon: GitCompare },
   { name: "Sources", href: "/sources", icon: Rss },
-  { name: "Source Health", href: "/source-health", icon: HeartPulse, isNew: true },
-  { name: "Analytics", href: "/analytics", icon: TrendingUp, isNew: true },
-  { name: "Veille Concur.", href: "/competitive", icon: Eye, isNew: true },
-  { name: "Carte", href: "/map", icon: Map, isNew: true },
-  { name: "Prédictions IA", href: "/predictions", icon: Brain, isNew: true },
+  { name: "Source Health", href: "/source-health", icon: HeartPulse },
+  { name: "Analytics", href: "/analytics", icon: TrendingUp },
+  { name: "Veille Concur.", href: "/competitive", icon: Eye },
+  { name: "Carte", href: "/map", icon: Map },
+  { name: "Prédictions IA", href: "/predictions", icon: Brain },
   { name: "Scoring", href: "/scoring", icon: BarChart3 },
+];
+
+// Admin navigation
+const adminNavigation: {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+  superadminOnly?: boolean;
+}[] = [
   { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
   { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },
   { name: "Paramètres", href: "/settings", icon: Settings },
 ];
+
+// Combined navigation for backward compatibility
+const navigation = [...mainNavigation, ...toolsNavigation, ...adminNavigation];
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -111,6 +146,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitedPages, setVisitedPages] = useState<string[]>([]);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
 
   // Load visited pages on mount
   useEffect(() => {
@@ -122,7 +158,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     if (pathname) {
       // Find matching navigation item
       const navItem = navigation.find(
-        (item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
+        (item) => pathname === item.href || (item.href !== "/cockpit" && item.href !== "/dashboard" && pathname.startsWith(item.href))
       );
       if (navItem?.isNew) {
         markPageAsVisited(navItem.href);
@@ -130,18 +166,34 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           prev.includes(navItem.href) ? prev : [...prev, navItem.href]
         );
       }
+      
+      // Auto-expand tools if current page is in tools section
+      const isToolPage = toolsNavigation.some(
+        (item) => pathname === item.href || pathname.startsWith(item.href)
+      );
+      if (isToolPage) {
+        setToolsExpanded(true);
+      }
     }
   }, [pathname]);
 
   // Check if a page should show "New" badge
-  const shouldShowNewBadge = useCallback((item: typeof navigation[0]) => {
+  const shouldShowNewBadge = useCallback((item: { isNew?: boolean; href: string }) => {
     return item.isNew && !visitedPages.includes(item.href);
   }, [visitedPages]);
 
   const isAdmin = user?.role === "admin";
   const isSuperuser = user?.is_superuser === true;
 
-  const filteredNavigation = navigation.filter(
+  const filteredToolsNavigation = toolsNavigation.filter(
+    (item) => {
+      if (item.superadminOnly) return isSuperuser;
+      if (item.adminOnly) return isAdmin || isSuperuser;
+      return true;
+    }
+  );
+  
+  const filteredAdminNavigation = adminNavigation.filter(
     (item) => {
       if (item.superadminOnly) return isSuperuser;
       if (item.adminOnly) return isAdmin || isSuperuser;
@@ -149,7 +201,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     }
   );
 
-  const currentPage = filteredNavigation.find(item => pathname.startsWith(item.href));
+  const currentPage = [...mainNavigation, ...toolsNavigation, ...adminNavigation].find(item => pathname.startsWith(item.href));
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
@@ -194,9 +246,10 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           {/* Navigation */}
           <ScrollArea className="flex-1 py-4">
             <nav className="px-3 space-y-1">
-              {filteredNavigation.map((item) => {
+              {/* Main Navigation - 6 items */}
+              {mainNavigation.map((item) => {
                 const isActive = pathname === item.href || 
-                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                  (item.href !== "/cockpit" && pathname.startsWith(item.href));
                 return (
                   <Link
                     key={item.name}
@@ -219,6 +272,76 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                         New
                       </span>
                     )}
+                  </Link>
+                );
+              })}
+              
+              {/* Divider */}
+              <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
+              
+              {/* Tools Section - Collapsible */}
+              <button
+                onClick={() => setToolsExpanded(!toolsExpanded)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+              >
+                <Wrench className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                <span className="flex-1 text-left">Outils</span>
+                <ChevronDown className={cn(
+                  "h-4 w-4 text-gray-400 transition-transform duration-200",
+                  toolsExpanded ? "rotate-180" : ""
+                )} />
+              </button>
+              
+              {toolsExpanded && (
+                <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 pl-3">
+                  {filteredToolsNavigation.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                          isActive
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                            : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
+                        )}
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <item.icon className={cn(
+                          "h-4 w-4 flex-shrink-0",
+                          isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                        )} />
+                        <span className="flex-1">{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Divider */}
+              <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
+              
+              {/* Admin Navigation */}
+              {filteredAdminNavigation.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                      isActive
+                        ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className={cn(
+                      "h-5 w-5 flex-shrink-0",
+                      isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                    )} />
+                    <span className="flex-1">{item.name}</span>
                   </Link>
                 );
               })}

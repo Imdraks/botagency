@@ -1,0 +1,708 @@
+"""
+Agency Cockpit V2 API - Dashboard, Clients, Deals
+"""
+from datetime import datetime, timedelta
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, or_, case
+
+from app.db.session import get_db
+from app.db.models.agency import (
+    Client, Deal, Project, Deliverable, Approval, 
+    Asset, AgencyTask, CalendarEvent,
+    DealStatus, ProjectStatus, DeliverableStatus, ApprovalStatus, TaskStatus
+)
+from app.db.models.user import User
+from app.core.security import get_current_user
+from app.schemas.agency import (
+    # Client
+    ClientCreate, ClientUpdate, ClientResponse, ClientListResponse,
+    # Deal
+    DealCreate, DealUpdate, DealResponse, DealListResponse,
+    # Dashboard
+    DashboardV2Response, TodoItem, UrgencyItem, BusinessItem,
+    # Pipeline
+    PipelineResponse, PipelineColumn,
+    DealStatus as DealStatusEnum
+)
+
+router = APIRouter(prefix="/agency", tags=["agency-cockpit"])
+
+
+# ============================================================================
+# DASHBOARD V2
+# ============================================================================
+
+@router.get("/dashboard", response_model=DashboardV2Response)
+async def get_dashboard_v2(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Dashboard V2 avec 3 blocs :
+    - À faire aujourd'hui (relances, validations, tâches)
+    - Urgences (deadlines < 72h, projets bloqués)
+    - Business (leads chauds, devis envoyés)
+    """
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+    urgency_threshold = now + timedelta(hours=72)
+    
+    todos = []
+    urgencies = []
+    business = []
+    
+    # ========================================================================
+    # BLOCK A: À FAIRE AUJOURD'HUI
+    # ========================================================================
+    
+    # 1. Relances (deals avec next_action_date aujourd'hui ou dépassée)
+    followups = db.query(Deal).join(Client).filter(
+        Deal.next_action_date <= today_end,
+        Deal.status.notin_([DealStatus.WON, DealStatus.LOST])
+    ).all()
+    
+    for deal in followups:
+        todos.append(TodoItem(
+            id=deal.id,
+            type="followup",
+            title=f"Relancer: {deal.title}",
+            subtitle=f"Dernière action prévue: {deal.next_action_date.strftime('%d/%m') if deal.next_action_date else 'N/A'}",
+            due_date=deal.next_action_date,
+            priority="high" if deal.next_action_date and deal.next_action_date < now else "medium",
+            client_name=deal.client.name if deal.client else None,
+            link=f"/pipeline?deal={deal.id}"
+        ))
+    
+    # 2. Validations en attente
+    pending_approvals = db.query(Approval).join(Deliverable).join(Project).join(Client).filter(
+        Approval.status == ApprovalStatus.PENDING
+    ).all()
+    
+    for approval in pending_approvals:
+        todos.append(TodoItem(
+            id=approval.id,
+            type="validation",
+            title=f"Validation: {approval.deliverable.name}",
+            subtitle=f"Projet: {approval.deliverable.project.name}",
+            due_date=approval.requested_at,
+            priority="high",
+            client_name=approval.deliverable.project.client.name if approval.deliverable.project.client else None,
+            project_name=approval.deliverable.project.name,
+            link=f"/production?deliverable={approval.deliverable_id}"
+        ))
+    
+    # 3. Tâches du jour
+    today_tasks = db.query(AgencyTask).filter(
+        AgencyTask.due_date <= today_end,
+        AgencyTask.status != TaskStatus.DONE
+    ).all()
+    
+    for task in today_tasks:
+        todos.append(TodoItem(
+            id=task.id,
+            type="task",
+            title=task.title,
+            subtitle=f"{'Auto-générée' if task.is_auto_generated else 'Manuelle'}",
+            due_date=task.due_date,
+            priority=task.priority.value if task.priority else "medium",
+            project_name=task.project.name if task.project else None,
+            client_name=task.project.client.name if task.project and task.project.client else None,
+            link=f"/projects/{task.project_id}" if task.project_id else None
+        ))
+    
+    # ========================================================================
+    # BLOCK B: URGENCES
+    # ========================================================================
+    
+    # 1. Deadlines < 72h
+    urgent_projects = db.query(Project).join(Client).filter(
+        Project.deadline <= urgency_threshold,
+        Project.deadline >= now,
+        Project.status == ProjectStatus.ACTIVE
+    ).all()
+    
+    for project in urgent_projects:
+        days_remaining = (project.deadline - now).days if project.deadline else None
+        urgencies.append(UrgencyItem(
+            id=project.id,
+            type="deadline",
+            title=f"Deadline: {project.name}",
+            subtitle=f"Dans {days_remaining}j" if days_remaining is not None else None,
+            deadline=project.deadline,
+            days_remaining=days_remaining,
+            client_name=project.client.name if project.client else None,
+            project_name=project.name,
+            severity="danger" if days_remaining and days_remaining <= 1 else "warning"
+        ))
+    
+    # 2. Livrables urgents (due_date < 72h et pas approved)
+    urgent_deliverables = db.query(Deliverable).join(Project).join(Client).filter(
+        Deliverable.due_date <= urgency_threshold,
+        Deliverable.due_date >= now,
+        Deliverable.status.notin_([DeliverableStatus.APPROVED, DeliverableStatus.DELIVERED])
+    ).all()
+    
+    for deliverable in urgent_deliverables:
+        days_remaining = (deliverable.due_date - now).days if deliverable.due_date else None
+        urgencies.append(UrgencyItem(
+            id=deliverable.id,
+            type="deliverable_deadline",
+            title=f"Livrable: {deliverable.name}",
+            subtitle=f"Projet: {deliverable.project.name}",
+            deadline=deliverable.due_date,
+            days_remaining=days_remaining,
+            client_name=deliverable.project.client.name if deliverable.project.client else None,
+            project_name=deliverable.project.name,
+            severity="danger" if days_remaining and days_remaining <= 1 else "warning"
+        ))
+    
+    # 3. Projets bloqués
+    blocked_projects = db.query(Project).join(Client).filter(
+        Project.status == ProjectStatus.BLOCKED
+    ).all()
+    
+    for project in blocked_projects:
+        urgencies.append(UrgencyItem(
+            id=project.id,
+            type="blocked_project",
+            title=f"Bloqué: {project.name}",
+            subtitle="Nécessite une action",
+            client_name=project.client.name if project.client else None,
+            project_name=project.name,
+            severity="danger"
+        ))
+    
+    # 4. Tâches en retard
+    overdue_tasks = db.query(AgencyTask).filter(
+        AgencyTask.due_date < now,
+        AgencyTask.status != TaskStatus.DONE
+    ).all()
+    
+    for task in overdue_tasks:
+        urgencies.append(UrgencyItem(
+            id=task.id,
+            type="overdue_task",
+            title=f"En retard: {task.title}",
+            subtitle=f"Depuis {(now - task.due_date).days}j" if task.due_date else None,
+            deadline=task.due_date,
+            client_name=task.project.client.name if task.project and task.project.client else None,
+            project_name=task.project.name if task.project else None,
+            severity="danger"
+        ))
+    
+    # ========================================================================
+    # BLOCK C: BUSINESS
+    # ========================================================================
+    
+    # 1. Leads chauds (new ou contacted, récents)
+    hot_leads = db.query(Deal).join(Client).filter(
+        Deal.status.in_([DealStatus.NEW, DealStatus.CONTACTED]),
+        Deal.created_at >= now - timedelta(days=7)
+    ).order_by(Deal.value.desc().nullslast()).limit(10).all()
+    
+    for deal in hot_leads:
+        days_ago = (now - deal.created_at).days if deal.created_at else None
+        business.append(BusinessItem(
+            id=deal.id,
+            type="hot_lead",
+            title=deal.title,
+            subtitle=f"Reçu il y a {days_ago}j" if days_ago is not None else None,
+            value=deal.value,
+            client_name=deal.client.name if deal.client else None,
+            status=deal.status.value
+        ))
+    
+    # 2. Devis envoyés (en attente de réponse)
+    quote_sent = db.query(Deal).join(Client).filter(
+        Deal.status == DealStatus.QUOTE_SENT
+    ).all()
+    
+    for deal in quote_sent:
+        days_waiting = (now - deal.last_contact_at).days if deal.last_contact_at else None
+        business.append(BusinessItem(
+            id=deal.id,
+            type="quote_sent",
+            title=deal.title,
+            subtitle=f"Envoyé il y a {days_waiting}j" if days_waiting is not None else "En attente",
+            value=deal.value,
+            client_name=deal.client.name if deal.client else None,
+            status="quote_sent",
+            days_waiting=days_waiting
+        ))
+    
+    # 3. Deals en négociation
+    negotiating = db.query(Deal).join(Client).filter(
+        Deal.status == DealStatus.NEGOTIATION
+    ).all()
+    
+    for deal in negotiating:
+        business.append(BusinessItem(
+            id=deal.id,
+            type="negotiation",
+            title=deal.title,
+            subtitle="En négociation",
+            value=deal.value,
+            client_name=deal.client.name if deal.client else None,
+            status="negotiation"
+        ))
+    
+    # ========================================================================
+    # QUICK STATS
+    # ========================================================================
+    
+    active_projects_count = db.query(func.count(Project.id)).filter(
+        Project.status == ProjectStatus.ACTIVE
+    ).scalar() or 0
+    
+    pending_validations_count = db.query(func.count(Approval.id)).filter(
+        Approval.status == ApprovalStatus.PENDING
+    ).scalar() or 0
+    
+    hot_leads_count = db.query(func.count(Deal.id)).filter(
+        Deal.status.in_([DealStatus.NEW, DealStatus.CONTACTED])
+    ).scalar() or 0
+    
+    # Revenus du mois (deals won ce mois)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_revenue = db.query(func.sum(Deal.value)).filter(
+        Deal.status == DealStatus.WON,
+        Deal.updated_at >= month_start
+    ).scalar() or 0
+    
+    return DashboardV2Response(
+        todos=todos[:15],  # Limit
+        todos_count=len(todos),
+        urgencies=urgencies[:10],
+        urgencies_count=len(urgencies),
+        business=business[:15],
+        business_count=len(business),
+        active_projects=active_projects_count,
+        pending_validations=pending_validations_count,
+        hot_leads=hot_leads_count,
+        monthly_revenue=float(monthly_revenue)
+    )
+
+
+# ============================================================================
+# CLIENTS
+# ============================================================================
+
+@router.get("/clients", response_model=List[ClientListResponse])
+async def list_clients(
+    search: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Liste tous les clients"""
+    query = db.query(Client)
+    
+    if search:
+        query = query.filter(Client.name.ilike(f"%{search}%"))
+    
+    clients = query.offset(skip).limit(limit).all()
+    
+    result = []
+    for client in clients:
+        active_deals = db.query(func.count(Deal.id)).filter(
+            Deal.client_id == client.id,
+            Deal.status.notin_([DealStatus.WON, DealStatus.LOST])
+        ).scalar() or 0
+        
+        active_projects = db.query(func.count(Project.id)).filter(
+            Project.client_id == client.id,
+            Project.status == ProjectStatus.ACTIVE
+        ).scalar() or 0
+        
+        result.append(ClientListResponse(
+            id=client.id,
+            name=client.name,
+            contacts=client.contacts or [],
+            active_deals_count=active_deals,
+            active_projects_count=active_projects
+        ))
+    
+    return result
+
+
+@router.post("/clients", response_model=ClientResponse)
+async def create_client(
+    client_in: ClientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Créer un nouveau client"""
+    client = Client(
+        name=client_in.name,
+        contacts=[c.dict() for c in client_in.contacts] if client_in.contacts else [],
+        notes=client_in.notes
+    )
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+    
+    return ClientResponse(
+        id=client.id,
+        name=client.name,
+        contacts=client_in.contacts,
+        notes=client.notes,
+        created_at=client.created_at,
+        updated_at=client.updated_at
+    )
+
+
+@router.get("/clients/{client_id}", response_model=ClientResponse)
+async def get_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Détails d'un client"""
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    active_deals = db.query(func.count(Deal.id)).filter(
+        Deal.client_id == client.id,
+        Deal.status.notin_([DealStatus.WON, DealStatus.LOST])
+    ).scalar() or 0
+    
+    active_projects = db.query(func.count(Project.id)).filter(
+        Project.client_id == client.id,
+        Project.status == ProjectStatus.ACTIVE
+    ).scalar() or 0
+    
+    total_value = db.query(func.sum(Deal.value)).filter(
+        Deal.client_id == client.id,
+        Deal.status == DealStatus.WON
+    ).scalar() or 0
+    
+    return ClientResponse(
+        id=client.id,
+        name=client.name,
+        contacts=client.contacts or [],
+        notes=client.notes,
+        created_at=client.created_at,
+        updated_at=client.updated_at,
+        active_deals_count=active_deals,
+        active_projects_count=active_projects,
+        total_value=float(total_value)
+    )
+
+
+@router.put("/clients/{client_id}", response_model=ClientResponse)
+async def update_client(
+    client_id: int,
+    client_in: ClientUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mettre à jour un client"""
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if client_in.name is not None:
+        client.name = client_in.name
+    if client_in.contacts is not None:
+        client.contacts = [c.dict() for c in client_in.contacts]
+    if client_in.notes is not None:
+        client.notes = client_in.notes
+    
+    db.commit()
+    db.refresh(client)
+    
+    return await get_client(client_id, db, current_user)
+
+
+@router.delete("/clients/{client_id}")
+async def delete_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer un client"""
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    db.delete(client)
+    db.commit()
+    return {"status": "deleted"}
+
+
+# ============================================================================
+# DEALS / PIPELINE
+# ============================================================================
+
+@router.get("/pipeline", response_model=PipelineResponse)
+async def get_pipeline(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Pipeline commercial Kanban"""
+    columns = []
+    total_deals = 0
+    total_value = 0
+    
+    status_labels = {
+        DealStatus.NEW: "Nouveaux",
+        DealStatus.CONTACTED: "Contactés",
+        DealStatus.QUOTE_SENT: "Devis envoyé",
+        DealStatus.NEGOTIATION: "Négociation",
+        DealStatus.WON: "Gagnés",
+        DealStatus.LOST: "Perdus"
+    }
+    
+    now = datetime.utcnow()
+    
+    for status in DealStatus:
+        deals = db.query(Deal).join(Client).filter(Deal.status == status).all()
+        
+        deal_items = []
+        column_value = 0
+        
+        for deal in deals:
+            days_since_contact = None
+            if deal.last_contact_at:
+                days_since_contact = (now - deal.last_contact_at).days
+            
+            deal_items.append(DealListResponse(
+                id=deal.id,
+                title=deal.title,
+                status=DealStatusEnum(deal.status.value),
+                value=deal.value,
+                client_id=deal.client_id,
+                client_name=deal.client.name if deal.client else None,
+                next_action_date=deal.next_action_date,
+                last_contact_at=deal.last_contact_at,
+                days_since_contact=days_since_contact,
+                owner_name=deal.owner.email if deal.owner else None,
+                tags=deal.tags or []
+            ))
+            
+            if deal.value:
+                column_value += deal.value
+        
+        columns.append(PipelineColumn(
+            status=DealStatusEnum(status.value),
+            label=status_labels.get(status, status.value),
+            deals=deal_items,
+            count=len(deal_items),
+            total_value=column_value
+        ))
+        
+        total_deals += len(deal_items)
+        total_value += column_value
+    
+    return PipelineResponse(
+        columns=columns,
+        total_deals=total_deals,
+        total_value=total_value
+    )
+
+
+@router.get("/deals", response_model=List[DealListResponse])
+async def list_deals(
+    status: Optional[str] = Query(None),
+    client_id: Optional[int] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Liste des deals"""
+    query = db.query(Deal).join(Client)
+    
+    if status:
+        query = query.filter(Deal.status == status)
+    if client_id:
+        query = query.filter(Deal.client_id == client_id)
+    
+    deals = query.offset(skip).limit(limit).all()
+    now = datetime.utcnow()
+    
+    result = []
+    for deal in deals:
+        days_since_contact = None
+        if deal.last_contact_at:
+            days_since_contact = (now - deal.last_contact_at).days
+        
+        result.append(DealListResponse(
+            id=deal.id,
+            title=deal.title,
+            status=DealStatusEnum(deal.status.value),
+            value=deal.value,
+            client_id=deal.client_id,
+            client_name=deal.client.name if deal.client else None,
+            next_action_date=deal.next_action_date,
+            last_contact_at=deal.last_contact_at,
+            days_since_contact=days_since_contact,
+            owner_name=deal.owner.email if deal.owner else None,
+            tags=deal.tags or []
+        ))
+    
+    return result
+
+
+@router.post("/deals", response_model=DealResponse)
+async def create_deal(
+    deal_in: DealCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Créer un nouveau deal"""
+    # Vérifier que le client existe
+    client = db.query(Client).filter(Client.id == deal_in.client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    deal = Deal(
+        client_id=deal_in.client_id,
+        title=deal_in.title,
+        status=deal_in.status.value if deal_in.status else DealStatus.NEW,
+        value=deal_in.value,
+        next_action_date=deal_in.next_action_date,
+        source=deal_in.source,
+        tags=deal_in.tags or [],
+        notes=deal_in.notes,
+        owner_id=current_user.id,
+        last_contact_at=datetime.utcnow()
+    )
+    db.add(deal)
+    db.commit()
+    db.refresh(deal)
+    
+    return DealResponse(
+        id=deal.id,
+        client_id=deal.client_id,
+        title=deal.title,
+        status=DealStatusEnum(deal.status.value),
+        value=deal.value,
+        next_action_date=deal.next_action_date,
+        last_contact_at=deal.last_contact_at,
+        source=deal.source,
+        tags=deal.tags or [],
+        notes=deal.notes,
+        owner_id=deal.owner_id,
+        created_at=deal.created_at,
+        updated_at=deal.updated_at,
+        client_name=client.name
+    )
+
+
+@router.get("/deals/{deal_id}", response_model=DealResponse)
+async def get_deal(
+    deal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Détails d'un deal"""
+    deal = db.query(Deal).join(Client).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    now = datetime.utcnow()
+    days_since_contact = None
+    if deal.last_contact_at:
+        days_since_contact = (now - deal.last_contact_at).days
+    
+    return DealResponse(
+        id=deal.id,
+        client_id=deal.client_id,
+        title=deal.title,
+        status=DealStatusEnum(deal.status.value),
+        value=deal.value,
+        next_action_date=deal.next_action_date,
+        last_contact_at=deal.last_contact_at,
+        source=deal.source,
+        tags=deal.tags or [],
+        notes=deal.notes,
+        owner_id=deal.owner_id,
+        legacy_opportunity_id=deal.legacy_opportunity_id,
+        created_at=deal.created_at,
+        updated_at=deal.updated_at,
+        client_name=deal.client.name if deal.client else None,
+        owner_name=deal.owner.email if deal.owner else None,
+        days_since_contact=days_since_contact
+    )
+
+
+@router.put("/deals/{deal_id}", response_model=DealResponse)
+async def update_deal(
+    deal_id: int,
+    deal_in: DealUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mettre à jour un deal"""
+    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    old_status = deal.status
+    
+    if deal_in.client_id is not None:
+        deal.client_id = deal_in.client_id
+    if deal_in.title is not None:
+        deal.title = deal_in.title
+    if deal_in.status is not None:
+        deal.status = deal_in.status.value
+    if deal_in.value is not None:
+        deal.value = deal_in.value
+    if deal_in.next_action_date is not None:
+        deal.next_action_date = deal_in.next_action_date
+    if deal_in.source is not None:
+        deal.source = deal_in.source
+    if deal_in.tags is not None:
+        deal.tags = deal_in.tags
+    if deal_in.notes is not None:
+        deal.notes = deal_in.notes
+    
+    # Track contact
+    if deal_in.status is not None and deal_in.status.value != old_status.value:
+        deal.last_contact_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(deal)
+    
+    return await get_deal(deal_id, db, current_user)
+
+
+@router.put("/deals/{deal_id}/status")
+async def update_deal_status(
+    deal_id: int,
+    status: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Quick status update (for kanban drag & drop)"""
+    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    deal.status = status
+    deal.last_contact_at = datetime.utcnow()
+    db.commit()
+    
+    return {"status": "updated", "new_status": status}
+
+
+@router.delete("/deals/{deal_id}")
+async def delete_deal(
+    deal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer un deal"""
+    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    db.delete(deal)
+    db.commit()
+    return {"status": "deleted"}
