@@ -13,9 +13,18 @@ import {
   X,
   ExternalLink,
   Eye,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ProductionItem {
   id: number;
@@ -74,6 +83,17 @@ function ProductionContent() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [draggedItem, setDraggedItem] = useState<ProductionItem | null>(null);
+  
+  // View/Edit/Delete states
+  const [selectedItem, setSelectedItem] = useState<ProductionItem | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editItem, setEditItem] = useState<{
+    name: string;
+    type: string;
+    due_date: string;
+    link: string;
+  }>({ name: '', type: '', due_date: '', link: '' });
 
   // Form state
   const [newDeliverable, setNewDeliverable] = useState({
@@ -189,6 +209,61 @@ function ProductionContent() {
     }
   };
 
+  const handleViewItem = (item: ProductionItem) => {
+    setSelectedItem(item);
+    setShowViewModal(true);
+  };
+
+  const handleEditItem = (item: ProductionItem) => {
+    setSelectedItem(item);
+    setEditItem({
+      name: item.name,
+      type: item.type || '',
+      due_date: item.due_date || '',
+      link: item.link || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedItem) return;
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/v1/agency/deliverables/${selectedItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...editItem,
+          due_date: editItem.due_date || null,
+        }),
+      });
+      if (response.ok) {
+        setShowEditModal(false);
+        setSelectedItem(null);
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Failed to update deliverable:', err);
+    }
+  };
+
+  const handleDeleteItem = async (item: ProductionItem) => {
+    if (!confirm(`Supprimer le livrable "${item.name}" ?`)) return;
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`/api/v1/agency/deliverables/${item.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to delete deliverable:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -252,9 +327,28 @@ function ProductionContent() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-gray-900 line-clamp-2">{item.name}</h4>
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 hover:bg-gray-100 rounded">
+                            <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewItem(item)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Voir détails
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditItem(item)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteItem(item)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     
                     <p className="text-sm text-gray-600 mb-2">
@@ -443,6 +537,161 @@ function ProductionContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Deliverable Modal */}
+      {showViewModal && selectedItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Détails du livrable</h2>
+              <button
+                onClick={() => { setShowViewModal(false); setSelectedItem(null); }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Nom</label>
+                <p className="text-gray-900 font-medium">{selectedItem.name}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Projet</label>
+                  <p className="text-gray-900">{selectedItem.project_name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Client</label>
+                  <p className="text-gray-900">{selectedItem.client_name}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Type</label>
+                  <p className="text-gray-900">{selectedItem.type || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Statut</label>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[selectedItem.status]}`} />
+                    <span className="text-gray-900">{selectedItem.status}</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Date limite</label>
+                <p className="text-gray-900">
+                  {selectedItem.due_date 
+                    ? new Date(selectedItem.due_date).toLocaleDateString('fr-FR')
+                    : 'Non définie'}
+                </p>
+              </div>
+              {selectedItem.link && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Lien</label>
+                  <a 
+                    href={selectedItem.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-purple-600 hover:underline flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Ouvrir le lien
+                  </a>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                onClick={() => { setShowViewModal(false); handleEditItem(selectedItem); }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Modifier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Deliverable Modal */}
+      {showEditModal && selectedItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Modifier le livrable</h2>
+              <button
+                onClick={() => { setShowEditModal(false); setSelectedItem(null); }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                <input
+                  type="text"
+                  value={editItem.name}
+                  onChange={(e) => setEditItem({ ...editItem, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={editItem.type}
+                    onChange={(e) => setEditItem({ ...editItem, type: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="video">Vidéo</option>
+                    <option value="photo">Photo</option>
+                    <option value="design">Design</option>
+                    <option value="document">Document</option>
+                    <option value="audio">Audio</option>
+                    <option value="other">Autre</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date limite</label>
+                  <input
+                    type="date"
+                    value={editItem.due_date}
+                    onChange={(e) => setEditItem({ ...editItem, due_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lien</label>
+                <input
+                  type="url"
+                  value={editItem.link}
+                  onChange={(e) => setEditItem({ ...editItem, link: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                onClick={() => { setShowEditModal(false); setSelectedItem(null); }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Enregistrer
+              </button>
+            </div>
           </div>
         </div>
       )}

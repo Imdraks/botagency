@@ -200,6 +200,18 @@ class Project(Base):
     # Description
     description: Mapped[Optional[str]] = mapped_column(Text)
     
+    # Google Drive integration
+    drive_folder_id: Mapped[Optional[str]] = mapped_column(String(100))
+    brief_doc_id: Mapped[Optional[str]] = mapped_column(String(100))
+    report_sheet_id: Mapped[Optional[str]] = mapped_column(String(100))
+    
+    # Next action tracking
+    next_action_text: Mapped[Optional[str]] = mapped_column(String(500))
+    next_action_due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
+    # Blocked reason (when status = BLOCKED)
+    blocked_reason: Mapped[Optional[str]] = mapped_column(String(500))
+    
     # Métadonnées
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -209,6 +221,7 @@ class Project(Base):
     assets: Mapped[List["Asset"]] = relationship("Asset", back_populates="project", cascade="all, delete-orphan")
     tasks: Mapped[List["AgencyTask"]] = relationship("AgencyTask", back_populates="project", cascade="all, delete-orphan")
     events: Mapped[List["CalendarEvent"]] = relationship("CalendarEvent", back_populates="project", cascade="all, delete-orphan")
+    activity_logs: Mapped[List["ProjectActivityLog"]] = relationship("ProjectActivityLog", back_populates="project", cascade="all, delete-orphan")
 
 
 # ============================================================================
@@ -236,6 +249,7 @@ class Deliverable(Base):
     status: Mapped[DeliverableStatus] = mapped_column(Enum(DeliverableStatus), default=DeliverableStatus.DRAFT)
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     link: Mapped[Optional[str]] = mapped_column(String(1000))
+    drive_file_id: Mapped[Optional[str]] = mapped_column(String(100))  # Google Drive file ID
     notes: Mapped[Optional[str]] = mapped_column(Text)
     
     # Métadonnées
@@ -299,6 +313,7 @@ class Asset(Base):
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     url: Mapped[str] = mapped_column(String(2000), nullable=False)
     version: Mapped[Optional[str]] = mapped_column(String(50))
+    asset_type: Mapped[Optional[str]] = mapped_column(String(50))  # brief, report, template, other
     
     # Métadonnées
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -382,3 +397,42 @@ class CalendarEvent(Base):
     # Métadonnées
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ============================================================================
+# PROJECT ACTIVITY LOG
+# ============================================================================
+
+class ActivityType(str, enum.Enum):
+    CREATION = "creation"
+    UPDATE = "update"
+    VALIDATION = "validation"
+    DELIVERY = "delivery"
+    COMMENT = "comment"
+    STATUS_CHANGE = "status_change"
+    DELIVERABLE_ADDED = "deliverable_added"
+    TASK_COMPLETED = "task_completed"
+
+
+class ProjectActivityLog(Base):
+    """Activity log specific to a project timeline"""
+    __tablename__ = "project_activity_logs"
+    __table_args__ = (
+        Index("ix_project_activity_logs_project_id", "project_id"),
+        Index("ix_project_activity_logs_created_at", "created_at"),
+        {"extend_existing": True}
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    # Relation projet
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project: Mapped["Project"] = relationship("Project", back_populates="activity_logs")
+    
+    # Log content
+    message: Mapped[str] = mapped_column(String(1000), nullable=False)
+    activity_type: Mapped[Optional[ActivityType]] = mapped_column(Enum(ActivityType), nullable=True)
+    
+    # Metadata
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

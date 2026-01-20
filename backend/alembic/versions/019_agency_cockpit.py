@@ -32,52 +32,7 @@ def table_exists(table_name):
     return table_name in inspector.get_table_names()
 
 
-def enum_exists(enum_name):
-    """Check if an enum type already exists"""
-    bind = op.get_bind()
-    result = bind.execute(sa.text(
-        "SELECT 1 FROM pg_type WHERE typname = :name"
-    ), {"name": enum_name})
-    return result.fetchone() is not None
-
-
 def upgrade():
-    # ========================================================================
-    # CREATE ENUM TYPES FIRST (using raw SQL with IF NOT EXISTS equivalent)
-    # ========================================================================
-    
-    # dealstatus
-    if not enum_exists('dealstatus'):
-        op.execute("CREATE TYPE dealstatus AS ENUM ('new', 'contacted', 'quote_sent', 'negotiation', 'won', 'lost')")
-    
-    # projectstatus
-    if not enum_exists('projectstatus'):
-        op.execute("CREATE TYPE projectstatus AS ENUM ('active', 'blocked', 'delivered', 'archived')")
-    
-    # deliverablestatus
-    if not enum_exists('deliverablestatus'):
-        op.execute("CREATE TYPE deliverablestatus AS ENUM ('draft', 'to_review', 'changes_requested', 'approved', 'delivered')")
-    
-    # approvalstatus
-    if not enum_exists('approvalstatus'):
-        op.execute("CREATE TYPE approvalstatus AS ENUM ('pending', 'changes', 'approved')")
-    
-    # assetkind
-    if not enum_exists('assetkind'):
-        op.execute("CREATE TYPE assetkind AS ENUM ('link', 'file')")
-    
-    # taskstatus
-    if not enum_exists('taskstatus'):
-        op.execute("CREATE TYPE taskstatus AS ENUM ('todo', 'doing', 'done')")
-    
-    # taskpriority
-    if not enum_exists('taskpriority'):
-        op.execute("CREATE TYPE taskpriority AS ENUM ('low', 'medium', 'high')")
-    
-    # calendareventtype
-    if not enum_exists('calendareventtype'):
-        op.execute("CREATE TYPE calendareventtype AS ENUM ('shoot', 'delivery', 'meeting', 'deadline', 'other')")
-
     # ========================================================================
     # CLIENTS
     # ========================================================================
@@ -95,7 +50,7 @@ def upgrade():
         op.execute("CREATE INDEX ix_clients_name ON clients(name)")
 
     # ========================================================================
-    # DEALS
+    # DEALS (using VARCHAR for status instead of enum)
     # ========================================================================
     if not table_exists('deals'):
         op.execute("""
@@ -103,7 +58,7 @@ def upgrade():
                 id SERIAL PRIMARY KEY,
                 client_id INTEGER NOT NULL REFERENCES clients(id),
                 title VARCHAR(500) NOT NULL,
-                status dealstatus DEFAULT 'new',
+                status VARCHAR(50) DEFAULT 'new',
                 value FLOAT,
                 next_action_date TIMESTAMP,
                 last_contact_at TIMESTAMP,
@@ -132,7 +87,7 @@ def upgrade():
                 client_id INTEGER NOT NULL REFERENCES clients(id),
                 deal_id INTEGER REFERENCES deals(id),
                 name VARCHAR(500) NOT NULL,
-                status projectstatus DEFAULT 'active',
+                status VARCHAR(50) DEFAULT 'active',
                 deadline TIMESTAMP,
                 budget FLOAT,
                 owner_id INTEGER REFERENCES users(id),
@@ -155,7 +110,7 @@ def upgrade():
                 project_id INTEGER NOT NULL REFERENCES projects(id),
                 name VARCHAR(500) NOT NULL,
                 type VARCHAR(100),
-                status deliverablestatus DEFAULT 'draft',
+                status VARCHAR(50) DEFAULT 'draft',
                 due_date TIMESTAMP,
                 link VARCHAR(1000),
                 notes TEXT,
@@ -175,7 +130,7 @@ def upgrade():
             CREATE TABLE approvals (
                 id SERIAL PRIMARY KEY,
                 deliverable_id INTEGER NOT NULL REFERENCES deliverables(id),
-                status approvalstatus DEFAULT 'pending',
+                status VARCHAR(50) DEFAULT 'pending',
                 feedback TEXT,
                 requested_at TIMESTAMP DEFAULT NOW(),
                 decided_at TIMESTAMP,
@@ -193,7 +148,7 @@ def upgrade():
             CREATE TABLE assets (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL REFERENCES projects(id),
-                kind assetkind DEFAULT 'link',
+                kind VARCHAR(50) DEFAULT 'link',
                 name VARCHAR(500) NOT NULL,
                 url VARCHAR(2000) NOT NULL,
                 version VARCHAR(50),
@@ -215,8 +170,8 @@ def upgrade():
                 deal_id INTEGER REFERENCES deals(id),
                 title VARCHAR(500) NOT NULL,
                 description TEXT,
-                status taskstatus DEFAULT 'todo',
-                priority taskpriority DEFAULT 'medium',
+                status VARCHAR(50) DEFAULT 'todo',
+                priority VARCHAR(50) DEFAULT 'medium',
                 due_date TIMESTAMP,
                 assignee_id INTEGER REFERENCES users(id),
                 is_auto_generated BOOLEAN DEFAULT FALSE,
@@ -241,7 +196,7 @@ def upgrade():
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER REFERENCES projects(id),
                 title VARCHAR(500) NOT NULL,
-                type calendareventtype DEFAULT 'other',
+                type VARCHAR(50) DEFAULT 'other',
                 start TIMESTAMP NOT NULL,
                 "end" TIMESTAMP,
                 all_day BOOLEAN DEFAULT FALSE,
@@ -252,8 +207,8 @@ def upgrade():
             )
         """)
         op.execute("CREATE INDEX ix_calendar_events_project_id ON calendar_events(project_id)")
-        op.execute("CREATE INDEX ix_calendar_events_start ON calendar_events(start)")
         op.execute("CREATE INDEX ix_calendar_events_type ON calendar_events(type)")
+        op.execute("CREATE INDEX ix_calendar_events_start ON calendar_events(start)")
 
 
 def downgrade():
@@ -266,13 +221,3 @@ def downgrade():
     op.execute("DROP TABLE IF EXISTS projects CASCADE")
     op.execute("DROP TABLE IF EXISTS deals CASCADE")
     op.execute("DROP TABLE IF EXISTS clients CASCADE")
-    
-    # Drop enum types
-    op.execute("DROP TYPE IF EXISTS calendareventtype CASCADE")
-    op.execute("DROP TYPE IF EXISTS taskpriority CASCADE")
-    op.execute("DROP TYPE IF EXISTS taskstatus CASCADE")
-    op.execute("DROP TYPE IF EXISTS assetkind CASCADE")
-    op.execute("DROP TYPE IF EXISTS approvalstatus CASCADE")
-    op.execute("DROP TYPE IF EXISTS deliverablestatus CASCADE")
-    op.execute("DROP TYPE IF EXISTS projectstatus CASCADE")
-    op.execute("DROP TYPE IF EXISTS dealstatus CASCADE")

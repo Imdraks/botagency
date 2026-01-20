@@ -104,10 +104,12 @@ async def create_project(
     current_user: User = Depends(get_current_user)
 ):
     """Créer un nouveau projet"""
-    # Vérifier client
-    client = db.query(Client).filter(Client.id == project_in.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    client = None
+    # Vérifier client si fourni
+    if project_in.client_id:
+        client = db.query(Client).filter(Client.id == project_in.client_id).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
     
     # Vérifier deal si fourni
     if project_in.deal_id:
@@ -141,7 +143,7 @@ async def create_project(
         owner_id=project.owner_id,
         created_at=project.created_at,
         updated_at=project.updated_at,
-        client_name=client.name
+        client_name=client.name if client else None
     )
 
 

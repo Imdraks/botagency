@@ -23,6 +23,7 @@ import {
   Calendar,
   User,
   Link as LinkIcon,
+  MoreHorizontal,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
@@ -46,6 +47,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -96,6 +104,50 @@ const typeColors: Record<string, string> = {
   other: 'text-gray-500 bg-gray-50 dark:bg-gray-900/20',
 };
 
+// Function to render text with colored mentions
+const renderColoredText = (text: string) => {
+  // Regex patterns for different mention types with custom colors
+  const patterns = [
+    { regex: /@(\w+)/g, color: '#7adb62' }, // @client = vert
+    { regex: /#(\w+)/g, color: '#d69c55' }, // #projet = orange
+    { regex: /due:(\S+)/g, color: '#3300f8' }, // due: = bleu
+    { regex: /type:(\w+)/g, color: '#c12322' }, // type: = rouge
+  ];
+
+  // Split and colorize
+  let parts: (string | JSX.Element)[] = [text];
+  let keyCounter = 0;
+
+  patterns.forEach(({ regex, color }) => {
+    const newParts: (string | JSX.Element)[] = [];
+    parts.forEach((part) => {
+      if (typeof part === 'string') {
+        const splitParts = part.split(regex);
+        const matches = part.match(regex) || [];
+        let matchIdx = 0;
+        splitParts.forEach((sp, i) => {
+          if (i % 2 === 0) {
+            if (sp) newParts.push(sp);
+          } else {
+            // This is the captured group (without prefix)
+            const fullMatch = matches[matchIdx++] || '';
+            newParts.push(
+              <span key={`colored-${keyCounter++}`} style={{ color, fontWeight: 500 }}>
+                {fullMatch}
+              </span>
+            );
+          }
+        });
+      } else {
+        newParts.push(part);
+      }
+    });
+    parts = newParts;
+  });
+
+  return <>{parts}</>;
+};
+
 export default function InboxPage() {
   return (
     <ProtectedRoute>
@@ -119,6 +171,14 @@ function InboxContent() {
   const [showCaptureExpanded, setShowCaptureExpanded] = useState(false);
   const captureInputRef = useRef<HTMLTextAreaElement>(null);
   
+  // Mention suggestions
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionType, setMentionType] = useState<'@' | '#'>('@');
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [clients, setClients] = useState<string[]>([]);
+  const [projects, setProjects] = useState<string[]>([]);
+  
   // Triage modal
   const [triageItem, setTriageItem] = useState<InboxItem | null>(null);
   const [triageTarget, setTriageTarget] = useState<string>('task');
@@ -127,6 +187,171 @@ function InboxContent() {
   const workspaceId = typeof window !== 'undefined' 
     ? localStorage.getItem('current_workspace_id') || '1' 
     : '1';
+
+  // Fetch clients and projects for mentions
+  useEffect(() => {
+    const fetchMentionData = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        // Fetch clients (endpoint is /agency/clients)
+        const clientsRes = await fetch('/api/v1/agency/clients?limit=100', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (clientsRes.ok) {
+          const clientsData = await clientsRes.json();
+          setClients(clientsData.map((c: any) => c.name));
+        }
+        // Fetch projects (endpoint is /agency/projects)
+        const projectsRes = await fetch('/api/v1/agency/projects?limit=100', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (projectsRes.ok) {
+          const projectsData = await projectsRes.json();
+          setProjects(projectsData.map((p: any) => p.name));
+        }
+      } catch (err) {
+        console.error('Failed to fetch mention data', err);
+      }
+    };
+    fetchMentionData();
+  }, []);
+
+  // Handle text changes and detect @ or # triggers
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    const cursor = e.target.selectionStart;
+    setCaptureText(text);
+    setCursorPosition(cursor);
+    
+    // Check for @ or # mention trigger
+    const textBeforeCursor = text.slice(0, cursor);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    const lastHashIndex = textBeforeCursor.lastIndexOf('#');
+    
+    // Determine which trigger is more recent
+    if (lastAtIndex > lastHashIndex && lastAtIndex >= 0) {
+      const query = textBeforeCursor.slice(lastAtIndex + 1);
+      // Only show if no space after @ and query is reasonable
+      if (!query.includes(' ') && query.length <= 30) {
+        setMentionType('@');
+        setMentionQuery(query.toLowerCase());
+        setShowMentions(true);
+        return;
+      }
+    } else if (lastHashIndex > lastAtIndex && lastHashIndex >= 0) {
+      const query = textBeforeCursor.slice(lastHashIndex + 1);
+      if (!query.includes(' ') && query.length <= 30) {
+        setMentionType('#');
+        setMentionQuery(query.toLowerCase());
+        setShowMentions(true);
+        return;
+      }
+    }
+    
+    setShowMentions(false);
+  };
+
+  // Insert selected mention
+  const insertMention = (value: string) => {
+    const textBeforeCursor = captureText.slice(0, cursorPosition);
+    const textAfterCursor = captureText.slice(cursorPosition);
+    
+    // Find the trigger position
+    const triggerChar = mentionType;
+    const triggerIndex = textBeforeCursor.lastIndexOf(triggerChar);
+    
+    if (triggerIndex >= 0) {
+      const newText = textBeforeCursor.slice(0, triggerIndex) + triggerChar + value + ' ' + textAfterCursor;
+      setCaptureText(newText);
+      setShowMentions(false);
+      
+      // Focus back to textarea
+      setTimeout(() => {
+        if (captureInputRef.current) {
+          captureInputRef.current.focus();
+          const newCursor = triggerIndex + triggerChar.length + value.length + 1;
+          captureInputRef.current.setSelectionRange(newCursor, newCursor);
+        }
+      }, 0);
+    }
+  };
+
+  // Create new client via API
+  const createClient = async (name: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/v1/agency/clients', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, type: 'artist' }),
+      });
+      if (res.ok) {
+        const newClient = await res.json();
+        setClients(prev => [...prev, newClient.name]);
+        toast.success(`Client "${name}" créé !`);
+        return newClient.name;
+      }
+    } catch (err) {
+      toast.error('Erreur création client');
+    }
+    return null;
+  };
+
+  // Create new project via API
+  const createProject = async (name: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/v1/agency/projects', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, status: 'active' }),
+      });
+      if (res.ok) {
+        const newProject = await res.json();
+        setProjects(prev => [...prev, newProject.name]);
+        toast.success(`Projet "${name}" créé !`);
+        return newProject.name;
+      }
+    } catch (err) {
+      toast.error('Erreur création projet');
+    }
+    return null;
+  };
+
+  // Handle creating and inserting a new mention
+  const handleCreateMention = async (name: string) => {
+    let createdName: string | null = null;
+    if (mentionType === '@') {
+      createdName = await createClient(name);
+    } else {
+      createdName = await createProject(name);
+    }
+    if (createdName) {
+      insertMention(createdName);
+    }
+  };
+
+  // Get filtered suggestions (with "create new" option)
+  const getMentionSuggestions = () => {
+    const items = mentionType === '@' ? clients : projects;
+    if (!mentionQuery) return { existing: items.slice(0, 5), canCreate: false, createName: '' };
+    const filtered = items.filter(item => 
+      item.toLowerCase().includes(mentionQuery)
+    ).slice(0, 5);
+    // Check if exact match exists
+    const exactMatch = items.some(item => item.toLowerCase() === mentionQuery.toLowerCase());
+    return { 
+      existing: filtered, 
+      canCreate: !exactMatch && mentionQuery.length >= 2,
+      createName: mentionQuery.charAt(0).toUpperCase() + mentionQuery.slice(1)
+    };
+  };
 
   const fetchInbox = useCallback(async () => {
     setLoading(true);
@@ -302,16 +527,47 @@ function InboxContent() {
       {/* Quick Capture */}
       <Card className="border-2 border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
         <CardContent className="pt-4">
-          <div className="space-y-3">
+          <div className="space-y-3 relative">
             <Textarea
               ref={captureInputRef}
               placeholder="Capturer une idée... (ex: @client #projet due:2026-02-01 type:idee)"
               value={captureText}
-              onChange={(e) => setCaptureText(e.target.value)}
+              onChange={handleTextChange}
               onKeyDown={handleCaptureKeyDown}
               onFocus={() => setShowCaptureExpanded(true)}
-              className="min-h-[60px] resize-none border-0 bg-transparent focus-visible:ring-0 text-lg placeholder:text-gray-400"
+              onBlur={() => setTimeout(() => setShowMentions(false), 200)}
+              className="min-h-[60px] resize-none border-0 bg-transparent focus-visible:ring-0 text-lg !text-gray-900 dark:!text-white placeholder:text-gray-400"
             />
+            
+            {/* Mention Suggestions Dropdown */}
+            {showMentions && (getMentionSuggestions().existing.length > 0 || getMentionSuggestions().canCreate) && (
+              <div className="absolute top-16 left-0 z-50 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                <div className="px-3 py-1 text-xs font-medium text-gray-500 border-b border-gray-100 dark:border-gray-700">
+                  {mentionType === '@' ? '👤 Clients' : '📁 Projets'}
+                </div>
+                {getMentionSuggestions().existing.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => insertMention(item)}
+                    className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2 transition-colors"
+                  >
+                    <span style={{ color: mentionType === '@' ? '#7adb62' : '#d69c55', fontWeight: 500 }}>
+                      {mentionType}{item}
+                    </span>
+                  </button>
+                ))}
+                {/* Create new option */}
+                {getMentionSuggestions().canCreate && (
+                  <button
+                    onClick={() => handleCreateMention(getMentionSuggestions().createName)}
+                    className="w-full px-3 py-2 text-left hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center gap-2 transition-colors border-t border-gray-100 dark:border-gray-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Créer "{getMentionSuggestions().createName}"</span>
+                  </button>
+                )}
+              </div>
+            )}
             
             {showCaptureExpanded && (
               <div className="flex items-center gap-3 pt-2 border-t border-blue-200 dark:border-blue-800">
@@ -356,8 +612,12 @@ function InboxContent() {
             
             {!showCaptureExpanded && (
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Tag className="h-3 w-3" /> @client #projet
-                <Calendar className="h-3 w-3 ml-2" /> due:YYYY-MM-DD
+                <Tag className="h-3 w-3" />
+                <span style={{ color: '#7adb62' }}>@client</span>
+                <span style={{ color: '#d69c55' }}>#projet</span>
+                <Calendar className="h-3 w-3 ml-2" />
+                <span style={{ color: '#3300f8' }}>due:YYYY-MM-DD</span>
+                <span style={{ color: '#c12322' }}>type:idee</span>
                 <span className="ml-auto">⌘+Enter pour capturer</span>
               </div>
             )}
@@ -444,7 +704,7 @@ function InboxContent() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-900 dark:text-white">
-                        {item.text}
+                        {renderColoredText(item.text)}
                       </p>
                       
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
@@ -454,14 +714,14 @@ function InboxContent() {
                         </span>
                         
                         {item.mentioned_client && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1" style={{ color: '#7adb62' }}>
                             <User className="h-3 w-3" />
                             @{item.mentioned_client}
                           </span>
                         )}
                         
                         {item.tags && item.tags.length > 0 && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1" style={{ color: '#d69c55' }}>
                             <Tag className="h-3 w-3" />
                             {item.tags.map(t => `#${t}`).join(' ')}
                           </span>
@@ -492,45 +752,37 @@ function InboxContent() {
                       )}
                     </div>
                     
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {item.status === 'inbox' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setTriageItem(item)}
-                            className="h-8 px-2"
-                          >
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleMarkDone(item)}
-                            className="h-8 px-2 text-green-600 hover:text-green-700"
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleArchive(item)}
-                        className="h-8 px-2"
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(item)}
-                        className="h-8 px-2 text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {/* Actions - Dropdown Menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {item.status === 'inbox' && (
+                          <>
+                            <DropdownMenuItem onClick={() => setTriageItem(item)}>
+                              <ArrowRight className="h-4 w-4 mr-2" />
+                              Trier vers...
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleMarkDone(item)} className="text-green-600">
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Marquer fait
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem onClick={() => handleArchive(item)}>
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archiver
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(item)} className="text-red-600">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Supprimer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardContent>
               </Card>

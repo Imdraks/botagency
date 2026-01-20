@@ -67,6 +67,7 @@ from app.api.google_calendar import router as google_calendar_router
 from app.api.agency import router as agency_router
 from app.api.agency_projects import router as agency_projects_router
 from app.api.agency_tasks import router as agency_tasks_router
+from app.api.project_detail import router as project_detail_router
 
 # ============================================================================
 # V3 - Workspace, Inbox, Google Drive Integration
@@ -205,6 +206,7 @@ app.include_router(favorites_router, prefix="/api/v1", tags=["Favorites"])
 app.include_router(agency_router, prefix="/api/v1", tags=["Agency Cockpit"])
 app.include_router(agency_projects_router, prefix="/api/v1", tags=["Agency Projects"])
 app.include_router(agency_tasks_router, prefix="/api/v1", tags=["Agency Tasks & Assets"])
+app.include_router(project_detail_router, prefix="/api/v1", tags=["Project Detail Page"])
 
 # ============================================================================
 # V3 - Workspace, Inbox, Google Drive (Daily Hub)

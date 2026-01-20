@@ -43,7 +43,7 @@ function AuthCallbackContent() {
 
         // Redirect after a short delay
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/cockpit");
         }, 1500);
       } catch (err) {
         setStatus("error");

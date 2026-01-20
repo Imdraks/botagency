@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.db import get_db
 from app.db.models.user import User
+from app.db.models.account import Account
 from app.core.config import settings
 from app.core.sso import SSOService
 from app.api.deps import get_current_user
@@ -378,3 +379,23 @@ async def get_available_providers():
         })
     
     return {"providers": providers}
+
+
+@router.get("/connected-accounts")
+async def get_connected_accounts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of SSO accounts connected to current user"""
+    accounts = db.query(Account).filter(Account.user_id == current_user.id).all()
+    
+    result = []
+    for acc in accounts:
+        result.append({
+            "provider": acc.provider,
+            "email": acc.email,
+            "connected": True,
+            "has_refresh_token": bool(acc.refresh_token),
+        })
+    
+    return result

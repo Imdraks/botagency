@@ -35,7 +35,7 @@ class ActivityLogResponse(BaseModel):
 
 class UserWithTrackingId(BaseModel):
     """User with tracking ID for admin view"""
-    id: UUID
+    id: int
     tracking_id: str
     email: Optional[str]
     full_name: Optional[str]

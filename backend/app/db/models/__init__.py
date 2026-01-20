@@ -86,6 +86,7 @@ from .agency import (
     Asset,
     AgencyTask,
     CalendarEvent,
+    ProjectActivityLog,
     DealStatus,
     ProjectStatus,
     DeliverableStatus,
@@ -94,4 +95,5 @@ from .agency import (
     TaskStatus as AgencyTaskStatus,
     TaskPriority,
     CalendarEventType,
+    ActivityType,
 )

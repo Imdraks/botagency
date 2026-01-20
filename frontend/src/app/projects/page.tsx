@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FolderOpen,
   Plus,
@@ -15,9 +16,19 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
+  Trash2,
+  Edit,
+  Eye,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Project {
   id: number;
@@ -62,6 +73,7 @@ export default function ProjectsPage() {
 }
 
 function ProjectsContent() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -69,6 +81,18 @@ function ProjectsContent() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [search, setSearch] = useState('');
+  
+  // View/Edit/Delete states
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editProject, setEditProject] = useState<{
+    name: string;
+    status: string;
+    client_id: string;
+    deadline: string;
+    description: string;
+  }>({ name: '', status: '', client_id: '', deadline: '', description: '' });
 
   // Form state
   const [newProject, setNewProject] = useState({
@@ -148,6 +172,63 @@ function ProjectsContent() {
     }
   };
 
+  const handleViewProject = (project: Project) => {
+    setSelectedProject(project);
+    setShowViewModal(true);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setSelectedProject(project);
+    setEditProject({
+      name: project.name,
+      status: project.status,
+      client_id: project.client_id?.toString() || '',
+      deadline: project.deadline || '',
+      description: '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedProject) return;
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/v1/agency/projects/${selectedProject.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...editProject,
+          client_id: editProject.client_id ? parseInt(editProject.client_id) : null,
+          deadline: editProject.deadline || null,
+        }),
+      });
+      if (response.ok) {
+        setShowEditModal(false);
+        setSelectedProject(null);
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Failed to update project:', err);
+    }
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    if (!confirm(`Supprimer le projet "${project.name}" ?`)) return;
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`/api/v1/agency/projects/${project.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+    }
+  };
+
   const filteredProjects = projects.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.client_name && p.client_name.toLowerCase().includes(search.toLowerCase()))
@@ -220,7 +301,8 @@ function ProjectsContent() {
           return (
             <div
               key={project.id}
-              className={`bg-white rounded-xl border p-5 hover:shadow-md transition-shadow ${
+              onClick={() => router.push(`/projects/${project.id}`)}
+              className={`bg-white rounded-xl border p-5 hover:shadow-md transition-shadow cursor-pointer ${
                 project.is_urgent ? 'border-amber-300' : 'border-gray-100'
               }`}
             >
@@ -233,9 +315,31 @@ function ProjectsContent() {
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                   )}
                 </div>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button 
+                      className="p-1 hover:bg-gray-100 rounded"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => handleViewProject(project)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Voir détails
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleEditProject(project)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifier
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteProject(project)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               <h3 className="font-semibold text-gray-900 mb-1">{project.name}</h3>
@@ -424,6 +528,150 @@ function ProjectsContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Project Modal */}
+      {showViewModal && selectedProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Détails du projet</h2>
+              <button
+                onClick={() => { setShowViewModal(false); setSelectedProject(null); }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Nom</label>
+                <p className="text-gray-900 font-medium">{selectedProject.name}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Client</label>
+                  <p className="text-gray-900">{selectedProject.client_name || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Statut</label>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    STATUS_CONFIG[selectedProject.status]?.bgColor || 'bg-gray-100'
+                  } ${STATUS_CONFIG[selectedProject.status]?.color || 'text-gray-600'}`}>
+                    {STATUS_CONFIG[selectedProject.status]?.label || selectedProject.status}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Deadline</label>
+                  <p className="text-gray-900">
+                    {selectedProject.deadline 
+                      ? new Date(selectedProject.deadline).toLocaleDateString('fr-FR')
+                      : 'Non définie'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Progression</label>
+                  <p className="text-gray-900">{selectedProject.progress_percent}%</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Livrables</label>
+                <p className="text-gray-900">
+                  {selectedProject.deliverables_approved}/{selectedProject.deliverables_count} validés
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                onClick={() => { setShowViewModal(false); handleEditProject(selectedProject); }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Modifier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditModal && selectedProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Modifier le projet</h2>
+              <button
+                onClick={() => { setShowEditModal(false); setSelectedProject(null); }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                <input
+                  type="text"
+                  value={editProject.name}
+                  onChange={(e) => setEditProject({ ...editProject, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                  <select
+                    value={editProject.status}
+                    onChange={(e) => setEditProject({ ...editProject, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="active">Actif</option>
+                    <option value="blocked">Bloqué</option>
+                    <option value="delivered">Livré</option>
+                    <option value="archived">Archivé</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                  <input
+                    type="date"
+                    value={editProject.deadline}
+                    onChange={(e) => setEditProject({ ...editProject, deadline: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                <select
+                  value={editProject.client_id}
+                  onChange={(e) => setEditProject({ ...editProject, client_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Aucun client</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                onClick={() => { setShowEditModal(false); setSelectedProject(null); }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Enregistrer
+              </button>
+            </div>
           </div>
         </div>
       )}

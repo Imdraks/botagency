@@ -15,7 +15,6 @@ export const api: AxiosInstance = axios.create({
   baseURL: `${API_URL}/api/v1`,
   headers: {
     "Content-Type": "application/json",
-    "Accept-Encoding": "gzip, deflate, br",
   },
   timeout: 30000,
 });
@@ -25,7 +24,6 @@ export const apiV2: AxiosInstance = axios.create({
   baseURL: `${API_URL}/api/v2`,
   headers: {
     "Content-Type": "application/json",
-    "Accept-Encoding": "gzip, deflate, br",
   },
   timeout: 30000,
 });
@@ -1055,6 +1053,327 @@ export const competitiveApi = {
   
   getMarketShare: async (period: "30d" | "90d" | "12m" = "90d") => {
     const response = await api.get("/competitive/market-share", { params: { period } });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// PROJECT DETAIL API - Page projet détaillée
+// ============================================================================
+
+export interface ProjectDetail {
+  id: number;
+  name: string;
+  client_id: number;
+  client_name: string | null;
+  status: "active" | "blocked" | "delivered" | "archived";
+  deadline: string | null;
+  owner_id: number | null;
+  owner_name: string | null;
+  description: string | null;
+  budget: number | null;
+  drive_folder_id: string | null;
+  brief_doc_id: string | null;
+  report_sheet_id: string | null;
+  next_action_text: string | null;
+  next_action_due_date: string | null;
+  blocked_reason: string | null;
+  progress_percent: number;
+  deliverables_total: number;
+  deliverables_approved: number;
+  tasks_todo: number;
+  tasks_doing: number;
+  tasks_done: number;
+  pending_validations: number;
+  days_until_deadline: number | null;
+  is_urgent: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ProjectOverview {
+  next_action_text: string | null;
+  next_action_due_date: string | null;
+  blocked_reason: string | null;
+  today_tasks: Array<{
+    id: number;
+    title: string;
+    status: string;
+    priority: string;
+    due_date: string | null;
+  }>;
+  pending_validations: Array<{
+    id: number;
+    deliverable_id: number;
+    deliverable_name: string;
+    requested_at: string | null;
+  }>;
+  recent_activity: Array<{
+    id: number;
+    message: string;
+    activity_type: string | null;
+    created_at: string;
+    created_by_name: string | null;
+  }>;
+}
+
+export interface ProjectDeliverable {
+  id: number;
+  name: string;
+  type: string | null;
+  status: string;
+  due_date: string | null;
+  link: string | null;
+  drive_file_id: string | null;
+  notes: string | null;
+  has_pending_approval: boolean;
+  days_until_due: number | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ProjectTask {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  assignee_id: number | null;
+  assignee_name: string | null;
+  created_at: string;
+}
+
+export interface ProjectAsset {
+  id: number;
+  kind: string;
+  name: string;
+  url: string;
+  version: string | null;
+  asset_type: string | null;
+  created_at: string;
+}
+
+export interface ProjectActivityLog {
+  id: number;
+  message: string;
+  activity_type: string | null;
+  created_at: string;
+  created_by: number | null;
+  created_by_name: string | null;
+}
+
+export const projectDetailApi = {
+  // Project detail
+  getDetail: async (projectId: number): Promise<ProjectDetail> => {
+    const response = await api.get(`/agency/projects/${projectId}/detail`);
+    return response.data;
+  },
+
+  getOverview: async (projectId: number): Promise<ProjectOverview> => {
+    const response = await api.get(`/agency/projects/${projectId}/overview`);
+    return response.data;
+  },
+
+  updateProject: async (projectId: number, data: Partial<{
+    name: string;
+    status: string;
+    deadline: string;
+    description: string;
+    next_action_text: string;
+    next_action_due_date: string;
+    blocked_reason: string;
+    drive_folder_id: string;
+    brief_doc_id: string;
+    report_sheet_id: string;
+  }>): Promise<ProjectDetail> => {
+    const response = await api.patch(`/agency/projects/${projectId}`, data);
+    return response.data;
+  },
+
+  // Deliverables
+  getDeliverables: async (projectId: number): Promise<ProjectDeliverable[]> => {
+    const response = await api.get(`/agency/projects/${projectId}/deliverables`);
+    return response.data;
+  },
+
+  createDeliverable: async (projectId: number, data: {
+    name: string;
+    type?: string;
+    status?: string;
+    due_date?: string;
+    link?: string;
+    drive_file_id?: string;
+    notes?: string;
+  }): Promise<ProjectDeliverable> => {
+    const response = await api.post(`/agency/projects/${projectId}/deliverables`, data);
+    return response.data;
+  },
+
+  updateDeliverable: async (deliverableId: number, data: Partial<{
+    name: string;
+    type: string;
+    status: string;
+    due_date: string;
+    link: string;
+    drive_file_id: string;
+    notes: string;
+  }>): Promise<ProjectDeliverable> => {
+    const response = await api.patch(`/agency/projects/deliverables/${deliverableId}`, data);
+    return response.data;
+  },
+
+  requestValidation: async (deliverableId: number) => {
+    const response = await api.post(`/agency/projects/deliverables/${deliverableId}/request-validation`);
+    return response.data;
+  },
+
+  approveDeliverable: async (deliverableId: number) => {
+    const response = await api.post(`/agency/projects/deliverables/${deliverableId}/approve`);
+    return response.data;
+  },
+
+  deleteDeliverable: async (deliverableId: number) => {
+    const response = await api.delete(`/agency/projects/deliverables/${deliverableId}`);
+    return response.data;
+  },
+
+  // Tasks (Production Kanban)
+  getTasks: async (projectId: number, status?: string): Promise<ProjectTask[]> => {
+    const response = await api.get(`/agency/projects/${projectId}/tasks`, { params: status ? { status } : undefined });
+    return response.data;
+  },
+
+  createTask: async (projectId: number, data: {
+    title: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+    due_date?: string;
+    assignee_id?: number;
+  }): Promise<ProjectTask> => {
+    const response = await api.post(`/agency/projects/${projectId}/tasks`, data);
+    return response.data;
+  },
+
+  updateTask: async (taskId: number, data: Partial<{
+    title: string;
+    description: string;
+    status: string;
+    priority: string;
+    due_date: string;
+    assignee_id: number;
+  }>): Promise<ProjectTask> => {
+    const response = await api.patch(`/agency/projects/tasks/${taskId}`, data);
+    return response.data;
+  },
+
+  deleteTask: async (taskId: number) => {
+    const response = await api.delete(`/agency/projects/tasks/${taskId}`);
+    return response.data;
+  },
+
+  // Assets
+  getAssets: async (projectId: number): Promise<ProjectAsset[]> => {
+    const response = await api.get(`/agency/projects/${projectId}/assets`);
+    return response.data;
+  },
+
+  createAsset: async (projectId: number, data: {
+    kind?: string;
+    name: string;
+    url: string;
+    version?: string;
+    asset_type?: string;
+  }): Promise<ProjectAsset> => {
+    const response = await api.post(`/agency/projects/${projectId}/assets`, data);
+    return response.data;
+  },
+
+  deleteAsset: async (assetId: number) => {
+    const response = await api.delete(`/agency/projects/assets/${assetId}`);
+    return response.data;
+  },
+
+  // Activity
+  getActivity: async (projectId: number, limit?: number): Promise<ProjectActivityLog[]> => {
+    const response = await api.get(`/agency/projects/${projectId}/activity`, { params: limit ? { limit } : undefined });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// GOOGLE WORKSPACE API
+// ============================================================================
+
+export interface GoogleFolderResponse {
+  id: string;
+  url: string;
+  name?: string;
+}
+
+export interface GoogleDocResponse {
+  id: string;
+  url: string;
+  name?: string;
+}
+
+export const googleWorkspaceApi = {
+  // Check if user has Google connected
+  checkGoogleConnection: async (): Promise<{ connected: boolean; email?: string }> => {
+    try {
+      const response = await api.get("/auth/sso/connected-accounts");
+      const google = response.data.find((p: any) => p.provider === "google");
+      return { connected: !!google, email: google?.email };
+    } catch {
+      return { connected: false };
+    }
+  },
+
+  // Get Google auth URL to connect
+  getGoogleAuthUrl: async (redirectPath?: string): Promise<string> => {
+    const response = await api.get("/auth/sso/google/init", {
+      params: { redirect: redirectPath || window.location.pathname }
+    });
+    return response.data.auth_url;
+  },
+
+  // === CLIENT DRIVE ===
+  createClientFolder: async (clientId: number, name?: string): Promise<GoogleFolderResponse> => {
+    const response = await api.post(`/drive/clients/${clientId}/folder`, { name });
+    return response.data;
+  },
+
+  getClientFolder: async (clientId: number): Promise<GoogleFolderResponse | null> => {
+    const response = await api.get(`/drive/clients/${clientId}/folder`);
+    return response.data;
+  },
+
+  // === PROJECT DRIVE ===
+  createProjectFolder: async (projectId: number, name?: string): Promise<GoogleFolderResponse> => {
+    const response = await api.post(`/drive/projects/${projectId}/folder`, { name });
+    return response.data;
+  },
+
+  getProjectFolder: async (projectId: number): Promise<GoogleFolderResponse | null> => {
+    const response = await api.get(`/drive/projects/${projectId}/folder`);
+    return response.data;
+  },
+
+  // === PROJECT DOCS ===
+  createProjectBrief: async (projectId: number, name?: string, templateId?: string): Promise<GoogleDocResponse> => {
+    const response = await api.post(`/drive/projects/${projectId}/brief`, { name, template_id: templateId });
+    return response.data;
+  },
+
+  createProjectReport: async (projectId: number, name?: string, templateId?: string): Promise<GoogleDocResponse> => {
+    const response = await api.post(`/drive/projects/${projectId}/report`, { name, template_id: templateId });
+    return response.data;
+  },
+
+  // === DELIVERABLE DRIVE ===
+  createDeliverableFile: async (deliverableId: number, fileType: "doc" | "sheet", name?: string): Promise<GoogleDocResponse> => {
+    const response = await api.post(`/drive/deliverables/${deliverableId}/file`, { file_type: fileType, name });
     return response.data;
   },
 };

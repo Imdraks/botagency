@@ -158,11 +158,17 @@ class InboxItem(Base):
     link: Mapped[Optional[str]] = mapped_column(String(2000))
     
     # Classification
-    type: Mapped[InboxType] = mapped_column(Enum(InboxType), default=InboxType.OTHER)
+    type: Mapped[InboxType] = mapped_column(
+        Enum(InboxType, values_callable=lambda x: [e.value for e in x]), 
+        default=InboxType.OTHER
+    )
     tags: Mapped[Optional[dict]] = mapped_column(JSON, default=list)  # ["tag1", "tag2"]
     
     # Status
-    status: Mapped[InboxStatus] = mapped_column(Enum(InboxStatus), default=InboxStatus.INBOX)
+    status: Mapped[InboxStatus] = mapped_column(
+        Enum(InboxStatus, values_callable=lambda x: [e.value for e in x]), 
+        default=InboxStatus.INBOX
+    )
     
     # Due date (optional, parsed from "due:YYYY-MM-DD")
     due_date: Mapped[Optional[datetime]] = mapped_column(Date)

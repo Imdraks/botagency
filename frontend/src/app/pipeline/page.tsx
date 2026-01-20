@@ -13,8 +13,19 @@ import {
   Search,
   X,
   Clock,
+  Trash2,
+  Edit,
+  Eye,
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 interface Deal {
   id: number;
@@ -75,6 +86,12 @@ function PipelineContent() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
   const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null);
+  
+  // View/Edit/Delete states
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form state
   const [newDeal, setNewDeal] = useState({
@@ -82,6 +99,15 @@ function PipelineContent() {
     client_id: '',
     value: '',
     status: 'new',
+    source: '',
+    notes: '',
+  });
+  
+  // Edit form state
+  const [editDeal, setEditDeal] = useState({
+    title: '',
+    client_id: '',
+    value: '',
     source: '',
     notes: '',
   });
@@ -173,6 +199,77 @@ function PipelineContent() {
     }
   };
 
+  // View deal details
+  const handleViewDeal = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setShowViewModal(true);
+  };
+
+  // Open edit modal
+  const handleEditDeal = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setEditDeal({
+      title: deal.title,
+      client_id: deal.client_id.toString(),
+      value: deal.value?.toString() || '',
+      source: '',
+      notes: '',
+    });
+    setShowEditModal(true);
+  };
+
+  // Save edited deal
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDeal) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/v1/agency/deals/${selectedDeal.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editDeal.title,
+          client_id: parseInt(editDeal.client_id),
+          value: editDeal.value ? parseFloat(editDeal.value) : null,
+        }),
+      });
+      
+      if (response.ok) {
+        setShowEditModal(false);
+        setSelectedDeal(null);
+        await fetchPipeline();
+      }
+    } catch (err) {
+      console.error('Failed to update deal:', err);
+    }
+  };
+
+  // Delete deal
+  const handleDeleteDeal = async (deal: Deal) => {
+    if (!confirm(`Supprimer le deal "${deal.title}" ?`)) return;
+    
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/v1/agency/deals/${deal.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        await fetchPipeline();
+      }
+    } catch (err) {
+      console.error('Failed to delete deal:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
@@ -249,9 +346,28 @@ function PipelineContent() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-gray-900 line-clamp-2">{deal.title}</h4>
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 hover:bg-gray-100 rounded">
+                            <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDeal(deal)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Voir détails
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditDeal(deal)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDeleteDeal(deal)} className="text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     
                     {deal.client_name && (
@@ -411,6 +527,158 @@ function PipelineContent() {
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
                   Créer le deal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Deal Modal */}
+      {showViewModal && selectedDeal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Détails du deal</h2>
+              <button
+                onClick={() => { setShowViewModal(false); setSelectedDeal(null); }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Titre</label>
+                <p className="text-gray-900 font-medium">{selectedDeal.title}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Client</label>
+                  <p className="text-gray-900">{selectedDeal.client_name || '—'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Valeur</label>
+                  <p className="text-gray-900 font-semibold text-green-600">
+                    {selectedDeal.value ? formatCurrency(selectedDeal.value) : '—'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Statut</label>
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium text-white ${STATUS_COLORS[selectedDeal.status]}`}>
+                    {selectedDeal.status}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Dernier contact</label>
+                  <p className="text-gray-900">
+                    {selectedDeal.days_since_contact !== undefined ? `Il y a ${selectedDeal.days_since_contact}j` : '—'}
+                  </p>
+                </div>
+              </div>
+              
+              {selectedDeal.tags && selectedDeal.tags.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Tags</label>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedDeal.tags.map((tag, i) => (
+                      <span key={i} className="text-xs px-2 py-0.5 bg-purple-50 text-purple-600 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                onClick={() => { setShowViewModal(false); setSelectedDeal(null); }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Fermer
+              </button>
+              <button
+                onClick={() => { setShowViewModal(false); handleEditDeal(selectedDeal); }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Modifier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Deal Modal */}
+      {showEditModal && selectedDeal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Modifier le deal</h2>
+              <button
+                onClick={() => { setShowEditModal(false); setSelectedDeal(null); }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveEdit} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editDeal.title}
+                  onChange={(e) => setEditDeal({ ...editDeal, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client *</label>
+                <select
+                  required
+                  value={editDeal.client_id}
+                  onChange={(e) => setEditDeal({ ...editDeal, client_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Sélectionner un client</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valeur (€)</label>
+                <input
+                  type="number"
+                  value={editDeal.value}
+                  onChange={(e) => setEditDeal({ ...editDeal, value: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="5000"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setSelectedDeal(null); }}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Sauvegarder
                 </button>
               </div>
             </form>

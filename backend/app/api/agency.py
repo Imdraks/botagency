@@ -481,7 +481,7 @@ async def get_pipeline(
                 next_action_date=deal.next_action_date,
                 last_contact_at=deal.last_contact_at,
                 days_since_contact=days_since_contact,
-                owner_name=deal.owner.email if deal.owner else None,
+                owner_name=None,  # TODO: add owner relationship
                 tags=deal.tags or []
             ))
             

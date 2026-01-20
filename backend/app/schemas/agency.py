@@ -187,7 +187,7 @@ class DealListResponse(BaseModel):
 # ============================================================================
 
 class ProjectBase(BaseModel):
-    client_id: int
+    client_id: Optional[int] = None  # Optional for quick project creation
     deal_id: Optional[int] = None
     name: str
     status: ProjectStatus = ProjectStatus.ACTIVE

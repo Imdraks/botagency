@@ -87,7 +87,7 @@ function LoginContent() {
   // Auto-redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push("/dashboard");
+      router.push("/cockpit");
     }
   }, [authLoading, isAuthenticated, router]);
 
@@ -163,7 +163,7 @@ function LoginContent() {
         return;
       }
       
-      router.push("/dashboard");
+      router.push("/cockpit");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string | object } } };
       const detail = error?.response?.data?.detail;
@@ -191,7 +191,7 @@ function LoginContent() {
       const result = await login(savedCredentials.email, savedCredentials.password, rememberMe, totpCode);
       
       if (result.success) {
-        router.push("/dashboard");
+        router.push("/cockpit");
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string | object } } };

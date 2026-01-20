@@ -113,11 +113,15 @@ export default function ActivityLogsPage() {
     enabled: user?.is_superuser === true,
   });
 
+  // Update lastUpdate timestamp when refetch happens
   useEffect(() => {
     if (autoRefresh) {
-      setLastUpdate(new Date());
+      const interval = setInterval(() => {
+        setLastUpdate(new Date());
+      }, 5000);
+      return () => clearInterval(interval);
     }
-  }, [logs, autoRefresh]);
+  }, [autoRefresh]);
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -154,7 +158,7 @@ export default function ActivityLogsPage() {
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Dernière mise à jour: {format(lastUpdate, 'HH:mm:ss', { locale: fr })}
+              <span suppressHydrationWarning>Dernière mise à jour: {format(lastUpdate, 'HH:mm:ss', { locale: fr })}</span>
             </div>
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}

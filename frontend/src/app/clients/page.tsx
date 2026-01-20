@@ -27,6 +27,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -487,6 +488,9 @@ function ClientsContent() {
             <DialogTitle>
               {editingClient ? "Modifier le client" : "Nouveau client"}
             </DialogTitle>
+            <DialogDescription>
+              {editingClient ? "Modifiez les informations du client" : "Ajoutez un nouveau client à votre liste"}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">

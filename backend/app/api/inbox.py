@@ -50,7 +50,7 @@ async def list_inbox_items(
     
     # Order: inbox first, then by created_at desc
     query = query.order_by(
-        InboxItem.status == InboxStatus.INBOX,  # inbox items first
+        InboxItem.status != InboxStatus.INBOX,  # inbox items first (False sorts before True)
         InboxItem.created_at.desc()
     )
     
@@ -297,7 +297,6 @@ async def triage_inbox_item(
     if data.target == TriageTarget.TASK:
         # Create Task
         task = AgencyTask(
-            workspace_id=item.workspace_id,
             project_id=data.task_project_id,
             title=data.task_title or item.text[:200],
             description=item.text if len(item.text) > 200 else None,
@@ -305,7 +304,6 @@ async def triage_inbox_item(
             priority=TaskPriority[data.task_priority.upper()] if data.task_priority else TaskPriority.MEDIUM,
             due_date=data.task_due_date or item.due_date,
             assignee_id=data.task_assignee_id,
-            source_inbox_id=item.id,
         )
         db.add(task)
         db.flush()
@@ -318,7 +316,6 @@ async def triage_inbox_item(
             raise HTTPException(status_code=400, detail="client_id required for deal")
         
         deal = Deal(
-            workspace_id=item.workspace_id,
             client_id=data.deal_client_id,
             title=data.deal_title or item.text[:200],
             status=DealStatus.NEW,
@@ -337,7 +334,6 @@ async def triage_inbox_item(
             raise HTTPException(status_code=400, detail="client_id required for project")
         
         project = Project(
-            workspace_id=item.workspace_id,
             client_id=data.project_client_id,
             name=data.project_name or item.text[:200],
             status=ProjectStatus.ACTIVE,

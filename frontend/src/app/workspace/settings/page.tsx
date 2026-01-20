@@ -17,12 +17,15 @@ import {
   Crown,
   UserMinus,
   Copy,
+  LogIn,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { googleWorkspaceApi } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -93,12 +96,45 @@ export default function WorkspaceSettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'member' | 'viewer'>('member');
   const [inviting, setInviting] = useState(false);
+  
+  // Google connection state
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+  const [checkingGoogle, setCheckingGoogle] = useState(true);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   // Form state
   const [name, setName] = useState('');
   const [driveRootId, setDriveRootId] = useState('');
   const [briefTemplateId, setBriefTemplateId] = useState('');
   const [reportTemplateId, setReportTemplateId] = useState('');
+
+  // Check Google connection on mount
+  useEffect(() => {
+    const checkGoogle = async () => {
+      try {
+        const result = await googleWorkspaceApi.checkGoogleConnection();
+        setGoogleConnected(result.connected);
+        setGoogleEmail(result.email || null);
+      } catch {
+        setGoogleConnected(false);
+      } finally {
+        setCheckingGoogle(false);
+      }
+    };
+    checkGoogle();
+  }, []);
+
+  const handleConnectGoogle = async () => {
+    setConnectingGoogle(true);
+    try {
+      const authUrl = await googleWorkspaceApi.getGoogleAuthUrl('/workspace/settings');
+      window.location.href = authUrl;
+    } catch (err) {
+      toast.error('Erreur lors de la connexion Google');
+      setConnectingGoogle(false);
+    }
+  };
 
   const fetchWorkspace = async () => {
     try {
@@ -391,6 +427,63 @@ export default function WorkspaceSettingsPage() {
 
         {/* Google Drive Settings */}
         <TabsContent value="google">
+          {/* Google Connection Status */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Connexion Google</CardTitle>
+              <CardDescription>
+                Connectez votre compte Google pour utiliser Drive, Docs et Sheets
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {checkingGoogle ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Vérification...
+                </div>
+              ) : googleConnected ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Compte Google connecté</p>
+                      {googleEmail && (
+                        <p className="text-sm text-gray-500">{googleEmail}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleConnectGoogle}>
+                    Reconnecter
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                      <AlertCircle className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Compte Google non connecté</p>
+                      <p className="text-sm text-gray-500">
+                        Connectez-vous pour créer des dossiers et documents
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={handleConnectGoogle} disabled={connectingGoogle}>
+                    {connectingGoogle ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <LogIn className="h-4 w-4 mr-2" />
+                    )}
+                    Connecter Google
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Intégration Google Drive</CardTitle>
