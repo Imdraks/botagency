@@ -1319,23 +1319,27 @@ export interface GoogleDocResponse {
 }
 
 export const googleWorkspaceApi = {
-  // Check if user has Google connected
-  checkGoogleConnection: async (): Promise<{ connected: boolean; email?: string }> => {
+  // Check if user has Google Workspace connected (Drive/Docs/Sheets)
+  checkGoogleConnection: async (): Promise<{ connected: boolean; email?: string; scopes?: string[] }> => {
     try {
-      const response = await api.get("/auth/sso/connected-accounts");
-      const google = response.data.find((p: any) => p.provider === "google");
-      return { connected: !!google, email: google?.email };
+      const response = await api.get("/drive/auth/status");
+      return response.data;
     } catch {
       return { connected: false };
     }
   },
 
-  // Get Google auth URL to connect
+  // Get Google auth URL to connect with Drive/Docs/Sheets scopes
   getGoogleAuthUrl: async (redirectPath?: string): Promise<string> => {
-    const response = await api.get("/auth/sso/google/init", {
+    const response = await api.get("/drive/auth/init", {
       params: { redirect: redirectPath || window.location.pathname }
     });
     return response.data.auth_url;
+  },
+
+  // Disconnect Google Workspace
+  disconnectGoogle: async (): Promise<void> => {
+    await api.delete("/drive/auth/disconnect");
   },
 
   // === CLIENT DRIVE ===

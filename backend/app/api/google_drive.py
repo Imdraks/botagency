@@ -1,9 +1,12 @@
 """
 Google Drive API - Drive/Docs/Sheets operations for entities
 """
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from urllib.parse import urlencode
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -13,9 +16,193 @@ from app.db.models.workspace import Workspace
 from app.db.models.agency import Client, Project, Deliverable
 from app.api.deps import get_current_user
 from app.api.workspace import _user_has_workspace_access
-from app.services.google_workspace import get_google_workspace_service, GoogleAPIError, TokenExpiredError
+from app.services.google_workspace import get_google_workspace_service, GoogleAPIError, TokenExpiredError, GOOGLE_WORKSPACE_SCOPES
+from app.core.config import settings
+from app.core.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/drive", tags=["google-drive"])
+
+# OAuth state storage (use Redis in production)
+_oauth_states: dict = {}
+
+
+# ============================================================================
+# OAUTH FOR GOOGLE WORKSPACE (Drive, Docs, Sheets)
+# ============================================================================
+
+class AuthInitResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class ConnectionStatus(BaseModel):
+    connected: bool
+    email: Optional[str] = None
+    scopes: Optional[list] = None
+
+
+@router.get("/auth/init", response_model=AuthInitResponse)
+async def init_google_workspace_oauth(
+    redirect: Optional[str] = Query(None, description="Path to redirect after auth"),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Initialize Google Workspace OAuth flow with Drive/Docs/Sheets scopes.
+    """
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth is not configured"
+        )
+    
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    
+    # Store state with user ID and redirect path
+    _oauth_states[state] = {
+        "user_id": current_user.id,
+        "redirect": redirect or "/workspace/settings",
+        "created_at": datetime.utcnow(),
+    }
+    
+    redirect_uri = f"{settings.backend_url}/api/v1/drive/auth/callback"
+    
+    # Include email and profile scopes too
+    scopes = GOOGLE_WORKSPACE_SCOPES + [
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+    ]
+    
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(scopes),
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+    
+    return AuthInitResponse(auth_url=auth_url, state=state)
+
+
+@router.get("/auth/callback")
+async def google_workspace_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Handle Google Workspace OAuth callback.
+    Exchanges code for tokens and stores them for Drive/Docs/Sheets access.
+    """
+    import httpx
+    
+    # Verify state
+    stored_state = _oauth_states.pop(state, None)
+    if not stored_state:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired state"
+        )
+    
+    # Check state age (max 10 minutes)
+    if datetime.utcnow() - stored_state["created_at"] > timedelta(minutes=10):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="State expired"
+        )
+    
+    user_id = stored_state["user_id"]
+    redirect_path = stored_state.get("redirect", "/workspace/settings")
+    redirect_uri = f"{settings.backend_url}/api/v1/drive/auth/callback"
+    
+    try:
+        # Exchange code for tokens
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": settings.google_client_id,
+                    "client_secret": settings.google_client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                }
+            )
+            
+            if response.status_code != 200:
+                raise ValueError(f"Token exchange failed: {response.text}")
+            
+            tokens = response.json()
+        
+        # Get user email from Google
+        async with httpx.AsyncClient() as client:
+            user_info_response = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {tokens['access_token']}"}
+            )
+            user_info = user_info_response.json()
+        
+        # Store tokens in cache
+        cache_set(
+            f"google_workspace_tokens:{user_id}",
+            {
+                "access_token": tokens.get("access_token"),
+                "refresh_token": tokens.get("refresh_token"),
+                "expires_at": datetime.utcnow().timestamp() + tokens.get("expires_in", 3600),
+                "email": user_info.get("email"),
+                "scopes": tokens.get("scope", "").split(" "),
+            },
+            ttl=86400 * 30  # 30 days
+        )
+        
+        # Redirect to frontend with success
+        return RedirectResponse(
+            url=f"{settings.frontend_url}{redirect_path}?google_connected=true"
+        )
+        
+    except Exception as e:
+        # Redirect to frontend with error
+        return RedirectResponse(
+            url=f"{settings.frontend_url}{redirect_path}?google_error={str(e)}"
+        )
+
+
+@router.get("/auth/status", response_model=ConnectionStatus)
+async def get_workspace_connection_status(
+    current_user: User = Depends(get_current_user),
+):
+    """Check if user has connected Google Workspace with Drive/Docs/Sheets scopes"""
+    tokens = cache_get(f"google_workspace_tokens:{current_user.id}")
+    
+    if not tokens:
+        return ConnectionStatus(connected=False)
+    
+    # Check if token is expired
+    if tokens.get("expires_at", 0) < datetime.utcnow().timestamp():
+        # Token expired - check if we have refresh token
+        if not tokens.get("refresh_token"):
+            return ConnectionStatus(connected=False)
+        # Could refresh here, but for now just return as connected since we have refresh token
+    
+    return ConnectionStatus(
+        connected=True,
+        email=tokens.get("email"),
+        scopes=tokens.get("scopes", [])
+    )
+
+
+@router.delete("/auth/disconnect")
+async def disconnect_google_workspace(
+    current_user: User = Depends(get_current_user),
+):
+    """Disconnect Google Workspace integration"""
+    from app.core.cache import cache_delete
+    cache_delete(f"google_workspace_tokens:{current_user.id}")
+    return {"success": True, "message": "Google Workspace disconnected"}
 
 
 # ============================================================================
