@@ -51,6 +51,19 @@ class LinkedAccountsResponse(BaseModel):
     accounts: list
 
 
+# Google Workspace scopes to request during SSO login
+GOOGLE_SSO_SCOPES = [
+    "openid",
+    "email", 
+    "profile",
+    # Google Workspace scopes for Drive, Docs, Sheets
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/calendar.events",
+]
+
+
 # ============================================
 # GOOGLE SSO
 # ============================================
@@ -60,6 +73,7 @@ async def google_sso_init(request: Request):
     """
     Initialize Google SSO flow.
     Returns the authorization URL to redirect the user to.
+    Requests all Workspace scopes (Drive, Docs, Sheets, Calendar) upfront.
     """
     if not settings.google_client_id:
         raise HTTPException(
@@ -84,7 +98,7 @@ async def google_sso_init(request: Request):
         "client_id": settings.google_client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": "openid email profile",
+        "scope": " ".join(GOOGLE_SSO_SCOPES),
         "state": state,
         "nonce": nonce,
         "access_type": "offline",
@@ -156,6 +170,20 @@ async def google_sso_callback(
                 "id_token": id_token,
                 "expires_at": tokens.get("expires_in"),
             }
+        )
+        
+        # Also save tokens for Google Workspace (Drive, Docs, Sheets)
+        from app.core.cache import cache_set
+        cache_set(
+            f"google_workspace_tokens:{user.id}",
+            {
+                "access_token": tokens.get("access_token"),
+                "refresh_token": tokens.get("refresh_token"),
+                "expires_at": datetime.utcnow().timestamp() + tokens.get("expires_in", 3600),
+                "email": email,
+                "scopes": GOOGLE_SSO_SCOPES,
+            },
+            ttl=86400 * 30  # 30 days
         )
         
         # Create session tokens
