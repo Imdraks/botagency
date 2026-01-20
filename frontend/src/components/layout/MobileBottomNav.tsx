@@ -3,20 +3,20 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  LayoutDashboard, 
-  Target, 
-  FileText, 
-  Search, 
-  User 
+  Sun, 
+  Inbox, 
+  DollarSign, 
+  FolderOpen, 
+  Settings 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const mobileNav = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Leads', href: '/leads', icon: Target },
-  { name: 'Dossiers', href: '/dossiers', icon: FileText },
-  { name: 'Découverte', href: '/discovery', icon: Search },
-  { name: 'Profil', href: '/settings', icon: User },
+  { name: "Aujourd'hui", href: '/today', icon: Sun },
+  { name: 'Inbox', href: '/inbox', icon: Inbox },
+  { name: 'Pipeline', href: '/pipeline', icon: DollarSign },
+  { name: 'Projets', href: '/projects', icon: FolderOpen },
+  { name: 'Paramètres', href: '/settings', icon: Settings },
 ];
 
 export function MobileBottomNav() {
@@ -27,7 +27,7 @@ export function MobileBottomNav() {
       <div className="flex items-center justify-around h-16">
         {mobileNav.map((item) => {
           const isActive = pathname === item.href || 
-            (item.href !== '/dashboard' && pathname.startsWith(item.href));
+            (item.href !== '/today' && pathname.startsWith(item.href));
           
           return (
             <Link

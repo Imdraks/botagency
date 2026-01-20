@@ -68,6 +68,13 @@ from app.api.agency import router as agency_router
 from app.api.agency_projects import router as agency_projects_router
 from app.api.agency_tasks import router as agency_tasks_router
 
+# ============================================================================
+# V3 - Workspace, Inbox, Google Drive Integration
+# ============================================================================
+from app.api.workspace import router as workspace_router
+from app.api.inbox import router as inbox_router
+from app.api.google_drive import router as google_drive_router
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -198,6 +205,13 @@ app.include_router(favorites_router, prefix="/api/v1", tags=["Favorites"])
 app.include_router(agency_router, prefix="/api/v1", tags=["Agency Cockpit"])
 app.include_router(agency_projects_router, prefix="/api/v1", tags=["Agency Projects"])
 app.include_router(agency_tasks_router, prefix="/api/v1", tags=["Agency Tasks & Assets"])
+
+# ============================================================================
+# V3 - Workspace, Inbox, Google Drive (Daily Hub)
+# ============================================================================
+app.include_router(workspace_router, prefix="/api/v1", tags=["Workspaces"])
+app.include_router(inbox_router, prefix="/api/v1", tags=["Inbox"])
+app.include_router(google_drive_router, prefix="/api/v1", tags=["Google Drive"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])

@@ -37,6 +37,8 @@ import {
   Wrench,
   DollarSign,
   Package,
+  Sun,
+  Inbox,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
@@ -78,7 +80,8 @@ const markPageAsVisited = (href: string): void => {
 };
 
 // ============================================================================
-// NAVIGATION V2 - Agency Cockpit (6 main items)
+// NAVIGATION V3 - Daily Agency Hub (7 main items + Outils)
+// Today & Inbox first = daily adoption
 // ============================================================================
 
 // Common navigation item type
@@ -92,17 +95,19 @@ interface NavItem {
 }
 
 const mainNavigation: NavItem[] = [
-  { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard },
-  { name: "Pipeline", href: "/pipeline", icon: DollarSign, isNew: true },
-  { name: "Clients", href: "/clients", icon: Briefcase, isNew: true },
-  { name: "Projets", href: "/projects", icon: FolderOpen, isNew: true },
-  { name: "Production", href: "/production", icon: Palette, isNew: true },
-  { name: "Assets", href: "/assets", icon: Package, isNew: true },
-  { name: "Calendrier", href: "/agency-calendar", icon: Calendar, isNew: true },
+  { name: "Aujourd'hui", href: "/today", icon: Sun, isNew: true },
+  { name: "Inbox", href: "/inbox", icon: Inbox, isNew: true },
+  { name: "Pipeline", href: "/pipeline", icon: DollarSign },
+  { name: "Projets", href: "/projects", icon: FolderOpen },
+  { name: "Production", href: "/production", icon: Palette },
+  { name: "Assets", href: "/assets", icon: Package },
+  { name: "Calendrier", href: "/agency-calendar", icon: Calendar },
 ];
 
 // Secondary tools navigation (collapsible)
 const toolsNavigation: NavItem[] = [
+  { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard },
+  { name: "Clients", href: "/clients", icon: Briefcase },
   { name: "Daily Picks", href: "/shortlist", icon: Sparkles },
   { name: "Leads", href: "/leads", icon: Target },
   { name: "Dossiers", href: "/dossiers", icon: FileText },
@@ -152,7 +157,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     if (pathname) {
       // Find matching navigation item
       const navItem = navigation.find(
-        (item) => pathname === item.href || (item.href !== "/cockpit" && item.href !== "/dashboard" && pathname.startsWith(item.href))
+        (item) => pathname === item.href || (item.href !== "/today" && item.href !== "/cockpit" && item.href !== "/dashboard" && pathname.startsWith(item.href))
       );
       if (navItem?.isNew) {
         markPageAsVisited(navItem.href);
@@ -240,10 +245,10 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           {/* Navigation */}
           <ScrollArea className="flex-1 py-4">
             <nav className="px-3 space-y-1">
-              {/* Main Navigation - 6 items */}
+              {/* Main Navigation - 7 items */}
               {mainNavigation.map((item) => {
                 const isActive = pathname === item.href || 
-                  (item.href !== "/cockpit" && pathname.startsWith(item.href));
+                  (item.href !== "/today" && pathname.startsWith(item.href));
                 return (
                   <Link
                     key={item.name}

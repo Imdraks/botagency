@@ -17,6 +17,7 @@ celery_app = Celery(
         "app.workers.dossier_tasks",
         "app.workers.auto_radar_task",
         "app.workers.radar_features_tasks",
+        "app.workers.agency_automations",
     ],
 )
 
@@ -94,5 +95,28 @@ celery_app.conf.beat_schedule = {
     "source-health-rollup": {
         "task": "app.workers.radar_features_tasks.source_health_rollup_job",
         "schedule": crontab(minute="0", hour="1"),
+    },
+    # ========================================================================
+    # AGENCY AUTOMATIONS V3 - Relances et alertes automatiques
+    # ========================================================================
+    # 🔔 Auto Followup Deals - Relances automatiques à 08h00
+    "agency-auto-followup-deals": {
+        "task": "app.workers.agency_automations.auto_followup_deals",
+        "schedule": crontab(minute="0", hour="8"),
+    },
+    # 🚨 Deadline Alerts - Alertes deadlines à 07h00
+    "agency-deadline-alerts": {
+        "task": "app.workers.agency_automations.deadline_alerts",
+        "schedule": crontab(minute="0", hour="7"),
+    },
+    # 🛑 Blocked Project Alerts - Alertes projets bloqués à 09h00
+    "agency-blocked-project-alerts": {
+        "task": "app.workers.agency_automations.blocked_project_alerts",
+        "schedule": crontab(minute="0", hour="9"),
+    },
+    # 🧹 Cleanup Old Auto Tasks - Nettoyage hebdo dimanche 02h00
+    "agency-cleanup-old-auto-tasks": {
+        "task": "app.workers.agency_automations.cleanup_old_auto_tasks",
+        "schedule": crontab(minute="0", hour="2", day_of_week="sunday"),
     },
 }
