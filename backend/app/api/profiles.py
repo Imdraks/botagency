@@ -13,7 +13,7 @@ from sqlalchemy import func
 
 from app.db import get_db
 from app.db.models import Profile, OpportunityProfileScore, Opportunity
-from app.api.deps import get_current_user, get_current_admin_user
+from app.api.deps import get_current_user, get_current_admin_user, get_user_workspace_id
 from app.schemas.radar_features import (
     ProfileCreate,
     ProfileUpdate,
@@ -119,12 +119,16 @@ def compute_fit_score(opportunity: Opportunity, profile: Profile) -> tuple[int, 
 
 @router.get("", response_model=ProfileListResponse)
 def list_profiles(
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    """List all profiles"""
-    query = db.query(Profile)
+    """List all profiles for the workspace"""
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    query = db.query(Profile).filter(Profile.workspace_id == ws_id)
     
     if is_active is not None:
         query = query.filter(Profile.is_active == is_active)
@@ -140,19 +144,27 @@ def list_profiles(
 @router.post("", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
 def create_profile(
     data: ProfileCreate,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user),
 ):
     """Create a new profile (admin only)"""
-    # Check if name already exists
-    existing = db.query(Profile).filter(Profile.name == data.name).first()
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    # Check if name already exists in this workspace
+    existing = db.query(Profile).filter(
+        Profile.name == data.name,
+        Profile.workspace_id == ws_id
+    ).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Profile with name '{data.name}' already exists"
+            detail=f"Profile with name '{data.name}' already exists in this workspace"
         )
     
     profile = Profile(
+        workspace_id=ws_id,
         name=data.name,
         description=data.description,
         is_active=data.is_active,
@@ -176,11 +188,18 @@ def create_profile(
 @router.get("/{profile_id}", response_model=ProfileResponse)
 def get_profile(
     profile_id: UUID,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
     """Get a profile by ID"""
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    profile = db.query(Profile).filter(
+        Profile.id == profile_id,
+        Profile.workspace_id == ws_id
+    ).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -193,11 +212,18 @@ def get_profile(
 def update_profile(
     profile_id: UUID,
     data: ProfileUpdate,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user),
 ):
     """Update a profile (admin only)"""
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    profile = db.query(Profile).filter(
+        Profile.id == profile_id,
+        Profile.workspace_id == ws_id
+    ).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -223,11 +249,18 @@ def update_profile(
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_profile(
     profile_id: UUID,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user),
 ):
     """Delete a profile (admin only)"""
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    profile = db.query(Profile).filter(
+        Profile.id == profile_id,
+        Profile.workspace_id == ws_id
+    ).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -242,13 +275,20 @@ def delete_profile(
 def recompute_profile_scores(
     profile_id: UUID,
     data: RecomputeRequest = RecomputeRequest(),
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user),
 ):
     """Recompute fit scores for all opportunities against this profile"""
     start_time = time.time()
     
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    profile = db.query(Profile).filter(
+        Profile.id == profile_id,
+        Profile.workspace_id == ws_id
+    ).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -310,11 +350,18 @@ def get_profile_scores(
     profile_id: UUID,
     min_score: int = Query(default=0, ge=0, le=100),
     limit: int = Query(default=50, ge=1, le=200),
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
     """Get top fit scores for a profile"""
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    profile = db.query(Profile).filter(
+        Profile.id == profile_id,
+        Profile.workspace_id == ws_id
+    ).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
