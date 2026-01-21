@@ -41,9 +41,20 @@ function AuthCallbackContent() {
         setStatus("success");
         setMessage(isNew ? "Compte créé avec succès !" : "Connexion réussie !");
 
+        // Decode token to get user role
+        let redirectPath = "/today";
+        try {
+          const payload = JSON.parse(atob(accessToken.split('.')[1]));
+          if (payload.role === 'admin') {
+            redirectPath = "/admin";
+          }
+        } catch (e) {
+          console.error("Failed to decode token");
+        }
+
         // Redirect after a short delay
         setTimeout(() => {
-          router.push("/today");
+          router.push(redirectPath);
         }, 1500);
       } catch (err) {
         setStatus("error");
