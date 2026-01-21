@@ -35,12 +35,14 @@ WORKSPACE_FOLDER_STRUCTURE = {
     "Archive": "Projets archivés",
 }
 
-# Project subfolder structure
+# Project subfolder structure - NEW STRUCTURE
 PROJECT_FOLDER_STRUCTURE = [
-    "Brief",
-    "Assets",
-    "Exports",
-    "Admin",
+    "01_Brief",
+    "02_Production",
+    "03_PostProd",
+    "04_Exports",
+    "05_Admin",
+    "99_Archive",
 ]
 
 
@@ -667,6 +669,173 @@ class GoogleWorkspaceService:
             all_day=True,
             reminder_minutes=1440,  # 24h before
         )
+
+    # ========================================================================
+    # PROJECT DRIVE STRUCTURE - MAIN FUNCTION
+    # ========================================================================
+
+    async def create_project_drive_structure(
+        self,
+        project_name: str,
+        brief_template_id: Optional[str] = None,
+        report_template_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create complete project folder structure in Google Drive.
+        
+        Structure created:
+        Radar/
+        └── Projets/
+            └── <project_name>/
+                ├── 01_Brief
+                ├── 02_Production
+                ├── 03_PostProd
+                ├── 04_Exports
+                ├── 05_Admin
+                └── 99_Archive
+        
+        Args:
+            project_name: Name of the project
+            brief_template_id: Optional Google Docs template ID for brief
+            report_template_id: Optional Google Sheets template ID for report
+        
+        Returns:
+            {
+                "success": bool,
+                "drive_folder_id": str,
+                "drive_folder_url": str,
+                "brief_doc_id": str | None,
+                "brief_doc_url": str | None,
+                "report_sheet_id": str | None,
+                "report_sheet_url": str | None,
+                "subfolders": {
+                    "01_Brief": str,
+                    "02_Production": str,
+                    ...
+                },
+                "errors": []
+            }
+        """
+        logger.info(f"Creating Drive structure for project: {project_name}")
+        
+        result = {
+            "success": True,
+            "drive_folder_id": None,
+            "drive_folder_url": None,
+            "brief_doc_id": None,
+            "brief_doc_url": None,
+            "report_sheet_id": None,
+            "report_sheet_url": None,
+            "subfolders": {},
+            "errors": [],
+        }
+        
+        try:
+            # Step 1: Find or create "Radar" folder at root
+            radar_folder = await self.find_folder_by_name("Radar", parent_id=None)
+            if radar_folder:
+                radar_folder_id = radar_folder["id"]
+                logger.debug(f"Found existing Radar folder: {radar_folder_id}")
+            else:
+                radar = await self.create_folder("Radar")
+                radar_folder_id = radar["id"]
+                logger.info(f"Created Radar folder: {radar_folder_id}")
+            
+            # Step 2: Find or create "Projets" folder inside Radar
+            projets_folder = await self.find_folder_by_name("Projets", radar_folder_id)
+            if projets_folder:
+                projets_folder_id = projets_folder["id"]
+                logger.debug(f"Found existing Projets folder: {projets_folder_id}")
+            else:
+                projets = await self.create_folder("Projets", radar_folder_id)
+                projets_folder_id = projets["id"]
+                logger.info(f"Created Projets folder: {projets_folder_id}")
+            
+            # Step 3: Check if project folder already exists (avoid duplicates)
+            existing_project = await self.find_folder_by_name(project_name, projets_folder_id)
+            if existing_project:
+                logger.warning(f"Project folder already exists: {project_name}")
+                result["drive_folder_id"] = existing_project["id"]
+                result["drive_folder_url"] = f"https://drive.google.com/drive/folders/{existing_project['id']}"
+                # Still need to verify/create subfolders
+                project_folder_id = existing_project["id"]
+            else:
+                # Create project folder
+                project_folder = await self.create_folder(project_name, projets_folder_id)
+                project_folder_id = project_folder["id"]
+                result["drive_folder_id"] = project_folder_id
+                result["drive_folder_url"] = project_folder["url"]
+                logger.info(f"Created project folder: {project_name} ({project_folder_id})")
+            
+            # Step 4: Create all subfolders
+            for subfolder_name in PROJECT_FOLDER_STRUCTURE:
+                try:
+                    existing_sub = await self.find_folder_by_name(subfolder_name, project_folder_id)
+                    if existing_sub:
+                        result["subfolders"][subfolder_name] = existing_sub["id"]
+                    else:
+                        sub = await self.create_folder(subfolder_name, project_folder_id)
+                        result["subfolders"][subfolder_name] = sub["id"]
+                        logger.debug(f"Created subfolder: {subfolder_name}")
+                except Exception as e:
+                    error_msg = f"Failed to create subfolder {subfolder_name}: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+            
+            # Step 5: Copy Brief template to 01_Brief folder
+            if brief_template_id and result["subfolders"].get("01_Brief"):
+                try:
+                    brief_doc = await self.copy_document(
+                        template_id=brief_template_id,
+                        name=f"Brief - {project_name}",
+                        parent_folder_id=result["subfolders"]["01_Brief"]
+                    )
+                    result["brief_doc_id"] = brief_doc["id"]
+                    result["brief_doc_url"] = brief_doc["url"]
+                    logger.info(f"Created brief document: {brief_doc['id']}")
+                except Exception as e:
+                    error_msg = f"Failed to create brief from template: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+            
+            # Step 6: Copy Report template to 05_Admin folder
+            if report_template_id and result["subfolders"].get("05_Admin"):
+                try:
+                    report_sheet = await self.copy_spreadsheet(
+                        template_id=report_template_id,
+                        name=f"Reporting - {project_name}",
+                        parent_folder_id=result["subfolders"]["05_Admin"]
+                    )
+                    result["report_sheet_id"] = report_sheet["id"]
+                    result["report_sheet_url"] = report_sheet["url"]
+                    logger.info(f"Created report spreadsheet: {report_sheet['id']}")
+                except Exception as e:
+                    error_msg = f"Failed to create report from template: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+            
+            result["success"] = len(result["errors"]) == 0
+            logger.info(f"Project Drive structure created successfully for: {project_name}")
+            
+        except TokenExpiredError as e:
+            logger.error(f"Token expired during Drive structure creation: {e}")
+            result["success"] = False
+            result["errors"].append("Google authorization expired. Please reconnect.")
+            raise
+        
+        except QuotaExceededError as e:
+            logger.error(f"Quota exceeded during Drive structure creation: {e}")
+            result["success"] = False
+            result["errors"].append("Google API quota exceeded. Please try again later.")
+            raise
+        
+        except Exception as e:
+            logger.error(f"Unexpected error creating Drive structure: {e}")
+            result["success"] = False
+            result["errors"].append(str(e))
+            raise GoogleAPIError(f"Failed to create project Drive structure: {e}")
+        
+        return result
 
 
 # ============================================================================

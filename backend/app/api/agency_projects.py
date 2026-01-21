@@ -1,9 +1,10 @@
 """
 Agency Cockpit V2 API - Projects, Deliverables, Production
 """
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -27,6 +28,14 @@ from app.schemas.agency import (
     # Production
     ProductionResponse, ProductionColumn, ProductionItem
 )
+from app.services.google_workspace import (
+    get_google_workspace_service, 
+    GoogleAPIError, 
+    TokenExpiredError
+)
+from app.core.cache import cache_get
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agency", tags=["agency-projects"])
 
@@ -97,13 +106,82 @@ async def list_projects(
     return result
 
 
+# ============================================================================
+# BACKGROUND TASK: CREATE DRIVE STRUCTURE
+# ============================================================================
+
+async def create_project_drive_structure_task(
+    project_id: int,
+    project_name: str,
+    user_id: int,
+    db_url: str,
+):
+    """
+    Background task to create Google Drive folder structure for a project.
+    Called automatically after project creation.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    
+    try:
+        # Check if user has Google Workspace connected
+        tokens = cache_get(f"google_workspace_tokens:{user_id}")
+        if not tokens:
+            logger.info(f"User {user_id} has no Google Workspace connected, skipping Drive creation")
+            return
+        
+        # Get Google Workspace service
+        service = get_google_workspace_service(user_id)
+        
+        # TODO: Get template IDs from workspace settings
+        # brief_template_id = workspace.brief_template_id
+        # report_template_id = workspace.report_template_id
+        brief_template_id = None
+        report_template_id = None
+        
+        # Create the Drive structure
+        result = await service.create_project_drive_structure(
+            project_name=project_name,
+            brief_template_id=brief_template_id,
+            report_template_id=report_template_id,
+        )
+        
+        if result["success"] or result["drive_folder_id"]:
+            # Update project with Drive folder ID
+            engine = create_engine(db_url)
+            SessionLocal = sessionmaker(bind=engine)
+            db = SessionLocal()
+            
+            try:
+                project = db.query(Project).filter(Project.id == project_id).first()
+                if project:
+                    project.drive_folder_id = result["drive_folder_id"]
+                    if result.get("brief_doc_id"):
+                        project.brief_doc_id = result["brief_doc_id"]
+                    if result.get("report_sheet_id"):
+                        project.report_sheet_id = result["report_sheet_id"]
+                    db.commit()
+                    logger.info(f"Updated project {project_id} with Drive folder: {result['drive_folder_id']}")
+            finally:
+                db.close()
+        
+        if result["errors"]:
+            logger.warning(f"Drive structure created with errors: {result['errors']}")
+            
+    except TokenExpiredError:
+        logger.warning(f"Google token expired for user {user_id}, Drive structure not created")
+    except Exception as e:
+        logger.error(f"Failed to create Drive structure for project {project_id}: {e}")
+
+
 @router.post("/projects", response_model=ProjectResponse)
 async def create_project(
     project_in: ProjectCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Créer un nouveau projet"""
+    """Créer un nouveau projet avec création automatique du dossier Drive"""
     client = None
     # Vérifier client si fourni
     if project_in.client_id:
@@ -130,6 +208,17 @@ async def create_project(
     db.add(project)
     db.commit()
     db.refresh(project)
+    
+    # Trigger background task to create Drive folder structure
+    from app.core.config import settings
+    background_tasks.add_task(
+        create_project_drive_structure_task,
+        project_id=project.id,
+        project_name=project.name,
+        user_id=current_user.id,
+        db_url=settings.database_url,
+    )
+    logger.info(f"Project {project.id} created, Drive structure creation scheduled")
     
     return ProjectResponse(
         id=project.id,
@@ -177,6 +266,11 @@ async def get_project(
         days_until = (project.deadline - now).days
         is_urgent = days_until <= 3 and days_until >= 0
     
+    # Build Drive URLs from IDs
+    drive_folder_url = f"https://drive.google.com/drive/folders/{project.drive_folder_id}" if project.drive_folder_id else None
+    brief_doc_url = f"https://docs.google.com/document/d/{project.brief_doc_id}/edit" if project.brief_doc_id else None
+    report_sheet_url = f"https://docs.google.com/spreadsheets/d/{project.report_sheet_id}/edit" if project.report_sheet_id else None
+    
     return ProjectResponse(
         id=project.id,
         client_id=project.client_id,
@@ -189,6 +283,14 @@ async def get_project(
         owner_id=project.owner_id,
         created_at=project.created_at,
         updated_at=project.updated_at,
+        # Drive integration
+        drive_folder_id=project.drive_folder_id,
+        drive_folder_url=drive_folder_url,
+        brief_doc_id=project.brief_doc_id,
+        brief_doc_url=brief_doc_url,
+        report_sheet_id=project.report_sheet_id,
+        report_sheet_url=report_sheet_url,
+        # Computed
         client_name=project.client.name if project.client else None,
         owner_name=project.owner.email if project.owner else None,
         deliverables_count=total_deliverables,

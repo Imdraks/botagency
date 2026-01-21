@@ -328,6 +328,104 @@ async def get_client_folder(
 # PROJECT DRIVE
 # ============================================================================
 
+# ============================================================================
+# PROJECT DRIVE STRUCTURE - COMPLETE FOLDER HIERARCHY
+# ============================================================================
+
+class ProjectDriveResponse(BaseModel):
+    """Response for project Drive structure creation"""
+    success: bool
+    drive_folder_id: Optional[str] = None
+    drive_folder_url: Optional[str] = None
+    brief_doc_id: Optional[str] = None
+    brief_doc_url: Optional[str] = None
+    report_sheet_id: Optional[str] = None
+    report_sheet_url: Optional[str] = None
+    subfolders: Optional[dict] = None
+    errors: Optional[list] = None
+
+
+@router.post("/projects/{project_id}/structure", response_model=ProjectDriveResponse)
+async def create_project_drive_structure(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Create complete Drive folder structure for project.
+    
+    Creates:
+    Radar/
+    └── Projets/
+        └── <project_name>/
+            ├── 01_Brief
+            ├── 02_Production
+            ├── 03_PostProd
+            ├── 04_Exports
+            ├── 05_Admin
+            └── 99_Archive
+    
+    Also copies templates if configured:
+    - Brief template (Google Doc) → 01_Brief
+    - Report template (Google Sheet) → 05_Admin
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Return existing structure if folder already exists
+    if project.drive_folder_id:
+        return ProjectDriveResponse(
+            success=True,
+            drive_folder_id=project.drive_folder_id,
+            drive_folder_url=f"https://drive.google.com/drive/folders/{project.drive_folder_id}",
+            brief_doc_id=project.brief_doc_id,
+            brief_doc_url=f"https://docs.google.com/document/d/{project.brief_doc_id}/edit" if project.brief_doc_id else None,
+            report_sheet_id=project.report_sheet_id,
+            report_sheet_url=f"https://docs.google.com/spreadsheets/d/{project.report_sheet_id}/edit" if project.report_sheet_id else None,
+        )
+    
+    try:
+        service = get_google_workspace_service(current_user.id)
+        
+        # TODO: Get templates from workspace settings
+        brief_template_id = None
+        report_template_id = None
+        
+        # Create the complete structure
+        result = await service.create_project_drive_structure(
+            project_name=project.name,
+            brief_template_id=brief_template_id,
+            report_template_id=report_template_id,
+        )
+        
+        # Update project with IDs
+        if result.get("drive_folder_id"):
+            project.drive_folder_id = result["drive_folder_id"]
+        if result.get("brief_doc_id"):
+            project.brief_doc_id = result["brief_doc_id"]
+        if result.get("report_sheet_id"):
+            project.report_sheet_id = result["report_sheet_id"]
+        db.commit()
+        
+        return ProjectDriveResponse(
+            success=result["success"],
+            drive_folder_id=result.get("drive_folder_id"),
+            drive_folder_url=result.get("drive_folder_url"),
+            brief_doc_id=result.get("brief_doc_id"),
+            brief_doc_url=result.get("brief_doc_url"),
+            report_sheet_id=result.get("report_sheet_id"),
+            report_sheet_url=result.get("report_sheet_url"),
+            subfolders=result.get("subfolders"),
+            errors=result.get("errors"),
+        )
+        
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Google authorization required. Please reconnect Google.")
+    except GoogleAPIError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
 @router.post("/projects/{project_id}/folder", response_model=FolderResponse)
 async def create_project_folder(
     project_id: int,
@@ -335,13 +433,10 @@ async def create_project_folder(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create or get Drive folder for project with standard subfolders"""
+    """Create or get Drive folder for project - redirects to full structure creation"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
-        raise HTTPException(status_code=403, detail="Access denied")
     
     # Return existing folder if exists
     if project.drive_folder_id:
@@ -351,45 +446,25 @@ async def create_project_folder(
             name=project.name
         )
     
-    # Get parent folder (client folder or workspace projects folder)
-    parent_folder_id = None
-    
-    if project.client and project.client.drive_folder_id:
-        parent_folder_id = project.client.drive_folder_id
-    elif project.workspace_id:
-        workspace = db.query(Workspace).filter(Workspace.id == project.workspace_id).first()
-        if workspace and workspace.drive_root_folder_id:
-            try:
-                service = get_google_workspace_service(current_user.id)
-                existing = await service.find_folder_by_name("Projets", workspace.drive_root_folder_id)
-                if existing:
-                    parent_folder_id = existing["id"]
-                else:
-                    folder = await service.create_folder("Projets", workspace.drive_root_folder_id)
-                    parent_folder_id = folder["id"]
-            except (TokenExpiredError, GoogleAPIError):
-                pass
-    
-    if not parent_folder_id:
-        raise HTTPException(
-            status_code=400, 
-            detail="No parent folder available. Set up client folder or workspace Drive first."
-        )
-    
     try:
         service = get_google_workspace_service(current_user.id)
-        folder_name = (data and data.name) or project.name
         
-        result = await service.ensure_project_folder(folder_name, parent_folder_id)
+        # Use the new complete structure creation
+        result = await service.create_project_drive_structure(
+            project_name=project.name,
+            brief_template_id=None,
+            report_template_id=None,
+        )
         
-        # Save folder ID to project
-        project.drive_folder_id = result["id"]
-        db.commit()
+        # Update project with folder ID
+        if result.get("drive_folder_id"):
+            project.drive_folder_id = result["drive_folder_id"]
+            db.commit()
         
         return FolderResponse(
-            id=result["id"],
-            url=result["url"],
-            name=folder_name
+            id=result["drive_folder_id"],
+            url=result["drive_folder_url"],
+            name=project.name
         )
         
     except TokenExpiredError:

@@ -216,6 +216,14 @@ class ProjectResponse(ProjectBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
+    # Google Drive integration
+    drive_folder_id: Optional[str] = None
+    drive_folder_url: Optional[str] = None
+    brief_doc_id: Optional[str] = None
+    brief_doc_url: Optional[str] = None
+    report_sheet_id: Optional[str] = None
+    report_sheet_url: Optional[str] = None
+    
     # Computed
     client_name: Optional[str] = None
     owner_name: Optional[str] = None
