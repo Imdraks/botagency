@@ -1225,12 +1225,12 @@ export const projectDetailApi = {
 
   updateDeliverable: async (deliverableId: number, data: Partial<{
     name: string;
-    type: string;
+    type: string | null;
     status: string;
-    due_date: string;
-    link: string;
-    drive_file_id: string;
-    notes: string;
+    due_date: string | null;
+    link: string | null;
+    drive_file_id: string | null;
+    notes: string | null;
   }>): Promise<ProjectDeliverable> => {
     const response = await api.patch(`/agency/projects/deliverables/${deliverableId}`, data);
     return response.data;
