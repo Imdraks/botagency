@@ -101,6 +101,7 @@ class CollectionV2(Base):
     __tablename__ = "collections"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Integer, ForeignKey('workspaces.id', ondelete='CASCADE'), nullable=True, index=True)
     type = Column(String(20), nullable=False)  # STANDARD, AI
     status = Column(String(20), nullable=False, default=CollectionStatus.QUEUED.value)
     name = Column(String(255), nullable=True)
@@ -161,6 +162,7 @@ class LeadItem(Base):
     __tablename__ = "lead_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Integer, ForeignKey('workspaces.id', ondelete='CASCADE'), nullable=True, index=True)
     kind = Column(String(30), nullable=False)  # OPPORTUNITY, DOSSIER_CANDIDATE
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
