@@ -177,8 +177,13 @@ def login(
     from app.api.workspace import auto_assign_user_to_workspaces
     auto_assign_user_to_workspaces(db, user)
     
-    # Create tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Create tokens with role included
+    token_data = {
+        "sub": str(user.id),
+        "email": user.email,
+        "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
+    }
+    access_token = create_access_token(data=token_data)
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     return LoginResponse(
@@ -209,8 +214,13 @@ def refresh_token(
             detail="User not found or inactive",
         )
     
-    # Create new tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Create new tokens with role
+    token_data = {
+        "sub": str(user.id),
+        "email": user.email,
+        "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
+    }
+    access_token = create_access_token(data=token_data)
     new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     return Token(

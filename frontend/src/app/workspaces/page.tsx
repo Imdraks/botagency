@@ -13,7 +13,7 @@ import {
   Trash2,
   ExternalLink,
 } from 'lucide-react';
-import { AppLayout, ProtectedRoute } from "@/components/layout";
+import { AdminLayout, ProtectedRoute } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,10 +47,10 @@ interface WorkspacesResponse {
 
 export default function WorkspacesPage() {
   return (
-    <ProtectedRoute>
-      <AppLayout>
+    <ProtectedRoute requiredRoles={['admin']}>
+      <AdminLayout>
         <WorkspacesContent />
-      </AppLayout>
+      </AdminLayout>
     </ProtectedRoute>
   );
 }
@@ -60,7 +60,10 @@ function WorkspacesContent() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<Workspace | null>(null);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -142,6 +145,39 @@ function WorkspacesContent() {
     setCurrentWorkspaceId(workspace.id.toString());
     toast.success(`Workspace "${workspace.name}" sélectionné`);
     router.push('/inbox');
+  };
+
+  const deleteWorkspace = async () => {
+    if (!workspaceToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/workspaces/${workspaceToDelete.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (res.ok) {
+        toast.success('Workspace supprimé');
+        setShowDeleteDialog(false);
+        setWorkspaceToDelete(null);
+        fetchWorkspaces();
+        
+        // Clear current workspace if it was deleted
+        if (currentWorkspaceId === workspaceToDelete.id.toString()) {
+          localStorage.removeItem('current_workspace_id');
+          setCurrentWorkspaceId(null);
+        }
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur de suppression');
+      }
+    } catch (err) {
+      toast.error('Erreur de suppression');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -250,15 +286,29 @@ function WorkspacesContent() {
                       )}
                     </div>
                     {isAdmin && (
-                      <Link 
-                        href={`/workspaces/${workspace.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4 mr-1" />
-                          Gérer
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          href={`/workspaces/${workspace.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button variant="outline" size="sm">
+                            <Settings className="h-4 w-4 mr-1" />
+                            Gérer
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWorkspaceToDelete(workspace);
+                            setShowDeleteDialog(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      </Link>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -296,6 +346,34 @@ function WorkspacesContent() {
             <Button onClick={createWorkspace} disabled={creating || !newWorkspaceName.trim()}>
               {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Créer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Supprimer l'instance</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer le workspace <strong>"{workspaceToDelete?.name}"</strong> ?
+              <br /><br />
+              Cette action est <strong className="text-red-600">irréversible</strong> et supprimera :
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>Tous les emails autorisés</li>
+                <li>Tous les membres associés</li>
+                <li>Toutes les configurations</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={deleteWorkspace} disabled={deleting}>
+              {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Supprimer définitivement
             </Button>
           </DialogFooter>
         </DialogContent>

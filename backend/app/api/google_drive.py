@@ -391,7 +391,7 @@ async def create_client_folder(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    if client.workspace_id and not _user_has_workspace_access(db, current_user.id, client.workspace_id):
+    if client.workspace_id and not _user_has_workspace_access(db, current_user.id, client.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Return existing folder if exists
@@ -455,7 +455,7 @@ async def get_client_folder(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    if client.workspace_id and not _user_has_workspace_access(db, current_user.id, client.workspace_id):
+    if client.workspace_id and not _user_has_workspace_access(db, current_user.id, client.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not client.drive_folder_id:
@@ -628,7 +628,7 @@ async def get_project_folder(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not project.drive_folder_id:
@@ -657,7 +657,7 @@ async def create_project_brief(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Return existing brief if exists
@@ -741,7 +741,7 @@ async def get_project_brief(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not project.brief_doc_id:
@@ -770,7 +770,7 @@ async def create_project_report(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Return existing report if exists
@@ -843,7 +843,7 @@ async def get_project_report(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not project.report_sheet_id:
@@ -871,7 +871,7 @@ async def create_project_deadline_event(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not project.deadline:
@@ -933,7 +933,7 @@ async def create_deliverable_deadline_event(
         raise HTTPException(status_code=404, detail="Deliverable not found")
     
     project = deliverable.project
-    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id):
+    if project.workspace_id and not _user_has_workspace_access(db, current_user.id, project.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not deliverable.due_date:

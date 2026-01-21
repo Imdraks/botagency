@@ -16,7 +16,7 @@ import {
   User,
 } from 'lucide-react';
 import Link from 'next/link';
-import { AppLayout, ProtectedRoute } from "@/components/layout";
+import { AdminLayout, ProtectedRoute } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,10 +69,10 @@ const roleLabels: Record<string, { label: string; icon: React.ReactNode; color: 
 
 export default function WorkspaceDetailPage() {
   return (
-    <ProtectedRoute>
-      <AppLayout>
+    <ProtectedRoute requiredRoles={['admin']}>
+      <AdminLayout>
         <WorkspaceDetailContent />
-      </AppLayout>
+      </AdminLayout>
     </ProtectedRoute>
   );
 }
@@ -86,10 +86,12 @@ function WorkspaceDetailContent() {
   const [invites, setInvites] = useState<WorkspaceInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'member' | 'viewer'>('member');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = loading
 
   useEffect(() => {
     // Check admin role
@@ -188,6 +190,39 @@ function WorkspaceDetailContent() {
     }
   };
 
+  const deleteWorkspace = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/workspaces/${workspaceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (res.ok) {
+        toast.success('Workspace supprimé');
+        router.push('/workspaces');
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur de suppression');
+      }
+    } catch (err) {
+      toast.error('Erreur de suppression');
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  // Show loading while checking admin status
+  if (isAdmin === null || loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -203,31 +238,32 @@ function WorkspaceDetailContent() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/workspaces">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {workspace?.name || 'Workspace'}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Gérer les emails autorisés
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/workspaces">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {workspace?.name || 'Workspace'}
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Gérer les emails autorisés
+            </p>
+          </div>
         </div>
+        <Button 
+          variant="destructive" 
+          onClick={() => setShowDeleteDialog(true)}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Supprimer l'instance
+        </Button>
       </div>
 
       {/* Info Card */}
@@ -359,6 +395,34 @@ function WorkspaceDetailContent() {
             <Button onClick={addInvite} disabled={adding || !newEmail.trim()}>
               {adding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Ajouter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Supprimer l'instance</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer le workspace <strong>"{workspace?.name}"</strong> ?
+              <br /><br />
+              Cette action est <strong className="text-red-600">irréversible</strong> et supprimera :
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>Tous les emails autorisés</li>
+                <li>Tous les membres associés</li>
+                <li>Toutes les configurations</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={deleteWorkspace} disabled={deleting}>
+              {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Supprimer définitivement
             </Button>
           </DialogFooter>
         </DialogContent>

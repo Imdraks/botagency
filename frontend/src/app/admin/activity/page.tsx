@@ -73,7 +73,19 @@ const actionLabels: Record<string, string> = {
   whitelist: 'Whitelist',
 };
 
+import { AdminLayout, ProtectedRoute } from '@/components/layout';
+
 export default function ActivityLogsPage() {
+  return (
+    <ProtectedRoute requiredRoles={['admin']}>
+      <AdminLayout>
+        <ActivityLogsContent />
+      </AdminLayout>
+    </ProtectedRoute>
+  );
+}
+
+function ActivityLogsContent() {
   const { user } = useAuthStore();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);

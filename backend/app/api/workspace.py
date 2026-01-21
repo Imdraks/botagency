@@ -140,8 +140,8 @@ async def get_workspace(
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
     
-    # Check access
-    if not _user_has_workspace_access(db, current_user.id, workspace_id):
+    # Check access - admins can access all workspaces
+    if not _user_has_workspace_access(db, current_user.id, workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Get members
@@ -237,13 +237,18 @@ async def delete_workspace(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete workspace. Only owner can delete."""
+    """Delete workspace. Only owner or global admin can delete."""
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
     
-    if workspace.owner_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only owner can delete workspace")
+    # Allow owner or global admin to delete
+    if workspace.owner_user_id != current_user.id and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Only owner or admin can delete workspace")
+    
+    # Delete related data first
+    db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == workspace_id).delete()
+    db.query(WorkspaceInvite).filter(WorkspaceInvite.workspace_id == workspace_id).delete()
     
     db.delete(workspace)
     db.commit()
@@ -442,7 +447,7 @@ async def get_drive_status(
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
     
-    if not _user_has_workspace_access(db, current_user.id, workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     status = {
@@ -469,8 +474,12 @@ async def get_drive_status(
 # HELPERS
 # ============================================================================
 
-def _user_has_workspace_access(db: Session, user_id: int, workspace_id: int) -> bool:
-    """Check if user has any access to workspace"""
+def _user_has_workspace_access(db: Session, user_id: int, workspace_id: int, user_role: str = None) -> bool:
+    """Check if user has any access to workspace. Global admins have access to all."""
+    # Global admins have access to everything
+    if user_role == 'admin':
+        return True
+    
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
         return False

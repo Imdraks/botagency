@@ -87,6 +87,17 @@ function LoginContent() {
   // Auto-redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      // Check role from token to redirect appropriately
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.role === 'admin') {
+            router.push("/admin");
+            return;
+          }
+        } catch (e) {}
+      }
       router.push("/today");
     }
   }, [authLoading, isAuthenticated, router]);
@@ -163,7 +174,18 @@ function LoginContent() {
         return;
       }
       
-      router.push("/cockpit");
+      // Redirect based on role
+      const token = localStorage.getItem('access_token');
+      let redirectPath = "/today";
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.role === 'admin') {
+            redirectPath = "/admin";
+          }
+        } catch (e) {}
+      }
+      router.push(redirectPath);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string | object } } };
       const detail = error?.response?.data?.detail;
@@ -191,7 +213,18 @@ function LoginContent() {
       const result = await login(savedCredentials.email, savedCredentials.password, rememberMe, totpCode);
       
       if (result.success) {
-        router.push("/cockpit");
+        // Redirect based on role
+        const token = localStorage.getItem('access_token');
+        let redirectPath = "/today";
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.role === 'admin') {
+              redirectPath = "/admin";
+            }
+          } catch (e) {}
+        }
+        router.push(redirectPath);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string | object } } };

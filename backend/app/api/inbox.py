@@ -37,7 +37,7 @@ async def list_inbox_items(
     current_user: User = Depends(get_current_user),
 ):
     """List inbox items for a workspace"""
-    if not _user_has_workspace_access(db, current_user.id, workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     query = db.query(InboxItem).filter(InboxItem.workspace_id == workspace_id)
@@ -119,7 +119,7 @@ async def create_inbox_item(
     Format: "Text @client #project due:YYYY-MM-DD type:idea"
     Target: < 5 seconds to capture an idea.
     """
-    if not _user_has_workspace_access(db, current_user.id, workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Parse text for tags, mentions, due dates
@@ -173,7 +173,7 @@ async def get_inbox_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    if not _user_has_workspace_access(db, current_user.id, item.workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, item.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     now = datetime.utcnow()
@@ -213,7 +213,7 @@ async def update_inbox_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    if not _user_has_workspace_access(db, current_user.id, item.workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, item.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = data.model_dump(exclude_unset=True)
@@ -259,7 +259,7 @@ async def delete_inbox_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    if not _user_has_workspace_access(db, current_user.id, item.workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, item.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     db.delete(item)
@@ -285,7 +285,7 @@ async def triage_inbox_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    if not _user_has_workspace_access(db, current_user.id, item.workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, item.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     if item.status == InboxStatus.TRIAGED:
@@ -393,7 +393,7 @@ async def mark_inbox_done(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    if not _user_has_workspace_access(db, current_user.id, item.workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, item.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     item.status = InboxStatus.DONE
@@ -436,7 +436,7 @@ async def archive_inbox_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    if not _user_has_workspace_access(db, current_user.id, item.workspace_id):
+    if not _user_has_workspace_access(db, current_user.id, item.workspace_id, current_user.role):
         raise HTTPException(status_code=403, detail="Access denied")
     
     item.status = InboxStatus.ARCHIVED

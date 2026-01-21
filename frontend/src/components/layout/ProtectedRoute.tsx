@@ -7,10 +7,9 @@ import { useAuthStore } from "@/store/auth";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
-  allowAdmin?: boolean; // Allow admin to access this page
 }
 
-export function ProtectedRoute({ children, requiredRoles, allowAdmin = true }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, fetchUser } = useAuthStore();
@@ -38,22 +37,25 @@ export function ProtectedRoute({ children, requiredRoles, allowAdmin = true }: P
   useEffect(() => {
     if (!mounted || isLoading || !isAuthenticated || !user) return;
     
-    const isAdminPage = pathname.startsWith('/admin') || pathname === '/workspaces' || pathname.startsWith('/workspaces/') || pathname === '/users' || pathname.startsWith('/users/');
+    const adminPages = ['/admin', '/workspaces', '/users', '/settings', '/sources', '/source-health', '/profiles', '/scoring', '/predictions'];
+    const isAdminPage = adminPages.some(p => pathname === p || pathname.startsWith(p + '/'));
     const isAdmin = user.role === 'admin';
     
     // Admin trying to access non-admin pages → redirect to admin dashboard
-    if (isAdmin && !isAdminPage && !allowAdmin) {
+    if (isAdmin && !isAdminPage) {
       router.push("/admin");
       return;
     }
     
-    // Non-admin trying to access admin pages → redirect to today
-    if (!isAdmin && isAdminPage) {
+    // Non-admin trying to access admin-only pages → redirect to today
+    const adminOnlyPages = ['/admin', '/workspaces', '/users'];
+    const isAdminOnlyPage = adminOnlyPages.some(p => pathname === p || pathname.startsWith(p + '/'));
+    if (!isAdmin && isAdminOnlyPage) {
       router.push("/today");
       return;
     }
     
-  }, [mounted, isLoading, isAuthenticated, user, pathname, router, allowAdmin]);
+  }, [mounted, isLoading, isAuthenticated, user, pathname, router]);
 
   // Check roles
   useEffect(() => {

@@ -12,7 +12,7 @@ import {
   User as UserIcon,
   Users as UsersIcon,
 } from "lucide-react";
-import { AppLayout, ProtectedRoute } from "@/components/layout";
+import { AdminLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -339,9 +339,9 @@ function UserForm({
 export default function UsersPage() {
   return (
     <ProtectedRoute requiredRoles={["admin"]}>
-      <AppLayout>
+      <AdminLayout>
         <UsersContent />
-      </AppLayout>
+      </AdminLayout>
     </ProtectedRoute>
   );
 }

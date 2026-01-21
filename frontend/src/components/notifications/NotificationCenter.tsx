@@ -148,8 +148,13 @@ export function NotificationCenter() {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setIsConnected(false);
+        
+        // Don't reconnect if it was a clean close (code 1000) or component unmount
+        if (event.code === 1000 || event.wasClean) {
+          return;
+        }
         
         // Only reconnect if we haven't exceeded max attempts
         if (reconnectAttempts.current < maxReconnectAttempts) {
@@ -175,7 +180,10 @@ export function NotificationCenter() {
 
   // Connect on mount
   useEffect(() => {
-    connectWebSocket();
+    // Small delay to avoid React StrictMode double-mount issues
+    const timeout = setTimeout(() => {
+      connectWebSocket();
+    }, 100);
 
     // Request browser notification permission
     if ("Notification" in window && Notification.permission === "default") {
@@ -183,7 +191,18 @@ export function NotificationCenter() {
     }
 
     return () => {
-      wsRef.current?.close();
+      clearTimeout(timeout);
+      if (wsRef.current) {
+        // Only log close if connection was actually open
+        if (wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.close();
+        } else if (wsRef.current.readyState === WebSocket.CONNECTING) {
+          // Mark as disabled temporarily to prevent reconnection attempts during cleanup
+          wsRef.current.onclose = null;
+          wsRef.current.onerror = null;
+          wsRef.current.close();
+        }
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

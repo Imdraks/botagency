@@ -115,7 +115,7 @@ class WorkspaceMember(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    role: Mapped[WorkspaceRole] = mapped_column(Enum(WorkspaceRole), default=WorkspaceRole.MEMBER)
+    role: Mapped[WorkspaceRole] = mapped_column(Enum(WorkspaceRole, values_callable=lambda x: [e.value for e in x], name="workspacerole", create_type=False), default=WorkspaceRole.MEMBER)
     
     # Invite info
     invited_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
