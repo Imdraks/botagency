@@ -172,6 +172,10 @@ async def google_sso_callback(
             }
         )
         
+        # Auto-assign user to workspaces based on email invites
+        from app.api.workspace import auto_assign_user_to_workspaces
+        auto_assign_user_to_workspaces(db, user)
+        
         # Also save tokens for Google Workspace (Drive, Docs, Sheets)
         from app.core.cache import cache_set
         cache_set(

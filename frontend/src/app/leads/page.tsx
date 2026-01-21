@@ -127,12 +127,16 @@ function LeadsContent() {
     queryKey: ["favorites"],
     queryFn: async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) return new Set<number>();
+        
         const response = await fetch("/api/v1/favorites", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
           const data = await response.json();
-          return new Set(data.map((f: any) => f.opportunity_id));
+          // Backend returns array of IDs directly [1, 2, 3]
+          return new Set<number>(data);
         }
       } catch (e) {
         console.error("Error loading favorites:", e);

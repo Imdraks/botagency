@@ -184,9 +184,56 @@ function InboxContent() {
   const [triageTarget, setTriageTarget] = useState<string>('task');
   const [isTriaging, setIsTriaging] = useState(false);
 
-  const workspaceId = typeof window !== 'undefined' 
-    ? localStorage.getItem('current_workspace_id') || '1' 
-    : '1';
+  // Workspace state
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+
+  // Fetch workspace on mount
+  useEffect(() => {
+    const fetchWorkspace = async () => {
+      // First check localStorage
+      const storedId = localStorage.getItem('current_workspace_id');
+      if (storedId) {
+        setWorkspaceId(storedId);
+        return;
+      }
+      
+      // If not in localStorage, fetch user's workspaces
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setWorkspaceError('Non authentifié');
+          setLoading(false);
+          return;
+        }
+        
+        const res = await fetch('/api/v1/workspaces', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items && data.items.length > 0) {
+            const firstWsId = data.items[0].id.toString();
+            localStorage.setItem('current_workspace_id', firstWsId);
+            setWorkspaceId(firstWsId);
+          } else {
+            setWorkspaceError('Aucun workspace disponible');
+            setLoading(false);
+          }
+        } else {
+          setWorkspaceError('Erreur de chargement des workspaces');
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch workspaces', err);
+        setWorkspaceError('Erreur de connexion');
+        setLoading(false);
+      }
+    };
+    
+    fetchWorkspace();
+  }, []);
 
   // Fetch clients and projects for mentions
   useEffect(() => {
@@ -354,6 +401,8 @@ function InboxContent() {
   };
 
   const fetchInbox = useCallback(async () => {
+    if (!workspaceId) return;
+    
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -385,8 +434,10 @@ function InboxContent() {
   }, [workspaceId, statusFilter, typeFilter]);
 
   useEffect(() => {
-    fetchInbox();
-  }, [fetchInbox]);
+    if (workspaceId) {
+      fetchInbox();
+    }
+  }, [fetchInbox, workspaceId]);
 
   // Quick capture submit
   const handleCapture = async () => {
@@ -505,6 +556,41 @@ function InboxContent() {
       toast.error('Erreur');
     }
   };
+
+  // Show error if no workspace
+  if (workspaceError) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-6">
+              <Inbox className="h-12 w-12 mx-auto text-orange-500" />
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-orange-800 dark:text-orange-200">
+                  {workspaceError}
+                </h2>
+                <p className="text-orange-600 dark:text-orange-300">
+                  Veuillez créer un workspace pour utiliser l'inbox.
+                </p>
+              </div>
+              <Link href="/workspaces">
+                <Button>Gérer les Workspaces</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading if workspace not yet determined
+  if (!workspaceId) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">

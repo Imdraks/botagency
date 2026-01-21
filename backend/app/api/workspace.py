@@ -8,13 +8,14 @@ from sqlalchemy import func
 
 from app.db.session import get_db
 from app.db.models.user import User
-from app.db.models.workspace import Workspace, WorkspaceMember, WorkspaceRole
+from app.db.models.workspace import Workspace, WorkspaceMember, WorkspaceRole, WorkspaceInvite
 from app.api.deps import get_current_user
 from app.schemas.workspace import (
     WorkspaceCreate, WorkspaceUpdate, WorkspaceResponse, 
     WorkspaceDetailResponse, WorkspaceListResponse,
     WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberResponse,
     DriveStructureRequest, DriveStructureResponse,
+    WorkspaceInviteCreate, WorkspaceInviteResponse, WorkspaceInviteListResponse,
 )
 from app.services.google_workspace import get_google_workspace_service, GoogleAPIError, TokenExpiredError
 
@@ -32,24 +33,29 @@ async def list_workspaces(
 ):
     """
     List all workspaces the user has access to.
-    Includes owned workspaces and workspaces where user is a member.
+    Admins can see ALL workspaces.
+    Regular users see owned + member workspaces.
     """
-    # Get owned workspaces
-    owned = db.query(Workspace).filter(
-        Workspace.owner_user_id == current_user.id
-    ).all()
-    
-    # Get member workspaces
-    member_workspace_ids = db.query(WorkspaceMember.workspace_id).filter(
-        WorkspaceMember.user_id == current_user.id
-    ).subquery()
-    
-    member_of = db.query(Workspace).filter(
-        Workspace.id.in_(member_workspace_ids),
-        Workspace.owner_user_id != current_user.id
-    ).all()
-    
-    all_workspaces = owned + member_of
+    # Admins see all workspaces
+    if current_user.role == 'admin':
+        all_workspaces = db.query(Workspace).all()
+    else:
+        # Get owned workspaces
+        owned = db.query(Workspace).filter(
+            Workspace.owner_user_id == current_user.id
+        ).all()
+        
+        # Get member workspaces
+        member_workspace_ids = db.query(WorkspaceMember.workspace_id).filter(
+            WorkspaceMember.user_id == current_user.id
+        ).subquery()
+        
+        member_of = db.query(Workspace).filter(
+            Workspace.id.in_(member_workspace_ids),
+            Workspace.owner_user_id != current_user.id
+        ).all()
+        
+        all_workspaces = owned + member_of
     
     # Build response with member counts
     items = []
@@ -87,7 +93,13 @@ async def create_workspace(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new workspace. Creator becomes the owner."""
+    """Create a new workspace. Only admins can create workspaces."""
+    # Only admins can create workspaces
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seuls les administrateurs peuvent créer des workspaces"
+        )
     workspace = Workspace(
         name=data.name,
         owner_user_id=current_user.id,
@@ -102,11 +114,6 @@ async def create_workspace(
     db.add(workspace)
     db.commit()
     db.refresh(workspace)
-    
-    # Set as user's default workspace if they don't have one
-    if not current_user.default_workspace_id:
-        current_user.default_workspace_id = workspace.id
-        db.commit()
     
     return WorkspaceResponse(
         id=workspace.id,
@@ -508,3 +515,156 @@ def get_user_workspace_role(db: Session, user_id: int, workspace_id: int) -> Opt
     ).first()
     
     return member.role.value if member else None
+
+
+# ============================================================================
+# WORKSPACE INVITES (Authorized Emails) - Admin Only
+# ============================================================================
+
+@router.get("/{workspace_id}/invites", response_model=WorkspaceInviteListResponse)
+async def list_workspace_invites(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all authorized emails for a workspace. Admin only."""
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    invites = db.query(WorkspaceInvite).filter(
+        WorkspaceInvite.workspace_id == workspace_id
+    ).order_by(WorkspaceInvite.created_at.desc()).all()
+    
+    return WorkspaceInviteListResponse(
+        items=[WorkspaceInviteResponse(
+            id=inv.id,
+            workspace_id=inv.workspace_id,
+            email=inv.email,
+            role=inv.role,
+            claimed=inv.claimed,
+            claimed_at=inv.claimed_at,
+            created_at=inv.created_at,
+        ) for inv in invites],
+        total=len(invites)
+    )
+
+
+@router.post("/{workspace_id}/invites", response_model=WorkspaceInviteResponse, status_code=status.HTTP_201_CREATED)
+async def add_workspace_invite(
+    workspace_id: int,
+    data: WorkspaceInviteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add an authorized email to a workspace. Admin only."""
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    # Check if email already exists
+    existing = db.query(WorkspaceInvite).filter(
+        WorkspaceInvite.workspace_id == workspace_id,
+        WorkspaceInvite.email == data.email.lower()
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Email déjà autorisé pour ce workspace")
+    
+    invite = WorkspaceInvite(
+        workspace_id=workspace_id,
+        email=data.email.lower(),
+        role=data.role,
+        invited_by=current_user.id,
+    )
+    
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+    
+    return WorkspaceInviteResponse(
+        id=invite.id,
+        workspace_id=invite.workspace_id,
+        email=invite.email,
+        role=invite.role,
+        claimed=invite.claimed,
+        claimed_at=invite.claimed_at,
+        created_at=invite.created_at,
+    )
+
+
+@router.delete("/{workspace_id}/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_workspace_invite(
+    workspace_id: int,
+    invite_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove an authorized email from a workspace. Admin only."""
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    invite = db.query(WorkspaceInvite).filter(
+        WorkspaceInvite.id == invite_id,
+        WorkspaceInvite.workspace_id == workspace_id
+    ).first()
+    
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    
+    db.delete(invite)
+    db.commit()
+
+
+# ============================================================================
+# AUTO-ASSIGN WORKSPACE ON LOGIN
+# ============================================================================
+
+def auto_assign_user_to_workspaces(db: Session, user: User) -> List[int]:
+    """
+    Check if user's email matches any workspace invites.
+    If so, add them as a member and mark invite as claimed.
+    Returns list of workspace IDs the user was added to.
+    """
+    from datetime import datetime
+    
+    invites = db.query(WorkspaceInvite).filter(
+        WorkspaceInvite.email == user.email.lower(),
+        WorkspaceInvite.claimed == False
+    ).all()
+    
+    workspace_ids = []
+    
+    for invite in invites:
+        # Check if already a member
+        existing_member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.workspace_id == invite.workspace_id,
+            WorkspaceMember.user_id == user.id
+        ).first()
+        
+        if not existing_member:
+            # Add as member
+            member = WorkspaceMember(
+                workspace_id=invite.workspace_id,
+                user_id=user.id,
+                role=invite.role,
+                invited_by=invite.invited_by,
+            )
+            db.add(member)
+            workspace_ids.append(invite.workspace_id)
+        
+        # Mark invite as claimed
+        invite.claimed = True
+        invite.claimed_at = datetime.utcnow()
+        invite.claimed_by_user_id = user.id
+    
+    if invites:
+        db.commit()
+    
+    return workspace_ids

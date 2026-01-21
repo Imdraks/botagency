@@ -8,10 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/store/auth";
-import { Bell, User, Lock, Palette, LayoutDashboard, Calendar, Bookmark } from "lucide-react";
+import { Bell, User, Lock, Palette, LayoutDashboard, Bookmark } from "lucide-react";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { DashboardCustomizer } from "@/components/settings/DashboardCustomizer";
-import { GoogleCalendarIntegration } from "@/components/settings/GoogleCalendarIntegration";
 import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
@@ -40,10 +39,6 @@ function SettingsContent() {
           <TabsTrigger value="dashboard">
             <LayoutDashboard className="h-4 w-4 mr-2" />
             Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="calendar">
-            <Calendar className="h-4 w-4 mr-2" />
-            Calendrier
           </TabsTrigger>
           <TabsTrigger value="security">
             <Lock className="h-4 w-4 mr-2" />
@@ -83,10 +78,6 @@ function SettingsContent() {
 
         <TabsContent value="dashboard">
           <DashboardCustomizer />
-        </TabsContent>
-
-        <TabsContent value="calendar">
-          <GoogleCalendarIntegration />
         </TabsContent>
 
         <TabsContent value="security">

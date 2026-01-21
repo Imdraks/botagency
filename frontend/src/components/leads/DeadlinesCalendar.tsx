@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   format,
   startOfMonth,
@@ -35,12 +35,8 @@ import {
   Euro,
   Building2,
   ExternalLink,
-  Link as LinkIcon,
-  Unlink,
-  Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
 
 // Type pour les items du calendrier (deadline ou événement Google)
 interface CalendarItem {
@@ -146,7 +142,6 @@ export function DeadlinesCalendar() {
     date: Date;
     items: CalendarItem[];
   } | null>(null);
-  const queryClient = useQueryClient();
 
   // Fetch opportunities
   const { data: oppData, isLoading: isLoadingOpps } = useQuery({
@@ -174,30 +169,6 @@ export function DeadlinesCalendar() {
     ),
     enabled: calendarStatus?.connected === true,
     retry: false,
-  });
-
-  // Connect Google Calendar mutation
-  const connectMutation = useMutation({
-    mutationFn: async () => {
-      const result = await googleCalendarApi.getAuthUrl();
-      if (result.auth_url) {
-        window.location.href = result.auth_url;
-      }
-      return result;
-    },
-  });
-
-  // Disconnect Google Calendar mutation
-  const disconnectMutation = useMutation({
-    mutationFn: () => googleCalendarApi.disconnect(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["google-calendar-status"] });
-      queryClient.invalidateQueries({ queryKey: ["google-calendar-events"] });
-      toast.success("Google Calendar déconnecté");
-    },
-    onError: () => {
-      toast.error("Erreur lors de la déconnexion");
-    },
   });
 
   // Extract items from paginated response
@@ -296,44 +267,10 @@ export function DeadlinesCalendar() {
               <CalendarIcon className="h-5 w-5" />
               Calendrier des Deadlines
             </CardTitle>
-            <div className="flex items-center gap-4">
-              {/* Google Calendar connection button */}
-              {calendarStatus?.connected ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => disconnectMutation.mutate()}
-                  disabled={disconnectMutation.isPending}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  {disconnectMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Unlink className="h-4 w-4 mr-2" />
-                  )}
-                  Déconnecter Google
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => connectMutation.mutate()}
-                  disabled={connectMutation.isPending}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  {connectMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                  )}
-                  Connecter Google Calendar
-                </Button>
-              )}
-              
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={goToToday}>
-                  Aujourd'hui
-                </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                Aujourd'hui
+              </Button>
               <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -343,7 +280,6 @@ export function DeadlinesCalendar() {
               <Button variant="outline" size="icon" onClick={goToNextMonth}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              </div>
             </div>
           </div>
         </CardHeader>

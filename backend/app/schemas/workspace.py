@@ -116,6 +116,36 @@ class WorkspaceMemberUpdate(BaseModel):
 
 
 # ============================================================================
+# WORKSPACE INVITE (Authorized Emails)
+# ============================================================================
+
+class WorkspaceInviteCreate(BaseModel):
+    """Add an authorized email to workspace"""
+    email: str = Field(..., description="Email to authorize")
+    role: WorkspaceRole = WorkspaceRole.MEMBER
+
+
+class WorkspaceInviteResponse(BaseModel):
+    """Response for workspace invite"""
+    id: int
+    workspace_id: int
+    email: str
+    role: WorkspaceRole
+    claimed: bool
+    claimed_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WorkspaceInviteListResponse(BaseModel):
+    """List of authorized emails"""
+    items: List[WorkspaceInviteResponse]
+    total: int
+
+
+# ============================================================================
 # GOOGLE DRIVE STRUCTURE
 # ============================================================================
 

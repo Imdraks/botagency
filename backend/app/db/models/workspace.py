@@ -131,6 +131,41 @@ class WorkspaceMember(Base):
 
 
 # ============================================================================
+# WORKSPACE INVITE (Authorized Emails)
+# ============================================================================
+
+class WorkspaceInvite(Base):
+    """
+    Authorized email for a workspace.
+    When a user signs up/logs in with this email, they are auto-added to the workspace.
+    """
+    __tablename__ = "workspace_invites"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "email", name="uq_workspace_invite_email"),
+        Index("ix_workspace_invites_email", "email"),
+        Index("ix_workspace_invites_workspace_id", "workspace_id"),
+        {"extend_existing": True}
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="member")
+    
+    # Tracking
+    invited_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    claimed: Mapped[bool] = mapped_column(Boolean, default=False)
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    claimed_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", backref="invites")
+
+
+# ============================================================================
 # INBOX ITEM
 # ============================================================================
 

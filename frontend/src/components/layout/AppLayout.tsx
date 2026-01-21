@@ -80,8 +80,11 @@ const markPageAsVisited = (href: string): void => {
 };
 
 // ============================================================================
-// NAVIGATION V3 - Daily Agency Hub (7 main items + Outils)
+// NAVIGATION V3 - Daily Agency Hub
 // Today & Inbox first = daily adoption
+// Core: Pipeline, Projets, Production, Assets, Calendrier
+// Outils: groupe replié par défaut
+// Admin: visible seulement pour admins
 // ============================================================================
 
 // Common navigation item type
@@ -94,6 +97,7 @@ interface NavItem {
   superadminOnly?: boolean;
 }
 
+// Main navigation - always visible at top
 const mainNavigation: NavItem[] = [
   { name: "Aujourd'hui", href: "/today", icon: Sun, isNew: true },
   { name: "Inbox", href: "/inbox", icon: Inbox, isNew: true },
@@ -104,7 +108,7 @@ const mainNavigation: NavItem[] = [
   { name: "Calendrier", href: "/agency-calendar", icon: Calendar },
 ];
 
-// Secondary tools navigation (collapsible)
+// Outils navigation (collapsible) - for daily workflows
 const toolsNavigation: NavItem[] = [
   { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard },
   { name: "Clients", href: "/clients", icon: Briefcase },
@@ -113,20 +117,25 @@ const toolsNavigation: NavItem[] = [
   { name: "Dossiers", href: "/dossiers", icon: FileText },
   { name: "Kanban Leads", href: "/leads/kanban", icon: Kanban },
   { name: "Deadlines", href: "/deadlines", icon: Clock },
-  { name: "Profils", href: "/profiles", icon: Sliders },
+  { name: "Analytics", href: "/analytics", icon: TrendingUp },
   { name: "Artistes", href: "/artist-history", icon: Music },
   { name: "Découverte", href: "/discovery", icon: Search },
   { name: "Comparaison", href: "/comparison", icon: GitCompare },
-  { name: "Sources", href: "/sources", icon: Rss },
-  { name: "Source Health", href: "/source-health", icon: HeartPulse },
-  { name: "Analytics", href: "/analytics", icon: TrendingUp },
-  { name: "Veille Concur.", href: "/competitive", icon: Eye },
   { name: "Carte", href: "/map", icon: Map },
-  { name: "Prédictions IA", href: "/predictions", icon: Brain },
-  { name: "Scoring", href: "/scoring", icon: BarChart3 },
+  { name: "Veille Concur.", href: "/competitive", icon: Eye },
 ];
 
-// Admin navigation
+// Admin Tools navigation (collapsible) - technical/admin only
+const adminToolsNavigation: NavItem[] = [
+  { name: "Workspaces", href: "/workspaces", icon: FolderOpen, adminOnly: true },
+  { name: "Sources", href: "/sources", icon: Rss, adminOnly: true },
+  { name: "Source Health", href: "/source-health", icon: HeartPulse, adminOnly: true },
+  { name: "Profils", href: "/profiles", icon: Sliders, adminOnly: true },
+  { name: "Scoring", href: "/scoring", icon: BarChart3, adminOnly: true },
+  { name: "Prédictions IA", href: "/predictions", icon: Brain, adminOnly: true },
+];
+
+// Bottom navigation
 const adminNavigation: NavItem[] = [
   { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
   { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },
@@ -134,7 +143,7 @@ const adminNavigation: NavItem[] = [
 ];
 
 // Combined navigation for backward compatibility
-const navigation = [...mainNavigation, ...toolsNavigation, ...adminNavigation];
+const navigation = [...mainNavigation, ...toolsNavigation, ...adminToolsNavigation, ...adminNavigation];
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -146,6 +155,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitedPages, setVisitedPages] = useState<string[]>([]);
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [adminExpanded, setAdminExpanded] = useState(false);
 
   // Load visited pages on mount
   useEffect(() => {
@@ -173,6 +183,14 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       if (isToolPage) {
         setToolsExpanded(true);
       }
+      
+      // Auto-expand admin if current page is in admin tools section
+      const isAdminToolPage = adminToolsNavigation.some(
+        (item) => pathname === item.href || pathname.startsWith(item.href)
+      );
+      if (isAdminToolPage) {
+        setAdminExpanded(true);
+      }
     }
   }, [pathname]);
 
@@ -185,6 +203,14 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const isSuperuser = user?.is_superuser === true;
 
   const filteredToolsNavigation = toolsNavigation.filter(
+    (item) => {
+      if (item.superadminOnly) return isSuperuser;
+      if (item.adminOnly) return isAdmin || isSuperuser;
+      return true;
+    }
+  );
+  
+  const filteredAdminToolsNavigation = adminToolsNavigation.filter(
     (item) => {
       if (item.superadminOnly) return isSuperuser;
       if (item.adminOnly) return isAdmin || isSuperuser;
@@ -224,7 +250,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-5 border-b border-gray-200 dark:border-gray-800">
-            <Link href="/dashboard" className="flex items-center gap-3">
+            <Link href="/today" className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#0000FF] dark:bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 dark:shadow-blue-500/30">
                 <Target className="h-5 w-5 text-white" />
               </div>
@@ -278,50 +304,98 @@ function AppLayoutInner({ children }: AppLayoutProps) {
               {/* Divider */}
               <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
               
-              {/* Tools Section - Collapsible */}
-              <button
-                onClick={() => setToolsExpanded(!toolsExpanded)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-150"
-              >
-                <Wrench className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
-                <span className="flex-1 text-left">Outils</span>
-                <ChevronDown className={cn(
-                  "h-4 w-4 text-gray-400 transition-transform duration-200",
-                  toolsExpanded ? "rotate-180" : ""
-                )} />
-              </button>
+              {/* Tools Section - Collapsible - Only for non-admin users */}
+              {!isAdmin && (
+                <>
+                  <button
+                    onClick={() => setToolsExpanded(!toolsExpanded)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+                  >
+                    <Wrench className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                    <span className="flex-1 text-left">Outils</span>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-gray-400 transition-transform duration-200",
+                      toolsExpanded ? "rotate-180" : ""
+                    )} />
+                  </button>
+                  
+                  {toolsExpanded && (
+                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 pl-3">
+                      {filteredToolsNavigation.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(item.href);
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                              isActive
+                                ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
+                            )}
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            <item.icon className={cn(
+                              "h-4 w-4 flex-shrink-0",
+                              isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                            )} />
+                            <span className="flex-1">{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
               
-              {toolsExpanded && (
-                <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 pl-3">
-                  {filteredToolsNavigation.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href);
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                          isActive
-                            ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
-                            : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
-                        )}
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        <item.icon className={cn(
-                          "h-4 w-4 flex-shrink-0",
-                          isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
-                        )} />
-                        <span className="flex-1">{item.name}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
+              {/* Admin Tools Section - Collapsible (visible only for admins) */}
+              {filteredAdminToolsNavigation.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setAdminExpanded(!adminExpanded)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+                  >
+                    <Settings className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                    <span className="flex-1 text-left">Admin</span>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-gray-400 transition-transform duration-200",
+                      adminExpanded ? "rotate-180" : ""
+                    )} />
+                  </button>
+                  
+                  {adminExpanded && (
+                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 pl-3">
+                      {filteredAdminToolsNavigation.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(item.href);
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                              isActive
+                                ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
+                            )}
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            <item.icon className={cn(
+                              "h-4 w-4 flex-shrink-0",
+                              isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                            )} />
+                            <span className="flex-1">{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
               
               {/* Divider */}
               <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
               
-              {/* Admin Navigation */}
+              {/* Bottom Navigation - Paramètres + Admin items */}
               {filteredAdminNavigation.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href);
                 return (

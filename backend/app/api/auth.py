@@ -173,6 +173,10 @@ def login(
     user.last_login_at = datetime.utcnow()
     db.commit()
     
+    # Auto-assign user to workspaces based on email invites
+    from app.api.workspace import auto_assign_user_to_workspaces
+    auto_assign_user_to_workspaces(db, user)
+    
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
