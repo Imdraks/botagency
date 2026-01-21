@@ -26,7 +26,7 @@ from app.db.models.collections import (
     LeadItem, LeadItemKind, LeadItemStatus, DossierV2,
     SourceDocumentV2, Evidence, DossierObjective, DossierState
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_user_workspace_id
 from app.schemas.collections import (
     OpportunityResponse, OpportunityDetailResponse, OpportunityListResponse,
     UpdateOpportunityRequest, BulkUpdateOpportunitiesRequest,
@@ -45,6 +45,8 @@ router = APIRouter(prefix="/leads", tags=["Leads"])
 @router.get("", response_model=OpportunityListResponse)
 @router.get("/", response_model=OpportunityListResponse)
 def list_opportunities(
+    # Workspace (required for data isolation)
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     # Pagination
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -74,6 +76,7 @@ def list_opportunities(
     """
     Liste paginée des opportunités avec filtres côté serveur.
     
+    - **workspace_id**: ID du workspace (obligatoire pour l'isolation des données)
     - **search**: Recherche dans titre, description, organisation
     - **status**: Filtrer par statut(s)
     - **score_min/max**: Plage de score
@@ -82,8 +85,14 @@ def list_opportunities(
     - **has_contact**: Uniquement avec contact
     - **has_deadline**: Uniquement avec deadline
     """
-    # Base query: seulement les OPPORTUNITY
-    query = db.query(LeadItem).filter(LeadItem.kind == LeadItemKind.OPPORTUNITY.value)
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
+    # Base query: seulement les OPPORTUNITY du workspace
+    query = db.query(LeadItem).filter(
+        LeadItem.kind == LeadItemKind.OPPORTUNITY.value,
+        LeadItem.workspace_id == ws_id
+    )
 
     # ===== FILTRES =====
     
@@ -219,13 +228,18 @@ def list_opportunities(
 @router.get("/{opportunity_id}", response_model=OpportunityDetailResponse)
 def get_opportunity(
     opportunity_id: UUID,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Détail complet d'une opportunité avec evidence et documents"""
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
     item = db.query(LeadItem).filter(
         LeadItem.id == opportunity_id,
-        LeadItem.kind == LeadItemKind.OPPORTUNITY.value
+        LeadItem.kind == LeadItemKind.OPPORTUNITY.value,
+        LeadItem.workspace_id == ws_id
     ).first()
 
     if not item:
@@ -289,13 +303,18 @@ def get_opportunity(
 def update_opportunity(
     opportunity_id: UUID,
     request: UpdateOpportunityRequest,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Mettre à jour une opportunité (statut, tags, assignation)"""
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
     item = db.query(LeadItem).filter(
         LeadItem.id == opportunity_id,
-        LeadItem.kind == LeadItemKind.OPPORTUNITY.value
+        LeadItem.kind == LeadItemKind.OPPORTUNITY.value,
+        LeadItem.workspace_id == ws_id
     ).first()
 
     if not item:
@@ -321,13 +340,18 @@ def update_opportunity(
 @router.post("/bulk-update")
 def bulk_update_opportunities(
     request: BulkUpdateOpportunitiesRequest,
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Mise à jour en masse des opportunités"""
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
     items = db.query(LeadItem).filter(
         LeadItem.id.in_(request.ids),
-        LeadItem.kind == LeadItemKind.OPPORTUNITY.value
+        LeadItem.kind == LeadItemKind.OPPORTUNITY.value,
+        LeadItem.workspace_id == ws_id
     ).all()
 
     if not items:
@@ -361,13 +385,18 @@ def create_dossier_from_opportunity(
     opportunity_id: UUID,
     objective: DossierObjectiveEnum = Query(...),
     target_entities: Optional[List[str]] = Query(None),
+    workspace_id: Optional[int] = Query(None, description="Workspace ID for data isolation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Créer un dossier enrichi depuis une opportunité"""
+    # Get and validate workspace access
+    ws_id = get_user_workspace_id(workspace_id, current_user, db)
+    
     item = db.query(LeadItem).filter(
         LeadItem.id == opportunity_id,
-        LeadItem.kind == LeadItemKind.OPPORTUNITY.value
+        LeadItem.kind == LeadItemKind.OPPORTUNITY.value,
+        LeadItem.workspace_id == ws_id
     ).first()
 
     if not item:

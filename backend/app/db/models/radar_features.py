@@ -42,9 +42,10 @@ class Profile(Base):
     __tablename__ = "profiles"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    workspace_id = Column(Integer, ForeignKey('workspaces.id', ondelete='CASCADE'), nullable=True, index=True)
     
     # Basic info
-    name = Column(String(100), nullable=False, unique=True)
+    name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     

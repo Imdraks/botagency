@@ -90,3 +90,56 @@ def get_current_admin_user(
             detail="Admin access required",
         )
     return current_user
+
+
+def get_user_workspace_id(
+    workspace_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> int:
+    """
+    Get the workspace_id for the current user.
+    - If workspace_id is provided, validate user has access
+    - If not provided, get user's primary workspace
+    - Global admins can access any workspace
+    """
+    from app.db.models.workspace import WorkspaceMember
+    
+    # Global admin can access any workspace
+    if current_user.role == Role.ADMIN or current_user.is_superuser:
+        if workspace_id:
+            return workspace_id
+        # For admin without workspace_id, return first workspace or None
+        first_member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == current_user.id
+        ).first()
+        if first_member:
+            return first_member.workspace_id
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No workspace found. Please specify workspace_id.",
+        )
+    
+    # Regular user - check access
+    if workspace_id:
+        has_access = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.workspace_id == workspace_id
+        ).first()
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this workspace",
+            )
+        return workspace_id
+    
+    # No workspace_id provided - get user's primary/only workspace
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.user_id == current_user.id
+    ).first()
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a member of any workspace",
+        )
+    return member.workspace_id
