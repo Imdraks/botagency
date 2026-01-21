@@ -206,11 +206,13 @@ class Project(Base):
     report_sheet_id: Mapped[Optional[str]] = mapped_column(String(100))
     
     # Google Drive subfolder IDs
+    drive_folder_assets: Mapped[Optional[str]] = mapped_column(String(100))  # 00_Assets
     drive_folder_brief: Mapped[Optional[str]] = mapped_column(String(100))
     drive_folder_production: Mapped[Optional[str]] = mapped_column(String(100))
     drive_folder_postprod: Mapped[Optional[str]] = mapped_column(String(100))
     drive_folder_exports: Mapped[Optional[str]] = mapped_column(String(100))
     drive_folder_admin: Mapped[Optional[str]] = mapped_column(String(100))
+    drive_folder_livrables: Mapped[Optional[str]] = mapped_column(String(100))  # 07_Livrables
     drive_folder_archive: Mapped[Optional[str]] = mapped_column(String(100))
     
     # Next action tracking

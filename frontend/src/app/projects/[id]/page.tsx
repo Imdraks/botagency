@@ -1328,7 +1328,8 @@ export default function ProjectDetailPage() {
                     Uploader un fichier vers Google Drive
                   </Label>
                   
-                  {driveFolders?.folders && driveFolders.folders.some(f => f.folder_id) ? (
+                  {/* Check if any drive folder is available (subfolders OR root folder) */}
+                  {(driveFolders?.folders?.some(f => f.folder_id) || driveFolders?.drive_folder_id) ? (
                     <>
                       {/* Folder Selection */}
                       <div>
@@ -1341,8 +1342,17 @@ export default function ProjectDetailPage() {
                             <SelectValue placeholder="Choisir un dossier..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {driveFolders.folders
-                              .filter(f => f.folder_id)
+                            {/* Root folder as fallback if no subfolders */}
+                            {driveFolders?.drive_folder_id && (
+                              <SelectItem value={driveFolders.drive_folder_id}>
+                                <div className="flex items-center gap-2">
+                                  <Folder className="h-4 w-4 text-blue-500" />
+                                  📁 Dossier racine du projet
+                                </div>
+                              </SelectItem>
+                            )}
+                            {driveFolders?.folders
+                              ?.filter(f => f.folder_id)
                               .map(folder => (
                                 <SelectItem key={folder.key} value={folder.folder_id!}>
                                   <div className="flex items-center gap-2">
@@ -1415,9 +1425,14 @@ export default function ProjectDetailPage() {
                       )}
                     </>
                   ) : (
-                    <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                      Aucun dossier Drive disponible. Créez d'abord la structure Drive du projet.
+                    <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        Aucun dossier Drive disponible.
+                      </div>
+                      <p className="text-xs text-amber-500">
+                        Cliquez sur le bouton <strong>"Drive"</strong> en haut de la page pour créer la structure de dossiers du projet.
+                      </p>
                     </div>
                   )}
                 </div>

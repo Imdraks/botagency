@@ -10,6 +10,7 @@ import {
   Video,
   Cloud,
   Link as LinkIcon,
+  Link2,
   File,
   ExternalLink,
   Trash2,
@@ -22,6 +23,8 @@ import {
   Loader2,
   X,
   Check,
+  Upload,
+  FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,6 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -52,6 +56,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 
 import {
   assetsApi,
@@ -62,7 +72,10 @@ import {
   AssetCreateRequest,
   ASSET_TYPE_CONFIG,
   ASSET_STATUS_CONFIG,
+  googleWorkspaceApi,
+  projectDriveApi,
 } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // ASSET TYPE ICON COMPONENT
@@ -316,7 +329,7 @@ export function AssetsFilters({
 }
 
 // ============================================================================
-// ADD ASSET DIALOG COMPONENT
+// ADD ASSET DIALOG COMPONENT (with file upload support)
 // ============================================================================
 
 interface AddAssetDialogProps {
@@ -330,31 +343,117 @@ interface AddAssetDialogProps {
 export function AddAssetDialog({
   open,
   onOpenChange,
-  projectId,
+  projectId: initialProjectId,
   projects = [],
   onSuccess,
 }: AddAssetDialogProps) {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'link' | 'upload'>('link');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const dropZoneRef = React.useRef<HTMLDivElement>(null);
+  
   const [formData, setFormData] = useState<AssetCreateRequest>({
-    project_id: projectId || 0,
+    project_id: initialProjectId || 0,
     name: '',
     url: '',
     type: 'LINK',
     status: 'DRAFT',
   });
   
+  // Fetch drive folders for selected project (for upload)
+  const { data: driveFolders } = useQuery({
+    queryKey: ['project-drive-folders', formData.project_id],
+    queryFn: () => projectDriveApi.getDriveFolders(formData.project_id),
+    enabled: formData.project_id > 0 && activeTab === 'upload',
+  });
+  
+  // Get assets folder ID
+  const assetsFolderId = driveFolders?.folders?.find(
+    (f: { key: string; folder_id: string | null }) => f.key === 'assets'
+  )?.folder_id;
+  
   // Reset form when dialog opens
   React.useEffect(() => {
     if (open) {
       setFormData({
-        project_id: projectId || 0,
+        project_id: initialProjectId || 0,
         name: '',
         url: '',
         type: 'LINK',
         status: 'DRAFT',
       });
+      setSelectedFile(null);
+      setUploadProgress(0);
+      setActiveTab('link');
     }
-  }, [open, projectId]);
+  }, [open, initialProjectId]);
+  
+  // Auto-detect type from file
+  const detectTypeFromFile = (file: File): AssetType => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    
+    // Map file extensions to existing AssetType values
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(extension)) return 'DOC';
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(extension)) return 'SHEET';
+    // Everything else uploaded to Drive becomes 'DRIVE' type
+    return 'DRIVE';
+  };
+  
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      // Auto-fill name if empty
+      if (!formData.name) {
+        setFormData((prev: AssetCreateRequest) => ({ ...prev, name: file.name, type: detectTypeFromFile(file) }));
+      } else {
+        setFormData((prev: AssetCreateRequest) => ({ ...prev, type: detectTypeFromFile(file) }));
+      }
+    }
+  };
+  
+  // Drag & Drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+  
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setSelectedFile(file);
+      // Auto-fill name if empty
+      if (!formData.name) {
+        setFormData((prev: AssetCreateRequest) => ({ ...prev, name: file.name, type: detectTypeFromFile(file) }));
+      } else {
+        setFormData((prev: AssetCreateRequest) => ({ ...prev, type: detectTypeFromFile(file) }));
+      }
+    }
+  };
   
   const createMutation = useMutation({
     mutationFn: (data: AssetCreateRequest) => assetsApi.create(data),
@@ -373,7 +472,53 @@ export function AddAssetDialog({
     },
   });
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = async () => {
+    if (!selectedFile || !formData.project_id) {
+      toast.error('Veuillez sélectionner un fichier et un projet');
+      return;
+    }
+    
+    if (!assetsFolderId) {
+      toast.error('Aucun dossier Assets configuré. Veuillez d\'abord créer la structure Drive du projet.');
+      return;
+    }
+    
+    setIsUploading(true);
+    setUploadProgress(10);
+    
+    try {
+      // Upload to Google Drive
+      setUploadProgress(30);
+      const uploadResult = await googleWorkspaceApi.uploadFileToDrive(
+        selectedFile,
+        assetsFolderId,
+        formData.name || selectedFile.name,
+        (progress) => setUploadProgress(30 + Math.floor(progress * 0.5))
+      );
+      setUploadProgress(80);
+      
+      // Create asset record with Drive link
+      const assetData: AssetCreateRequest = {
+        project_id: formData.project_id,
+        name: formData.name || selectedFile.name,
+        url: uploadResult.web_view_link,
+        type: formData.type,
+        status: formData.status,
+        version: formData.version,
+      };
+      
+      setUploadProgress(90);
+      await createMutation.mutateAsync(assetData);
+      setUploadProgress(100);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error?.response?.data?.detail || 'Erreur lors de l\'upload');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  
+  const handleLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.project_id || !formData.name || !formData.url) {
       toast.error('Veuillez remplir tous les champs obligatoires');
@@ -384,129 +529,335 @@ export function AddAssetDialog({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>Ajouter un asset</DialogTitle>
           <DialogDescription>
-            Ajoutez un lien vers une ressource externe (Drive, Figma, Dropbox, etc.)
+            Ajoutez un lien externe ou uploadez un fichier vers Google Drive
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Project selector (if not pre-set) */}
-          {!projectId && projects.length > 0 && (
-            <div>
-              <Label>Projet *</Label>
-              <Select
-                value={formData.project_id?.toString() || ''}
-                onValueChange={(v) => setFormData({ ...formData, project_id: parseInt(v) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un projet" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {/* Name */}
+        {/* Project selector (always visible if multiple projects) */}
+        {!initialProjectId && projects.length > 0 && (
           <div>
-            <Label>Nom *</Label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Maquette Figma v2"
-            />
-          </div>
-          
-          {/* URL */}
-          <div>
-            <Label>URL *</Label>
-            <Input
-              value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              placeholder="https://..."
-            />
-          </div>
-          
-          <div className="grid grid-cols-3 gap-4">
-            {/* Type */}
-            <div>
-              <Label>Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(v) => setFormData({ ...formData, type: v as AssetType })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ASSET_TYPE_CONFIG).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Version */}
-            <div>
-              <Label>Version</Label>
-              <Input
-                value={formData.version || ''}
-                onChange={(e) => setFormData({ ...formData, version: e.target.value || undefined })}
-                placeholder="v1, final..."
-              />
-            </div>
-            
-            {/* Status */}
-            <div>
-              <Label>Statut</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(v) => setFormData({ ...formData, status: v as AssetStatus })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ASSET_STATUS_CONFIG).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || !formData.project_id || !formData.name || !formData.url}
-              className="bg-purple-600 hover:bg-purple-700"
+            <Label>Projet *</Label>
+            <Select
+              value={formData.project_id?.toString() || ''}
+              onValueChange={(v) => setFormData({ ...formData, project_id: parseInt(v) })}
             >
-              {createMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                'Ajouter'
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un projet" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id.toString()}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'link' | 'upload')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="link" className="flex items-center gap-2">
+              <Link2 className="h-4 w-4" />
+              Lien externe
+            </TabsTrigger>
+            <TabsTrigger value="upload" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Uploader
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* LINK TAB */}
+          <TabsContent value="link" className="space-y-4 mt-4">
+            <form onSubmit={handleLinkSubmit} className="space-y-4">
+              {/* Name */}
+              <div>
+                <Label>Nom *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Maquette Figma v2"
+                />
+              </div>
+              
+              {/* URL */}
+              <div>
+                <Label>URL *</Label>
+                <Input
+                  value={formData.url}
+                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                {/* Type */}
+                <div>
+                  <Label>Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(v) => setFormData({ ...formData, type: v as AssetType })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ASSET_TYPE_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Version */}
+                <div>
+                  <Label>Version</Label>
+                  <Input
+                    value={formData.version || ''}
+                    onChange={(e) => setFormData({ ...formData, version: e.target.value || undefined })}
+                    placeholder="v1, final..."
+                  />
+                </div>
+                
+                {/* Status */}
+                <div>
+                  <Label>Statut</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(v) => setFormData({ ...formData, status: v as AssetStatus })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ASSET_STATUS_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending || !formData.project_id || !formData.name || !formData.url}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    'Ajouter'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+          
+          {/* UPLOAD TAB */}
+          <TabsContent value="upload" className="space-y-4 mt-4">
+            {!formData.project_id ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FolderOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Veuillez d'abord sélectionner un projet</p>
+              </div>
+            ) : !assetsFolderId && driveFolders ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FolderOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Aucun dossier Assets configuré pour ce projet</p>
+                <p className="text-sm mt-1">
+                  Créez d'abord la structure Drive du projet
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* File picker with drag & drop */}
+                <div>
+                  <Label>Fichier *</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <div
+                    ref={dropZoneRef}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200",
+                      isDragging
+                        ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 scale-[1.02]"
+                        : selectedFile 
+                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" 
+                          : "border-muted-foreground/25 hover:border-purple-500 hover:bg-purple-50/50"
+                    )}
+                  >
+                    {isDragging ? (
+                      <div className="py-4">
+                        <Upload className="h-12 w-12 mx-auto mb-3 text-purple-600 animate-bounce" />
+                        <p className="text-purple-600 font-medium text-lg">
+                          Déposez votre fichier ici
+                        </p>
+                      </div>
+                    ) : selectedFile ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <File className="h-8 w-8 text-purple-600" />
+                        <div className="text-left">
+                          <p className="font-medium">{selectedFile.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(null);
+                          }}
+                          className="ml-2"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                        <p className="text-muted-foreground font-medium">
+                          Glissez-déposez un fichier ici
+                        </p>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
+                          ou cliquez pour sélectionner
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Name */}
+                <div>
+                  <Label>Nom</Label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder={selectedFile?.name || "Nom du fichier"}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Type */}
+                  <div>
+                    <Label>Type</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(v) => setFormData({ ...formData, type: v as AssetType })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ASSET_TYPE_CONFIG).map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Version */}
+                  <div>
+                    <Label>Version</Label>
+                    <Input
+                      value={formData.version || ''}
+                      onChange={(e) => setFormData({ ...formData, version: e.target.value || undefined })}
+                      placeholder="v1, final..."
+                    />
+                  </div>
+                  
+                  {/* Status */}
+                  <div>
+                    <Label>Statut</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(v) => setFormData({ ...formData, status: v as AssetStatus })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ASSET_STATUS_CONFIG).map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Upload progress */}
+                {isUploading && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Upload en cours...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-2" />
+                  </div>
+                )}
+                
+                <DialogFooter>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => onOpenChange(false)}
+                    disabled={isUploading}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleUploadSubmit}
+                    disabled={isUploading || !selectedFile || !formData.project_id}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Upload...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Uploader
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

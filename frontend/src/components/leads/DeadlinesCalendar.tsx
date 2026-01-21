@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   format,
   startOfMonth,
@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { opportunitiesApi } from "@/lib/api";
+import { opportunitiesApi, googleCalendarApi, GoogleCalendarEvent } from "@/lib/api";
 import { Opportunity } from "@/lib/types";
 import { formatCurrency, getScoreColor } from "@/lib/utils";
 import {
@@ -35,35 +35,57 @@ import {
   Euro,
   Building2,
   ExternalLink,
+  Link as LinkIcon,
+  Unlink,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+
+// Type pour les items du calendrier (deadline ou événement Google)
+interface CalendarItem {
+  id: string;
+  title: string;
+  type: "deadline" | "google";
+  opportunity?: Opportunity;
+  googleEvent?: GoogleCalendarEvent;
+  score?: number;
+}
 
 interface CalendarDayProps {
   date: Date;
-  opportunities: Opportunity[];
+  items: CalendarItem[];
   isCurrentMonth: boolean;
-  onDayClick: (date: Date, opportunities: Opportunity[]) => void;
+  onDayClick: (date: Date, items: CalendarItem[]) => void;
+}
+
+function getItemColor(item: CalendarItem): string {
+  if (item.type === "google") {
+    return "bg-blue-500";
+  }
+  return getScoreColor(item.score);
 }
 
 function CalendarDay({
   date,
-  opportunities,
+  items,
   isCurrentMonth,
   onDayClick,
 }: CalendarDayProps) {
-  const hasDeadlines = opportunities.length > 0;
+  const hasItems = items.length > 0;
   const isCurrentDay = isToday(date);
-  const urgentCount = opportunities.filter((o) => (o.score ?? 0) >= 10).length;
+  const urgentCount = items.filter((i) => i.type === "deadline" && (i.score ?? 0) >= 10).length;
+  const googleCount = items.filter((i) => i.type === "google").length;
 
   return (
     <button
-      onClick={() => hasDeadlines && onDayClick(date, opportunities)}
-      disabled={!hasDeadlines}
+      onClick={() => hasItems && onDayClick(date, items)}
+      disabled={!hasItems}
       className={`
         min-h-[100px] p-2 border border-border rounded-lg text-left transition-colors
         ${!isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "bg-card hover:bg-accent"}
         ${isCurrentDay ? "ring-2 ring-primary" : ""}
-        ${hasDeadlines ? "cursor-pointer" : "cursor-default"}
+        ${hasItems ? "cursor-pointer" : "cursor-default"}
       `}
     >
       <div className="flex items-center justify-between mb-1">
@@ -76,29 +98,40 @@ function CalendarDay({
         >
           {format(date, "d")}
         </span>
-        {hasDeadlines && (
-          <Badge
-            variant={urgentCount > 0 ? "destructive" : "secondary"}
-            className="text-xs"
-          >
-            {opportunities.length}
-          </Badge>
+        {hasItems && (
+          <div className="flex gap-1">
+            {googleCount > 0 && (
+              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                {googleCount}
+              </Badge>
+            )}
+            {urgentCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {urgentCount}
+              </Badge>
+            )}
+            {items.length - googleCount - urgentCount > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {items.length - googleCount - urgentCount}
+              </Badge>
+            )}
+          </div>
         )}
       </div>
       
-      {hasDeadlines && (
+      {hasItems && (
         <div className="space-y-1">
-          {opportunities.slice(0, 3).map((opp) => (
+          {items.slice(0, 3).map((item) => (
             <div
-              key={opp.id}
-              className={`text-xs p-1 rounded truncate ${getScoreColor(opp.score)} text-white`}
+              key={item.id}
+              className={`text-xs p-1 rounded truncate ${getItemColor(item)} text-white`}
             >
-              {opp.title}
+              {item.title}
             </div>
           ))}
-          {opportunities.length > 3 && (
+          {items.length > 3 && (
             <div className="text-xs text-muted-foreground">
-              +{opportunities.length - 3} autres
+              +{items.length - 3} autres
             </div>
           )}
         </div>
@@ -111,19 +144,65 @@ export function DeadlinesCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<{
     date: Date;
-    opportunities: Opportunity[];
+    items: CalendarItem[];
   } | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  // Fetch opportunities
+  const { data: oppData, isLoading: isLoadingOpps } = useQuery({
     queryKey: ["opportunities", "calendar"],
     queryFn: () => opportunitiesApi.getAll({ limit: 500 }),
   });
 
-  // Extract items from paginated response
-  const opportunities = data?.items || [];
+  // Check Google Calendar connection status
+  const { data: calendarStatus, isLoading: isLoadingStatus } = useQuery({
+    queryKey: ["google-calendar-status"],
+    queryFn: () => googleCalendarApi.getStatus(),
+    retry: false,
+  });
 
+  // Calculate date range for fetching events
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
+
+  // Fetch Google Calendar events if connected
+  const { data: googleEvents, isLoading: isLoadingEvents } = useQuery({
+    queryKey: ["google-calendar-events", format(monthStart, "yyyy-MM-dd"), format(monthEnd, "yyyy-MM-dd")],
+    queryFn: () => googleCalendarApi.listEvents(
+      format(monthStart, "yyyy-MM-dd"),
+      format(monthEnd, "yyyy-MM-dd")
+    ),
+    enabled: calendarStatus?.connected === true,
+    retry: false,
+  });
+
+  // Connect Google Calendar mutation
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const result = await googleCalendarApi.getAuthUrl();
+      if (result.auth_url) {
+        window.location.href = result.auth_url;
+      }
+      return result;
+    },
+  });
+
+  // Disconnect Google Calendar mutation
+  const disconnectMutation = useMutation({
+    mutationFn: () => googleCalendarApi.disconnect(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["google-calendar-status"] });
+      queryClient.invalidateQueries({ queryKey: ["google-calendar-events"] });
+      toast.success("Google Calendar déconnecté");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la déconnexion");
+    },
+  });
+
+  // Extract items from paginated response
+  const opportunities = oppData?.items || [];
+
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   // Add days from previous and next month to fill the grid
@@ -143,32 +222,62 @@ export function DeadlinesCalendar() {
     return result;
   }, [days, startWeekday, endWeekday, monthStart, monthEnd]);
 
-  const opportunitiesByDate = useMemo(() => {
-    const map = new Map<string, Opportunity[]>();
+  // Combine opportunities and Google events by date
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, CalendarItem[]>();
     
+    // Add opportunities (deadlines)
     opportunities.forEach((opp: Opportunity) => {
       if (opp.deadline_at) {
         const dateKey = format(parseISO(opp.deadline_at), "yyyy-MM-dd");
         const existing = map.get(dateKey) || [];
-        map.set(dateKey, [...existing, opp]);
+        map.set(dateKey, [...existing, {
+          id: `opp-${opp.id}`,
+          title: opp.title,
+          type: "deadline" as const,
+          opportunity: opp,
+          score: opp.score,
+        }]);
       }
     });
+
+    // Add Google Calendar events
+    if (googleEvents && Array.isArray(googleEvents)) {
+      googleEvents.forEach((event: GoogleCalendarEvent) => {
+        if (event.start) {
+          // Parse the start date (can be date or datetime)
+          const startDate = event.start.includes("T") 
+            ? parseISO(event.start) 
+            : parseISO(event.start + "T00:00:00");
+          const dateKey = format(startDate, "yyyy-MM-dd");
+          const existing = map.get(dateKey) || [];
+          map.set(dateKey, [...existing, {
+            id: `google-${event.id}`,
+            title: event.summary || "Sans titre",
+            type: "google" as const,
+            googleEvent: event,
+          }]);
+        }
+      });
+    }
     
     return map;
-  }, [opportunities]);
+  }, [opportunities, googleEvents]);
 
-  const getOpportunitiesForDate = (date: Date) => {
+  const getItemsForDate = (date: Date) => {
     const dateKey = format(date, "yyyy-MM-dd");
-    return opportunitiesByDate.get(dateKey) || [];
+    return itemsByDate.get(dateKey) || [];
   };
 
-  const handleDayClick = (date: Date, opportunities: Opportunity[]) => {
-    setSelectedDay({ date, opportunities });
+  const handleDayClick = (date: Date, items: CalendarItem[]) => {
+    setSelectedDay({ date, items });
   };
 
   const goToPreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const goToNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const goToToday = () => setCurrentDate(new Date());
+
+  const isLoading = isLoadingOpps || isLoadingStatus;
 
   if (isLoading) {
     return (
@@ -187,10 +296,44 @@ export function DeadlinesCalendar() {
               <CalendarIcon className="h-5 w-5" />
               Calendrier des Deadlines
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={goToToday}>
-                Aujourd'hui
-              </Button>
+            <div className="flex items-center gap-4">
+              {/* Google Calendar connection button */}
+              {calendarStatus?.connected ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => disconnectMutation.mutate()}
+                  disabled={disconnectMutation.isPending}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  {disconnectMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Unlink className="h-4 w-4 mr-2" />
+                  )}
+                  Déconnecter Google
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => connectMutation.mutate()}
+                  disabled={connectMutation.isPending}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  {connectMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                  )}
+                  Connecter Google Calendar
+                </Button>
+              )}
+              
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  Aujourd'hui
+                </Button>
               <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -200,10 +343,19 @@ export function DeadlinesCalendar() {
               <Button variant="outline" size="icon" onClick={goToNextMonth}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          {/* Google Calendar loading indicator */}
+          {isLoadingEvents && calendarStatus?.connected && (
+            <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Chargement des événements Google Calendar...
+            </div>
+          )}
+
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-2 mb-2">
             {["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => (
@@ -222,7 +374,7 @@ export function DeadlinesCalendar() {
               <CalendarDay
                 key={index}
                 date={date}
-                opportunities={getOpportunitiesForDate(date)}
+                items={getItemsForDate(date)}
                 isCurrentMonth={isSameMonth(date, currentDate)}
                 onDayClick={handleDayClick}
               />
@@ -230,7 +382,11 @@ export function DeadlinesCalendar() {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 text-sm">
+          <div className="flex flex-wrap items-center gap-4 mt-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-blue-500"></div>
+              <span>Google Calendar</span>
+            </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-green-500"></div>
               <span>Score élevé (≥10)</span>
@@ -252,42 +408,96 @@ export function DeadlinesCalendar() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Deadlines du{" "}
+              Événements du{" "}
               {selectedDay && format(selectedDay.date, "d MMMM yyyy", { locale: fr })}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-3">
-              {selectedDay?.opportunities.map((opp) => (
-                <Card key={opp.id}>
+              {/* Google Calendar Events */}
+              {selectedDay?.items.filter(i => i.type === "google").map((item) => (
+                <Card key={item.id} className="border-blue-200 bg-blue-50/50">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <Link
-                          href={`/leads/${opp.id}`}
-                          className="font-medium hover:underline flex items-center gap-1"
-                        >
-                          {opp.title}
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
+                        {item.googleEvent?.html_link ? (
+                          <a
+                            href={item.googleEvent.html_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium hover:underline flex items-center gap-1 text-blue-700"
+                          >
+                            {item.title}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="font-medium text-blue-700">{item.title}</span>
+                        )}
                         
-                        {opp.organization_name && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                            <Building2 className="h-4 w-4" />
-                            {opp.organization_name}
+                        {item.googleEvent?.location && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            📍 {item.googleEvent.location}
                           </div>
                         )}
                         
-                        {opp.budget_amount && (
-                          <div className="flex items-center gap-1 text-sm mt-1">
-                            <Euro className="h-4 w-4" />
-                            {formatCurrency(opp.budget_amount)}
+                        {item.googleEvent?.description && (
+                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {item.googleEvent.description}
+                          </div>
+                        )}
+                        
+                        {item.googleEvent?.start && !item.googleEvent.all_day && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            🕐 {item.googleEvent.start.includes("T") 
+                              ? format(parseISO(item.googleEvent.start), "HH:mm", { locale: fr })
+                              : "Journée entière"
+                            }
+                            {item.googleEvent?.end && item.googleEvent.end.includes("T") && (
+                              <> - {format(parseISO(item.googleEvent.end), "HH:mm", { locale: fr })}</>
+                            )}
                           </div>
                         )}
                       </div>
                       
-                      <Badge className={`${getScoreColor(opp.score)} text-white`}>
-                        Score: {opp.score}
+                      <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                        Google
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {/* Opportunity Deadlines */}
+              {selectedDay?.items.filter(i => i.type === "deadline").map((item) => (
+                <Card key={item.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/leads/${item.opportunity?.id}`}
+                          className="font-medium hover:underline flex items-center gap-1"
+                        >
+                          {item.title}
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                        
+                        {item.opportunity?.organization_name && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <Building2 className="h-4 w-4" />
+                            {item.opportunity.organization_name}
+                          </div>
+                        )}
+                        
+                        {item.opportunity?.budget_amount && (
+                          <div className="flex items-center gap-1 text-sm mt-1">
+                            <Euro className="h-4 w-4" />
+                            {formatCurrency(item.opportunity.budget_amount)}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <Badge className={`${getScoreColor(item.score)} text-white`}>
+                        Score: {item.score}
                       </Badge>
                     </div>
                   </CardContent>

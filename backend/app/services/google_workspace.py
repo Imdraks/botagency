@@ -37,11 +37,13 @@ WORKSPACE_FOLDER_STRUCTURE = {
 
 # Project subfolder structure - NEW STRUCTURE
 PROJECT_FOLDER_STRUCTURE = [
+    "00_Assets",
     "01_Brief",
     "02_Production",
     "03_PostProd",
     "04_Exports",
     "05_Admin",
+    "07_Livrables",
     "99_Archive",
 ]
 
@@ -512,6 +514,77 @@ class GoogleWorkspaceService:
         except Exception:
             return False
     
+    async def list_events(
+        self,
+        time_min: Optional[datetime] = None,
+        time_max: Optional[datetime] = None,
+        calendar_id: str = "primary",
+        max_results: int = 250,
+    ) -> List[Dict[str, Any]]:
+        """
+        List calendar events within a time range.
+        Returns list of events with id, summary, start, end, etc.
+        """
+        params = {
+            "maxResults": max_results,
+            "singleEvents": "true",
+            "orderBy": "startTime",
+        }
+        
+        if time_min:
+            params["timeMin"] = time_min.isoformat() + "Z"
+        if time_max:
+            params["timeMax"] = time_max.isoformat() + "Z"
+        
+        result = await self._request(
+            "GET",
+            f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",
+            params=params,
+        )
+        
+        events = []
+        for item in result.get("items", []):
+            # Parse start/end dates
+            start = item.get("start", {})
+            end = item.get("end", {})
+            
+            events.append({
+                "id": item["id"],
+                "summary": item.get("summary", "Sans titre"),
+                "description": item.get("description"),
+                "start": start.get("dateTime") or start.get("date"),
+                "end": end.get("dateTime") or end.get("date"),
+                "all_day": "date" in start,
+                "html_link": item.get("htmlLink"),
+                "status": item.get("status"),
+                "location": item.get("location"),
+                "attendees": [
+                    {"email": a.get("email"), "response": a.get("responseStatus")}
+                    for a in item.get("attendees", [])
+                ],
+            })
+        
+        return events
+    
+    async def get_calendars(self) -> List[Dict[str, Any]]:
+        """List all calendars accessible by the user"""
+        result = await self._request(
+            "GET",
+            "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+            params={"maxResults": 100}
+        )
+        
+        return [
+            {
+                "id": cal["id"],
+                "summary": cal.get("summary", ""),
+                "primary": cal.get("primary", False),
+                "background_color": cal.get("backgroundColor"),
+                "foreground_color": cal.get("foregroundColor"),
+            }
+            for cal in result.get("items", [])
+        ]
+    
     # ========================================================================
     # WORKSPACE STRUCTURE HELPERS
     # ========================================================================
@@ -750,6 +823,12 @@ class GoogleWorkspaceService:
                 projets = await self.create_folder("Projets", radar_folder_id)
                 projets_folder_id = projets["id"]
                 logger.info(f"Created Projets folder: {projets_folder_id}")
+            
+            # Step 2b: Find or create "Archives" folder inside Radar (for deleted projects)
+            archives_folder = await self.find_folder_by_name("Archives", radar_folder_id)
+            if not archives_folder:
+                await self.create_folder("Archives", radar_folder_id)
+                logger.info("Created Archives folder inside Radar")
             
             # Step 3: Check if project folder already exists (avoid duplicates)
             existing_project = await self.find_folder_by_name(project_name, projets_folder_id)

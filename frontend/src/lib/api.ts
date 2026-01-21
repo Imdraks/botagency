@@ -1567,4 +1567,79 @@ export const ASSET_STATUS_CONFIG: Record<AssetStatus, { label: string; color: st
   FINAL: { label: 'Final', color: 'bg-green-100 text-green-700' },
 };
 
+// ============================================================================
+// GOOGLE CALENDAR API
+// ============================================================================
+
+export interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  html_link?: string;
+  status?: string;
+  location?: string;
+}
+
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  email?: string;
+  calendar_id?: string;
+}
+
+export const googleCalendarApi = {
+  /**
+   * Get connection status
+   */
+  getStatus: async (): Promise<GoogleCalendarStatus> => {
+    const response = await api.get('/calendar/google/status');
+    return response.data;
+  },
+
+  /**
+   * Get auth URL to connect Google Calendar
+   */
+  getAuthUrl: async (): Promise<string> => {
+    const response = await api.get('/calendar/google/init');
+    return response.data.auth_url || response.request.responseURL;
+  },
+
+  /**
+   * Disconnect Google Calendar
+   */
+  disconnect: async (): Promise<void> => {
+    await api.delete('/calendar/google/disconnect');
+  },
+
+  /**
+   * List calendar events
+   */
+  listEvents: async (startDate?: string, endDate?: string): Promise<GoogleCalendarEvent[]> => {
+    const params: Record<string, string> = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    
+    const response = await api.get('/calendar/google/events', { params });
+    return response.data;
+  },
+
+  /**
+   * List user calendars
+   */
+  listCalendars: async (): Promise<{ id: string; summary: string; primary: boolean; background_color?: string }[]> => {
+    const response = await api.get('/calendar/google/calendars');
+    return response.data;
+  },
+
+  /**
+   * Sync deadlines to Google Calendar
+   */
+  syncDeadlines: async (opportunityIds?: number[]): Promise<{ success: boolean; events_created: number; errors: string[] }> => {
+    const response = await api.post('/calendar/google/sync', { opportunity_ids: opportunityIds });
+    return response.data;
+  },
+};
+
 export default api;

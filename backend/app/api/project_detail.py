@@ -8,7 +8,8 @@ Complete endpoints for the project view with 4 tabs:
 """
 from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, and_, or_
 from pydantic import BaseModel
@@ -22,8 +23,10 @@ from app.db.models.agency import (
 )
 from app.db.models.user import User
 from app.api.deps import get_current_user
+from app.services.google_workspace import get_google_workspace_service, TokenExpiredError
+from app.core.cache import cache_get
 
-
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agency/projects", tags=["project-detail"])
 
 
@@ -503,11 +506,13 @@ async def get_project_drive_folders(
         raise HTTPException(status_code=404, detail="Project not found")
     
     folders = [
+        DriveFolderInfo(key="assets", label="00_Assets", folder_id=project.drive_folder_assets),
         DriveFolderInfo(key="brief", label="01_Brief", folder_id=project.drive_folder_brief),
         DriveFolderInfo(key="production", label="02_Production", folder_id=project.drive_folder_production),
         DriveFolderInfo(key="postprod", label="03_PostProd", folder_id=project.drive_folder_postprod),
         DriveFolderInfo(key="exports", label="04_Exports", folder_id=project.drive_folder_exports),
         DriveFolderInfo(key="admin", label="05_Admin", folder_id=project.drive_folder_admin),
+        DriveFolderInfo(key="livrables", label="07_Livrables", folder_id=project.drive_folder_livrables),
         DriveFolderInfo(key="archive", label="99_Archive", folder_id=project.drive_folder_archive),
     ]
     
@@ -758,16 +763,23 @@ async def approve_deliverable(
 @router.delete("/deliverables/{deliverable_id}")
 async def delete_deliverable(
     deliverable_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete a deliverable"""
+    """Delete a deliverable and move its Drive file to project's 99_Archive folder"""
     deliverable = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
     if not deliverable:
         raise HTTPException(status_code=404, detail="Deliverable not found")
     
     project_id = deliverable.project_id
     name = deliverable.name
+    drive_file_id = deliverable.drive_file_id
+    
+    # Get project archive folder
+    project = db.query(Project).filter(Project.id == project_id).first()
+    archive_folder_id = project.drive_folder_archive if project else None
+    user_id = current_user.id
     
     db.delete(deliverable)
     db.commit()
@@ -780,7 +792,44 @@ async def delete_deliverable(
         current_user.id
     )
     
+    # Move file to archive in background if it has a Drive file
+    if drive_file_id and archive_folder_id:
+        background_tasks.add_task(
+            archive_deliverable_file,
+            user_id=user_id,
+            file_id=drive_file_id,
+            archive_folder_id=archive_folder_id,
+            deliverable_name=name
+        )
+    
     return {"status": "deleted"}
+
+
+async def archive_deliverable_file(
+    user_id: int,
+    file_id: str,
+    archive_folder_id: str,
+    deliverable_name: str
+):
+    """Move a deliverable's Drive file to the project's archive folder"""
+    try:
+        token_data = await cache_get(f"google_tokens:{user_id}")
+        if not token_data:
+            logger.warning(f"No Google token for user {user_id}, cannot archive deliverable")
+            return
+        
+        service = await get_google_workspace_service(token_data)
+        
+        # Move file to archive folder
+        await service.move_file(
+            file_id=file_id,
+            new_parent_id=archive_folder_id
+        )
+        
+        logger.info(f"Archived deliverable '{deliverable_name}' to project archive folder")
+        
+    except Exception as e:
+        logger.error(f"Failed to archive deliverable {deliverable_name}: {e}")
 
 
 # ============================================================================

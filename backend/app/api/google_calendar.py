@@ -239,6 +239,178 @@ async def disconnect_calendar(
 
 
 # ============================================================================
+# CALENDAR EVENTS - List and manage events
+# ============================================================================
+
+class CalendarEventItem(BaseModel):
+    id: str
+    summary: str
+    description: Optional[str] = None
+    start: str
+    end: str
+    all_day: bool = False
+    html_link: Optional[str] = None
+    status: Optional[str] = None
+    location: Optional[str] = None
+
+
+@router.get("/events", response_model=List[CalendarEventItem])
+async def list_calendar_events(
+    start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List Google Calendar events within a date range.
+    If no dates provided, returns events for the current month + next month.
+    """
+    from app.core.cache import cache_get
+    
+    tokens = cache_get(f"google_calendar_tokens:{current_user.id}")
+    
+    # Also check unified google tokens
+    if not tokens:
+        tokens = cache_get(f"google_tokens:{current_user.id}")
+    
+    if not tokens:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google Calendar non connecté. Veuillez connecter votre compte Google."
+        )
+    
+    access_token = tokens.get("access_token")
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token Google invalide"
+        )
+    
+    # Check if token is expired and refresh if needed
+    if tokens.get("expires_at", 0) < datetime.utcnow().timestamp():
+        if tokens.get("refresh_token"):
+            try:
+                new_tokens = await refresh_google_token(tokens["refresh_token"])
+                from app.core.cache import cache_set
+                cache_set(
+                    f"google_calendar_tokens:{current_user.id}",
+                    {**tokens, **new_tokens},
+                    ttl=86400 * 30
+                )
+                access_token = new_tokens.get("access_token")
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token Google expiré, veuillez vous reconnecter"
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token Google expiré"
+            )
+    
+    # Default date range: current month + next month
+    if start_date:
+        time_min = datetime.strptime(start_date, "%Y-%m-%d")
+    else:
+        time_min = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    if end_date:
+        time_max = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    else:
+        # 2 months from start
+        if time_min.month >= 11:
+            time_max = time_min.replace(year=time_min.year + 1, month=(time_min.month + 2) % 12 or 12)
+        else:
+            time_max = time_min.replace(month=time_min.month + 2)
+    
+    params = {
+        "timeMin": time_min.isoformat() + "Z",
+        "timeMax": time_max.isoformat() + "Z",
+        "singleEvents": "true",
+        "orderBy": "startTime",
+        "maxResults": 250,
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params=params,
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Erreur Google Calendar: {response.text}"
+            )
+        
+        data = response.json()
+        events = []
+        
+        for item in data.get("items", []):
+            start = item.get("start", {})
+            end = item.get("end", {})
+            
+            events.append(CalendarEventItem(
+                id=item["id"],
+                summary=item.get("summary", "Sans titre"),
+                description=item.get("description"),
+                start=start.get("dateTime") or start.get("date", ""),
+                end=end.get("dateTime") or end.get("date", ""),
+                all_day="date" in start,
+                html_link=item.get("htmlLink"),
+                status=item.get("status"),
+                location=item.get("location"),
+            ))
+        
+        return events
+
+
+@router.get("/calendars")
+async def list_user_calendars(
+    current_user: User = Depends(get_current_user),
+):
+    """List all calendars accessible by the user"""
+    from app.core.cache import cache_get
+    
+    tokens = cache_get(f"google_calendar_tokens:{current_user.id}")
+    if not tokens:
+        tokens = cache_get(f"google_tokens:{current_user.id}")
+    
+    if not tokens:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google Calendar non connecté"
+        )
+    
+    access_token = tokens.get("access_token")
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"maxResults": 100},
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail="Erreur lors de la récupération des calendriers"
+            )
+        
+        data = response.json()
+        return [
+            {
+                "id": cal["id"],
+                "summary": cal.get("summary", ""),
+                "primary": cal.get("primary", False),
+                "background_color": cal.get("backgroundColor"),
+            }
+            for cal in data.get("items", [])
+        ]
+
+
+# ============================================================================
 # CALENDAR SYNC
 # ============================================================================
 

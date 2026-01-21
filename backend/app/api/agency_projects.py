@@ -163,6 +163,8 @@ async def create_project_drive_structure_task(
                     
                     # Save subfolder IDs
                     subfolders = result.get("subfolders", {})
+                    if subfolders.get("00_Assets"):
+                        project.drive_folder_assets = subfolders["00_Assets"]
                     if subfolders.get("01_Brief"):
                         project.drive_folder_brief = subfolders["01_Brief"]
                     if subfolders.get("02_Production"):
@@ -173,6 +175,8 @@ async def create_project_drive_structure_task(
                         project.drive_folder_exports = subfolders["04_Exports"]
                     if subfolders.get("05_Admin"):
                         project.drive_folder_admin = subfolders["05_Admin"]
+                    if subfolders.get("07_Livrables"):
+                        project.drive_folder_livrables = subfolders["07_Livrables"]
                     if subfolders.get("99_Archive"):
                         project.drive_folder_archive = subfolders["99_Archive"]
                     
@@ -371,17 +375,76 @@ async def update_project_status(
 @router.delete("/projects/{project_id}")
 async def delete_project(
     project_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Supprimer un projet"""
+    """Supprimer un projet et déplacer son dossier Drive vers Archives"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
+    # Save drive_folder_id before deletion for archiving
+    drive_folder_id = project.drive_folder_id
+    project_name = project.name
+    user_id = current_user.id
+    
+    # Delete from database
     db.delete(project)
     db.commit()
+    
+    # Move Drive folder to Archives in background
+    if drive_folder_id:
+        background_tasks.add_task(
+            archive_project_folder,
+            user_id=user_id,
+            drive_folder_id=drive_folder_id,
+            project_name=project_name
+        )
+    
     return {"status": "deleted"}
+
+
+async def archive_project_folder(user_id: int, drive_folder_id: str, project_name: str):
+    """Move project folder to Radar/Archives folder"""
+    try:
+        # Get user token from cache
+        token_data = await cache_get(f"google_tokens:{user_id}")
+        if not token_data:
+            logger.warning(f"No Google token for user {user_id}, cannot archive folder")
+            return
+        
+        service = await get_google_workspace_service(token_data)
+        
+        # Find or create Archives folder in Radar
+        radar_folder = await service.find_folder_by_name("Radar", parent_id=None)
+        if not radar_folder:
+            logger.warning("Radar folder not found, cannot archive project")
+            return
+        
+        archives_folder = await service.find_folder_by_name("Archives", radar_folder["id"])
+        if not archives_folder:
+            # Create Archives folder if it doesn't exist
+            archives_result = await service.create_folder("Archives", radar_folder["id"])
+            archives_folder_id = archives_result["id"]
+        else:
+            archives_folder_id = archives_folder["id"]
+        
+        # Find Projets folder to remove as parent
+        projets_folder = await service.find_folder_by_name("Projets", radar_folder["id"])
+        old_parent_id = projets_folder["id"] if projets_folder else None
+        
+        # Move project folder to Archives
+        await service.move_file(
+            file_id=drive_folder_id,
+            new_parent_id=archives_folder_id,
+            old_parent_id=old_parent_id
+        )
+        
+        logger.info(f"Archived project folder '{project_name}' to Radar/Archives")
+        
+    except Exception as e:
+        logger.error(f"Failed to archive project folder {project_name}: {e}")
 
 
 # ============================================================================
@@ -577,17 +640,64 @@ async def update_deliverable_status(
 @router.delete("/deliverables/{deliverable_id}")
 async def delete_deliverable(
     deliverable_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Supprimer un livrable"""
+    """Supprimer un livrable et déplacer son fichier Drive vers 99_Archive du projet"""
     d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
     if not d:
         raise HTTPException(status_code=404, detail="Deliverable not found")
     
+    # Get info before deletion
+    drive_file_id = d.drive_file_id
+    deliverable_name = d.name
+    project = db.query(Project).filter(Project.id == d.project_id).first()
+    archive_folder_id = project.drive_folder_archive if project else None
+    user_id = current_user.id
+    
     db.delete(d)
     db.commit()
+    
+    # Move file to archive in background if it has a Drive file
+    if drive_file_id and archive_folder_id:
+        background_tasks.add_task(
+            archive_item_to_project_folder,
+            user_id=user_id,
+            file_id=drive_file_id,
+            archive_folder_id=archive_folder_id,
+            item_name=deliverable_name,
+            item_type="livrable"
+        )
+    
     return {"status": "deleted"}
+
+
+async def archive_item_to_project_folder(
+    user_id: int,
+    file_id: str,
+    archive_folder_id: str,
+    item_name: str,
+    item_type: str
+):
+    """Move a file to the project's archive folder"""
+    try:
+        token_data = await cache_get(f"google_tokens:{user_id}")
+        if not token_data:
+            logger.warning(f"No Google token for user {user_id}, cannot archive {item_type}")
+            return
+        
+        service = await get_google_workspace_service(token_data)
+        
+        await service.move_file(
+            file_id=file_id,
+            new_parent_id=archive_folder_id
+        )
+        
+        logger.info(f"Archived {item_type} '{item_name}' to project archive folder")
+        
+    except Exception as e:
+        logger.error(f"Failed to archive {item_type} {item_name}: {e}")
 
 
 # ============================================================================

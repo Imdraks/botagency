@@ -10,8 +10,9 @@ Both the global /assets page and the project assets tab use this API.
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
+import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from pydantic import BaseModel
@@ -20,7 +21,10 @@ from app.db.session import get_db
 from app.db.models.user import User
 from app.db.models.agency import Asset, Project, Client, AssetKind
 from app.api.deps import get_current_user
+from app.services.google_workspace import get_google_workspace_service, TokenExpiredError
+from app.core.cache import cache_get
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/assets", tags=["assets"])
 
 
@@ -341,16 +345,63 @@ async def update_asset(
 @router.delete("/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_asset(
     asset_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete an asset"""
+    """Delete an asset and move its Drive file to project's 99_Archive folder"""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     
+    # Get project archive folder info before deletion
+    project = db.query(Project).filter(Project.id == asset.project_id).first()
+    drive_file_id = asset.drive_file_id
+    archive_folder_id = project.drive_folder_archive if project else None
+    user_id = current_user.id
+    asset_name = asset.name
+    
     db.delete(asset)
     db.commit()
     
+    # Move file to archive in background if it has a Drive file
+    if drive_file_id and archive_folder_id:
+        background_tasks.add_task(
+            archive_drive_file,
+            user_id=user_id,
+            file_id=drive_file_id,
+            archive_folder_id=archive_folder_id,
+            item_name=asset_name,
+            item_type="asset"
+        )
+    
     return None
+
+
+async def archive_drive_file(
+    user_id: int,
+    file_id: str,
+    archive_folder_id: str,
+    item_name: str,
+    item_type: str
+):
+    """Move a Drive file to the project's archive folder"""
+    try:
+        token_data = await cache_get(f"google_tokens:{user_id}")
+        if not token_data:
+            logger.warning(f"No Google token for user {user_id}, cannot archive {item_type}")
+            return
+        
+        service = await get_google_workspace_service(token_data)
+        
+        # Move file to archive folder
+        await service.move_file(
+            file_id=file_id,
+            new_parent_id=archive_folder_id
+        )
+        
+        logger.info(f"Archived {item_type} '{item_name}' to project archive folder")
+        
+    except Exception as e:
+        logger.error(f"Failed to archive {item_type} {item_name}: {e}")
