@@ -1380,6 +1380,191 @@ export const googleWorkspaceApi = {
     const response = await api.post(`/drive/deliverables/${deliverableId}/file`, { file_type: fileType, name });
     return response.data;
   },
+
+  // === UPLOAD TO DRIVE ===
+  getUploadToken: async (): Promise<{ access_token: string; expires_in: number }> => {
+    const response = await api.get("/drive/upload-token");
+    return response.data;
+  },
+
+  uploadFileToDrive: async (
+    file: File,
+    folderId: string,
+    fileName?: string,
+    onProgress?: (progress: number) => void
+  ): Promise<{ id: string; name: string; web_view_link: string; mime_type: string }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder_id", folderId);
+    if (fileName) formData.append("file_name", fileName);
+
+    const response = await api.post("/drive/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(progress);
+        }
+      },
+    });
+    return response.data;
+  },
+};
+
+// Types for Drive folders
+export interface DriveFolderInfo {
+  key: string;
+  label: string;
+  folder_id: string | null;
+}
+
+export interface DriveFoldersResponse {
+  project_id: number;
+  drive_folder_id: string | null;
+  folders: DriveFolderInfo[];
+}
+
+// Project detail API extension
+export const projectDriveApi = {
+  getDriveFolders: async (projectId: number): Promise<DriveFoldersResponse> => {
+    const response = await api.get(`/agency/projects/${projectId}/drive-folders`);
+    return response.data;
+  },
+};
+
+// ============================================================================
+// UNIFIED ASSETS API - Single source of truth
+// ============================================================================
+
+export type AssetType = 'DRIVE' | 'FIGMA' | 'DROPBOX' | 'YOUTUBE' | 'LINK' | 'DOC' | 'SHEET' | 'OTHER';
+export type AssetStatus = 'DRAFT' | 'FINAL';
+
+export interface Asset {
+  id: number;
+  project_id: number;
+  name: string;
+  url: string;
+  type: AssetType;
+  version: string | null;
+  status: AssetStatus | null;
+  drive_file_id: string | null;
+  drive_folder_id: string | null;
+  created_at: string;
+  created_by: number | null;
+  updated_at: string | null;
+  // Computed from joins
+  project_name: string | null;
+  client_id: number | null;
+  client_name: string | null;
+}
+
+export interface AssetListResponse {
+  items: Asset[];
+  total: number;
+  page: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export interface AssetCreateRequest {
+  project_id: number;
+  name: string;
+  url: string;
+  type?: AssetType;
+  version?: string;
+  status?: AssetStatus;
+  drive_file_id?: string;
+  drive_folder_id?: string;
+}
+
+export interface AssetUpdateRequest {
+  name?: string;
+  url?: string;
+  type?: AssetType;
+  version?: string;
+  status?: AssetStatus;
+  drive_file_id?: string;
+  drive_folder_id?: string;
+}
+
+export interface AssetFilters {
+  project_id?: number;
+  client_id?: number;
+  type?: AssetType;
+  status?: AssetStatus;
+  version?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const assetsApi = {
+  /**
+   * List all assets with optional filtering
+   * Used by both /assets page and project assets tab
+   */
+  list: async (filters?: AssetFilters): Promise<AssetListResponse> => {
+    const params = new URLSearchParams();
+    if (filters?.project_id) params.append('project_id', filters.project_id.toString());
+    if (filters?.client_id) params.append('client_id', filters.client_id.toString());
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.version) params.append('version', filters.version);
+    if (filters?.q) params.append('q', filters.q);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    const response = await api.get(`/assets?${params.toString()}`);
+    return response.data;
+  },
+
+  /**
+   * Get a single asset by ID
+   */
+  get: async (assetId: number): Promise<Asset> => {
+    const response = await api.get(`/assets/${assetId}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new asset
+   */
+  create: async (data: AssetCreateRequest): Promise<Asset> => {
+    const response = await api.post('/assets', data);
+    return response.data;
+  },
+
+  /**
+   * Update an existing asset
+   */
+  update: async (assetId: number, data: AssetUpdateRequest): Promise<Asset> => {
+    const response = await api.patch(`/assets/${assetId}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete an asset
+   */
+  delete: async (assetId: number): Promise<void> => {
+    await api.delete(`/assets/${assetId}`);
+  },
+};
+
+// Asset type configuration for UI
+export const ASSET_TYPE_CONFIG: Record<AssetType, { label: string; icon: string; color: string }> = {
+  DRIVE: { label: 'Google Drive', icon: 'folder', color: 'text-blue-500' },
+  DOC: { label: 'Google Docs', icon: 'file-text', color: 'text-blue-600' },
+  SHEET: { label: 'Google Sheets', icon: 'table', color: 'text-green-500' },
+  FIGMA: { label: 'Figma', icon: 'image', color: 'text-purple-500' },
+  DROPBOX: { label: 'Dropbox', icon: 'cloud', color: 'text-blue-400' },
+  YOUTUBE: { label: 'YouTube', icon: 'video', color: 'text-red-500' },
+  LINK: { label: 'Lien', icon: 'link', color: 'text-gray-500' },
+  OTHER: { label: 'Autre', icon: 'file', color: 'text-gray-400' },
+};
+
+export const ASSET_STATUS_CONFIG: Record<AssetStatus, { label: string; color: string }> = {
+  DRAFT: { label: 'Brouillon', color: 'bg-gray-100 text-gray-700' },
+  FINAL: { label: 'Final', color: 'bg-green-100 text-green-700' },
 };
 
 export default api;

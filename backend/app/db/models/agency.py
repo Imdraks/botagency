@@ -205,6 +205,14 @@ class Project(Base):
     brief_doc_id: Mapped[Optional[str]] = mapped_column(String(100))
     report_sheet_id: Mapped[Optional[str]] = mapped_column(String(100))
     
+    # Google Drive subfolder IDs
+    drive_folder_brief: Mapped[Optional[str]] = mapped_column(String(100))
+    drive_folder_production: Mapped[Optional[str]] = mapped_column(String(100))
+    drive_folder_postprod: Mapped[Optional[str]] = mapped_column(String(100))
+    drive_folder_exports: Mapped[Optional[str]] = mapped_column(String(100))
+    drive_folder_admin: Mapped[Optional[str]] = mapped_column(String(100))
+    drive_folder_archive: Mapped[Optional[str]] = mapped_column(String(100))
+    
     # Next action tracking
     next_action_text: Mapped[Optional[str]] = mapped_column(String(500))
     next_action_due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -291,6 +299,26 @@ class Approval(Base):
 
 
 # ============================================================================
+# ASSET TYPE ENUM
+# ============================================================================
+
+class AssetType(str, enum.Enum):
+    DRIVE = "DRIVE"
+    FIGMA = "FIGMA"
+    DROPBOX = "DROPBOX"
+    YOUTUBE = "YOUTUBE"
+    LINK = "LINK"
+    DOC = "DOC"
+    SHEET = "SHEET"
+    OTHER = "OTHER"
+
+
+class AssetStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    FINAL = "FINAL"
+
+
+# ============================================================================
 # ASSET
 # ============================================================================
 
@@ -308,16 +336,25 @@ class Asset(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
     project: Mapped["Project"] = relationship("Project", back_populates="assets")
     
-    # Infos
+    # Infos - legacy fields (kept for compatibility)
     kind: Mapped[AssetKind] = mapped_column(Enum(AssetKind), default=AssetKind.LINK)
+    asset_type: Mapped[Optional[str]] = mapped_column(String(50))  # brief, report, template, other (legacy)
+    
+    # Infos - new unified fields
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     url: Mapped[str] = mapped_column(String(2000), nullable=False)
-    version: Mapped[Optional[str]] = mapped_column(String(50))
-    asset_type: Mapped[Optional[str]] = mapped_column(String(50))  # brief, report, template, other
+    type: Mapped[Optional[str]] = mapped_column(String(50))  # DRIVE, FIGMA, DROPBOX, YOUTUBE, LINK, DOC, SHEET, OTHER
+    version: Mapped[Optional[str]] = mapped_column(String(50))  # v1, v2, final, etc.
+    status: Mapped[Optional[str]] = mapped_column(String(20))  # DRAFT, FINAL
+    
+    # Google Drive integration
+    drive_file_id: Mapped[Optional[str]] = mapped_column(String(255))
+    drive_folder_id: Mapped[Optional[str]] = mapped_column(String(255))
     
     # Métadonnées
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=datetime.utcnow)
 
 
 # ============================================================================

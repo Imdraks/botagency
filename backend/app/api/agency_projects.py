@@ -160,6 +160,22 @@ async def create_project_drive_structure_task(
                         project.brief_doc_id = result["brief_doc_id"]
                     if result.get("report_sheet_id"):
                         project.report_sheet_id = result["report_sheet_id"]
+                    
+                    # Save subfolder IDs
+                    subfolders = result.get("subfolders", {})
+                    if subfolders.get("01_Brief"):
+                        project.drive_folder_brief = subfolders["01_Brief"]
+                    if subfolders.get("02_Production"):
+                        project.drive_folder_production = subfolders["02_Production"]
+                    if subfolders.get("03_PostProd"):
+                        project.drive_folder_postprod = subfolders["03_PostProd"]
+                    if subfolders.get("04_Exports"):
+                        project.drive_folder_exports = subfolders["04_Exports"]
+                    if subfolders.get("05_Admin"):
+                        project.drive_folder_admin = subfolders["05_Admin"]
+                    if subfolders.get("99_Archive"):
+                        project.drive_folder_archive = subfolders["99_Archive"]
+                    
                     db.commit()
                     logger.info(f"Updated project {project_id} with Drive folder: {result['drive_folder_id']}")
             finally:

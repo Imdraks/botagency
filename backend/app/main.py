@@ -75,7 +75,10 @@ from app.api.project_detail import router as project_detail_router
 from app.api.workspace import router as workspace_router
 from app.api.inbox import router as inbox_router
 from app.api.google_drive import router as google_drive_router
-
+# ============================================================================
+# UNIFIED ASSETS API - Single source of truth for all assets
+# ============================================================================
+from app.api.assets import router as unified_assets_router
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -214,6 +217,11 @@ app.include_router(project_detail_router, prefix="/api/v1", tags=["Project Detai
 app.include_router(workspace_router, prefix="/api/v1", tags=["Workspaces"])
 app.include_router(inbox_router, prefix="/api/v1", tags=["Inbox"])
 app.include_router(google_drive_router, prefix="/api/v1", tags=["Google Drive"])
+
+# ============================================================================
+# UNIFIED ASSETS API - Single source of truth
+# ============================================================================
+app.include_router(unified_assets_router, prefix="/api/v1", tags=["Assets"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])

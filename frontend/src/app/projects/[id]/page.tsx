@@ -30,6 +30,9 @@ import {
   GripVertical,
   Link,
   RefreshCw,
+  Upload,
+  FolderOpen,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +71,8 @@ import {
   ProjectTask,
   ProjectAsset,
   googleWorkspaceApi,
+  projectDriveApi,
+  DriveFolderInfo,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
@@ -244,14 +249,49 @@ function ProjectHeader({
 
         {/* Progress */}
         <div className="bg-gray-50 rounded-lg p-3">
-          <div className="flex items-center justify-between text-gray-500 text-sm mb-1">
-            <span>Progression</span>
-            <span className="text-gray-900">{project.progress_percent}%</span>
-          </div>
-          <Progress value={project.progress_percent} className="h-2" />
-          <div className="text-xs text-gray-400 mt-1">
-            {project.deliverables_approved}/{project.deliverables_total} livrables
-          </div>
+          {project.deliverables_total === 0 ? (
+            <>
+              <div className="text-sm text-gray-500 mb-2">Aucun livrable défini</div>
+              <Progress value={0} className="h-2 opacity-50" />
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 text-xs w-full border-purple-300 text-purple-600 hover:bg-purple-50"
+                onClick={onAddDeliverable}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Créer un livrable
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between text-gray-500 text-sm mb-1">
+                <span>Progression</span>
+                <span className={`font-medium ${
+                  project.progress_percent === 100 ? 'text-green-600' :
+                  project.progress_percent >= 70 ? 'text-orange-500' :
+                  project.progress_percent >= 30 ? 'text-blue-600' :
+                  'text-gray-600'
+                }`}>
+                  {project.progress_percent}%
+                </span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    project.progress_percent === 100 ? 'bg-green-500' :
+                    project.progress_percent >= 70 ? 'bg-orange-500' :
+                    project.progress_percent >= 30 ? 'bg-blue-500' :
+                    'bg-gray-400'
+                  }`}
+                  style={{ width: `${project.progress_percent}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {project.deliverables_approved} / {project.deliverables_total} livrables validés
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tasks */}
@@ -806,7 +846,7 @@ function ProductionTab({
 }
 
 // ============================================================================
-// ASSETS TAB
+// ASSETS TAB (Using unified AssetsList component)
 // ============================================================================
 
 function AssetsTab({
@@ -816,47 +856,14 @@ function AssetsTab({
   projectId: number;
   project: ProjectDetail;
 }) {
-  const queryClient = useQueryClient();
-  const [showAddAsset, setShowAddAsset] = useState(false);
-  const [newAsset, setNewAsset] = useState({ name: "", url: "", asset_type: "other" });
-
-  const { data: assets = [], isLoading } = useQuery({
-    queryKey: ["project-assets", projectId],
-    queryFn: () => projectDetailApi.getAssets(projectId),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: { name: string; url: string; asset_type: string }) =>
-      projectDetailApi.createAsset(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project-assets", projectId] });
-      setShowAddAsset(false);
-      setNewAsset({ name: "", url: "", asset_type: "other" });
-      toast.success("Lien ajouté");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => projectDetailApi.deleteAsset(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project-assets", projectId] });
-      toast.success("Asset supprimé");
-    },
-  });
+  // Import dynamically to avoid circular deps
+  const { AssetsList } = require("@/components/assets");
 
   const openDriveFolder = () => {
     if (project.drive_folder_id) {
       window.open(`https://drive.google.com/drive/folders/${project.drive_folder_id}`, "_blank");
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -886,7 +893,7 @@ function AssetsTab({
       </Card>
 
       {/* Quick links */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Brief Doc */}
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4">
@@ -900,15 +907,15 @@ function AssetsTab({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(`https://docs.google.com/document/d/${project.brief_doc_id}`, "_blank")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`https://docs.google.com/document/d/${project.brief_doc_id}`, "_blank");
+                  }}
                 >
                   <ExternalLink className="h-3 w-3" />
                 </Button>
               ) : (
-                <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="h-3 w-3 mr-1" />
-                  Créer
-                </Button>
+                <Badge variant="outline" className="text-gray-400">Non créé</Badge>
               )}
             </div>
           </CardContent>
@@ -927,138 +934,34 @@ function AssetsTab({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(`https://docs.google.com/spreadsheets/d/${project.report_sheet_id}`, "_blank")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`https://docs.google.com/spreadsheets/d/${project.report_sheet_id}`, "_blank");
+                  }}
                 >
                   <ExternalLink className="h-3 w-3" />
                 </Button>
               ) : (
-                <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                  <Plus className="h-3 w-3 mr-1" />
-                  Créer
-                </Button>
+                <Badge variant="outline" className="text-gray-400">Non créé</Badge>
               )}
             </div>
           </CardContent>
         </Card>
-
-        {/* Add link */}
-        <Card className="bg-white border-gray-200 shadow-sm border-dashed">
-          <CardContent className="p-4">
-            <button
-              onClick={() => setShowAddAsset(true)}
-              className="w-full flex items-center gap-3 text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              <Link className="h-6 w-6" />
-              <div className="flex-1 text-left">
-                <h4 className="font-medium">Ajouter un lien</h4>
-                <p className="text-xs text-gray-400">Fichier, URL, ressource</p>
-              </div>
-              <Plus className="h-5 w-5" />
-            </button>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Assets list */}
-      {assets.length > 0 && (
-        <Card className="bg-white border-gray-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg text-gray-900">Liens & Fichiers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {assets.map((asset) => (
-                <div
-                  key={asset.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Link className="h-4 w-4 text-gray-400" />
-                    <div>
-                      <div className="text-gray-900">{asset.name}</div>
-                      <div className="text-gray-400 text-xs truncate max-w-md">{asset.url}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(asset.url, "_blank")}
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => deleteMutation.mutate(asset.id)}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Add Asset Dialog */}
-      <Dialog open={showAddAsset} onOpenChange={setShowAddAsset}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ajouter un lien</DialogTitle>
-            <DialogDescription>Ajoutez un lien vers une ressource externe</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nom</Label>
-              <Input
-                value={newAsset.name}
-                onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
-                placeholder="Maquette Figma"
-              />
-            </div>
-            <div>
-              <Label>URL</Label>
-              <Input
-                value={newAsset.url}
-                onChange={(e) => setNewAsset({ ...newAsset, url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-            <div>
-              <Label>Type</Label>
-              <Select
-                value={newAsset.asset_type}
-                onValueChange={(v) => setNewAsset({ ...newAsset, asset_type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="brief">Brief</SelectItem>
-                  <SelectItem value="report">Report</SelectItem>
-                  <SelectItem value="template">Template</SelectItem>
-                  <SelectItem value="other">Autre</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddAsset(false)}>
-              Annuler
-            </Button>
-            <Button
-              onClick={() => createMutation.mutate(newAsset)}
-              disabled={!newAsset.name || !newAsset.url}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              Ajouter
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Unified Assets List - filtered by projectId */}
+      <Card className="bg-white border-gray-200 shadow-sm">
+        <CardHeader className="pb-0">
+          <CardTitle className="text-lg text-gray-900">Liens & Ressources</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <AssetsList
+            projectId={projectId}
+            showProjectFilter={false}
+            showProjectColumn={false}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1078,6 +981,12 @@ export default function ProjectDetailPage() {
   const [showAddDeliverable, setShowAddDeliverable] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", description: "", priority: "medium", due_date: "" });
   const [newDeliverable, setNewDeliverable] = useState({ name: "", type: "", due_date: "", link: "" });
+  
+  // File upload state for deliverables
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -1087,6 +996,13 @@ export default function ProjectDetailPage() {
     queryKey: ["project-detail", projectId],
     queryFn: () => projectDetailApi.getDetail(projectId),
     enabled: !isNaN(projectId) && mounted,
+  });
+  
+  // Fetch Drive folders for file upload
+  const { data: driveFolders } = useQuery({
+    queryKey: ["project-drive-folders", projectId],
+    queryFn: () => projectDriveApi.getDriveFolders(projectId),
+    enabled: !isNaN(projectId) && mounted && showAddDeliverable,
   });
 
   const createTaskMutation = useMutation({
@@ -1110,13 +1026,32 @@ export default function ProjectDetailPage() {
   });
 
   const createDeliverableMutation = useMutation({
-    mutationFn: (data: typeof newDeliverable) => {
+    mutationFn: async (data: typeof newDeliverable) => {
+      let finalLink = data.link;
+      
+      // If a file is selected, upload it first
+      if (selectedFile && selectedFolderId) {
+        setIsUploading(true);
+        setUploadProgress(0);
+        try {
+          const uploadResult = await googleWorkspaceApi.uploadFileToDrive(
+            selectedFile,
+            selectedFolderId,
+            selectedFile.name,
+            (progress) => setUploadProgress(progress)
+          );
+          finalLink = uploadResult.web_view_link;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+      
       // Convert empty strings to undefined for optional fields
       const payload = {
         name: data.name,
         type: data.type || undefined,
         due_date: data.due_date || undefined,
-        link: data.link || undefined,
+        link: finalLink || undefined,
       };
       return projectDetailApi.createDeliverable(projectId, payload);
     },
@@ -1125,7 +1060,17 @@ export default function ProjectDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["project-detail", projectId] });
       setShowAddDeliverable(false);
       setNewDeliverable({ name: "", type: "", due_date: "", link: "" });
+      setSelectedFile(null);
+      setSelectedFolderId("");
+      setUploadProgress(0);
       toast.success("Livrable créé");
+    },
+    onError: (error: any) => {
+      if (error?.response?.status === 401) {
+        toast.error("Connectez votre compte Google pour uploader des fichiers");
+      } else {
+        toast.error("Erreur lors de la création du livrable");
+      }
     },
   });
 
@@ -1325,8 +1270,15 @@ export default function ProjectDetailPage() {
       </Dialog>
 
           {/* Add Deliverable Dialog */}
-          <Dialog open={showAddDeliverable} onOpenChange={setShowAddDeliverable}>
-            <DialogContent>
+          <Dialog open={showAddDeliverable} onOpenChange={(open) => {
+            setShowAddDeliverable(open);
+            if (!open) {
+              setSelectedFile(null);
+              setSelectedFolderId("");
+              setUploadProgress(0);
+            }
+          }}>
+            <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Nouveau livrable</DialogTitle>
                 <DialogDescription>Ajoutez un nouveau livrable au projet</DialogDescription>
@@ -1368,25 +1320,155 @@ export default function ProjectDetailPage() {
                     />
                   </div>
                 </div>
+                
+                {/* File Upload Section */}
+                <div className="space-y-3 pt-2 border-t">
+                  <Label className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Uploader un fichier vers Google Drive
+                  </Label>
+                  
+                  {driveFolders?.folders && driveFolders.folders.some(f => f.folder_id) ? (
+                    <>
+                      {/* Folder Selection */}
+                      <div>
+                        <Label className="text-sm text-gray-500">Dossier de destination</Label>
+                        <Select
+                          value={selectedFolderId}
+                          onValueChange={setSelectedFolderId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir un dossier..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {driveFolders.folders
+                              .filter(f => f.folder_id)
+                              .map(folder => (
+                                <SelectItem key={folder.key} value={folder.folder_id!}>
+                                  <div className="flex items-center gap-2">
+                                    <FolderOpen className="h-4 w-4 text-yellow-500" />
+                                    {folder.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* File Input */}
+                      {selectedFolderId && (
+                        <div>
+                          {selectedFile ? (
+                            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                              <FileText className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedFile(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                              <div className="flex flex-col items-center justify-center">
+                                <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                                <p className="text-sm text-gray-500">Cliquez pour sélectionner un fichier</p>
+                              </div>
+                              <input
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setSelectedFile(file);
+                                    // Auto-fill name if empty
+                                    if (!newDeliverable.name) {
+                                      setNewDeliverable(prev => ({
+                                        ...prev,
+                                        name: file.name.replace(/\.[^/.]+$/, "")
+                                      }));
+                                    }
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Upload Progress */}
+                      {isUploading && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Upload en cours...</span>
+                            <span className="font-medium">{uploadProgress}%</span>
+                          </div>
+                          <Progress value={uploadProgress} className="h-2" />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      Aucun dossier Drive disponible. Créez d'abord la structure Drive du projet.
+                    </div>
+                  )}
+                </div>
+                
+                {/* OR manual link */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-500">Ou ajouter un lien</span>
+                  </div>
+                </div>
+                
                 <div>
-                  <Label>Lien (optionnel)</Label>
+                  <Label>Lien externe (optionnel)</Label>
                   <Input
                     value={newDeliverable.link}
                     onChange={(e) => setNewDeliverable({ ...newDeliverable, link: e.target.value })}
                     placeholder="https://..."
+                    disabled={!!selectedFile}
                   />
+                  {selectedFile && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Le lien sera généré automatiquement après l'upload
+                    </p>
+                  )}
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAddDeliverable(false)}>
+                <Button variant="outline" onClick={() => setShowAddDeliverable(false)} disabled={isUploading}>
                   Annuler
                 </Button>
                 <Button
                   onClick={() => createDeliverableMutation.mutate(newDeliverable)}
-                  disabled={!newDeliverable.name}
+                  disabled={!newDeliverable.name || isUploading || createDeliverableMutation.isPending || (selectedFile && !selectedFolderId)}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  Créer
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Upload...
+                    </>
+                  ) : createDeliverableMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    "Créer"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>

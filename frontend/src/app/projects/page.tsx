@@ -353,21 +353,40 @@ function ProjectsContent() {
               
               {/* Progress Bar */}
               <div className="mb-4">
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-600">Progression</span>
-                  <span className="font-medium">{project.progress_percent}%</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      project.progress_percent === 100 ? 'bg-green-500' : 'bg-purple-500'
-                    }`}
-                    style={{ width: `${project.progress_percent}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  {project.deliverables_approved}/{project.deliverables_count} livrables validés
-                </p>
+                {project.deliverables_count === 0 ? (
+                  <>
+                    <div className="text-sm text-gray-500 mb-1">Aucun livrable défini</div>
+                    <div className="h-2 bg-gray-200 rounded-full opacity-50" />
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-gray-600">Progression</span>
+                      <span className={`font-medium ${
+                        project.progress_percent === 100 ? 'text-green-600' :
+                        project.progress_percent >= 70 ? 'text-orange-500' :
+                        project.progress_percent >= 30 ? 'text-blue-600' :
+                        'text-gray-600'
+                      }`}>
+                        {project.progress_percent}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          project.progress_percent === 100 ? 'bg-green-500' :
+                          project.progress_percent >= 70 ? 'bg-orange-500' :
+                          project.progress_percent >= 30 ? 'bg-blue-500' :
+                          'bg-gray-400'
+                        }`}
+                        style={{ width: `${project.progress_percent}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {project.deliverables_approved} / {project.deliverables_count} livrables validés
+                    </p>
+                  </>
+                )}
               </div>
               
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -575,14 +594,29 @@ function ProjectsContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Progression</label>
-                  <p className="text-gray-900">{selectedProject.progress_percent}%</p>
+                  {selectedProject.deliverables_count === 0 ? (
+                    <p className="text-gray-500 italic">Aucun livrable</p>
+                  ) : (
+                    <p className={`font-medium ${
+                      selectedProject.progress_percent === 100 ? 'text-green-600' :
+                      selectedProject.progress_percent >= 70 ? 'text-orange-500' :
+                      selectedProject.progress_percent >= 30 ? 'text-blue-600' :
+                      'text-gray-600'
+                    }`}>
+                      {selectedProject.progress_percent}%
+                    </p>
+                  )}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Livrables</label>
-                <p className="text-gray-900">
-                  {selectedProject.deliverables_approved}/{selectedProject.deliverables_count} validés
-                </p>
+                {selectedProject.deliverables_count === 0 ? (
+                  <p className="text-gray-500 italic">Aucun livrable défini</p>
+                ) : (
+                  <p className="text-gray-900">
+                    {selectedProject.deliverables_approved} / {selectedProject.deliverables_count} validés
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-3 p-4 border-t border-gray-200">

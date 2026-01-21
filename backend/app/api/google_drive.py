@@ -3,9 +3,9 @@ Google Drive API - Drive/Docs/Sheets operations for entities
 """
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from urllib.parse import urlencode
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, Form, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -229,6 +229,150 @@ class CreateDocRequest(BaseModel):
     name: Optional[str] = None
     template_id: Optional[str] = None  # Use workspace template if not provided
     replacements: Optional[dict] = None  # {"{{PLACEHOLDER}}": "value"}
+
+
+# ============================================================================
+# UPLOAD TOKEN FOR DIRECT BROWSER UPLOAD
+# ============================================================================
+
+class UploadTokenResponse(BaseModel):
+    access_token: str
+    expires_in: int
+
+
+class UploadFileResponse(BaseModel):
+    id: str
+    name: str
+    web_view_link: str
+    mime_type: str
+
+
+@router.get("/upload-token", response_model=UploadTokenResponse)
+async def get_upload_token(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get a valid access token for direct browser upload to Google Drive.
+    The frontend will use this token for resumable upload.
+    """
+    try:
+        service = get_google_workspace_service(current_user.id)
+        access_token = await service.get_access_token()
+        
+        # Token expires in ~1 hour, but we return a safe estimate
+        return UploadTokenResponse(
+            access_token=access_token,
+            expires_in=3500  # ~58 minutes
+        )
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Google authorization required. Please reconnect.")
+    except GoogleAPIError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.post("/upload", response_model=UploadFileResponse)
+async def upload_file_to_drive(
+    file: UploadFile = File(...),
+    folder_id: str = Form(...),
+    file_name: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload a file to Google Drive (proxied through backend).
+    Use this if direct browser upload fails due to CORS.
+    """
+    import httpx
+    
+    try:
+        service = get_google_workspace_service(current_user.id)
+        access_token = await service.get_access_token()
+        
+        # Read file content
+        content = await file.read()
+        final_name = file_name or file.filename
+        
+        # Metadata
+        metadata = {
+            "name": final_name,
+            "parents": [folder_id]
+        }
+        
+        # Use multipart upload for simplicity
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Create multipart body
+            from httpx._multipart import MultipartStream
+            
+            # Simple upload (for files < 5MB) 
+            # For larger files, use resumable upload
+            if len(content) < 5 * 1024 * 1024:
+                # Simple multipart upload
+                import json
+                boundary = "radar_upload_boundary"
+                
+                body = (
+                    f'--{boundary}\r\n'
+                    f'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+                    f'{json.dumps(metadata)}\r\n'
+                    f'--{boundary}\r\n'
+                    f'Content-Type: {file.content_type or "application/octet-stream"}\r\n\r\n'
+                ).encode('utf-8') + content + f'\r\n--{boundary}--'.encode('utf-8')
+                
+                response = await client.post(
+                    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,mimeType",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": f"multipart/related; boundary={boundary}",
+                    },
+                    content=body
+                )
+            else:
+                # Resumable upload for larger files
+                # Step 1: Initiate resumable session
+                init_response = await client.post(
+                    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json",
+                        "X-Upload-Content-Type": file.content_type or "application/octet-stream",
+                        "X-Upload-Content-Length": str(len(content)),
+                    },
+                    json=metadata
+                )
+                
+                if init_response.status_code != 200:
+                    raise GoogleAPIError(f"Failed to initiate upload: {init_response.text}", init_response.status_code)
+                
+                upload_url = init_response.headers.get("Location")
+                
+                # Step 2: Upload content
+                response = await client.put(
+                    upload_url,
+                    headers={
+                        "Content-Type": file.content_type or "application/octet-stream",
+                        "Content-Length": str(len(content)),
+                    },
+                    content=content,
+                    params={"fields": "id,name,webViewLink,mimeType"}
+                )
+            
+            if response.status_code not in [200, 201]:
+                raise GoogleAPIError(f"Upload failed: {response.text}", response.status_code)
+            
+            result = response.json()
+            
+            return UploadFileResponse(
+                id=result["id"],
+                name=result["name"],
+                web_view_link=result.get("webViewLink", f"https://drive.google.com/file/d/{result['id']}/view"),
+                mime_type=result.get("mimeType", "application/octet-stream")
+            )
+            
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Google authorization required")
+    except GoogleAPIError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 # ============================================================================

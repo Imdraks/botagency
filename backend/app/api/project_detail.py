@@ -476,6 +476,49 @@ async def update_project_detail(
 
 
 # ============================================================================
+# DRIVE FOLDERS ENDPOINT
+# ============================================================================
+
+class DriveFolderInfo(BaseModel):
+    key: str
+    label: str
+    folder_id: Optional[str] = None
+
+
+class DriveFoldersResponse(BaseModel):
+    project_id: int
+    drive_folder_id: Optional[str] = None
+    folders: List[DriveFolderInfo] = []
+
+
+@router.get("/{project_id}/drive-folders", response_model=DriveFoldersResponse)
+async def get_project_drive_folders(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get the list of Drive subfolders for a project (used for file upload destination)"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    folders = [
+        DriveFolderInfo(key="brief", label="01_Brief", folder_id=project.drive_folder_brief),
+        DriveFolderInfo(key="production", label="02_Production", folder_id=project.drive_folder_production),
+        DriveFolderInfo(key="postprod", label="03_PostProd", folder_id=project.drive_folder_postprod),
+        DriveFolderInfo(key="exports", label="04_Exports", folder_id=project.drive_folder_exports),
+        DriveFolderInfo(key="admin", label="05_Admin", folder_id=project.drive_folder_admin),
+        DriveFolderInfo(key="archive", label="99_Archive", folder_id=project.drive_folder_archive),
+    ]
+    
+    return DriveFoldersResponse(
+        project_id=project_id,
+        drive_folder_id=project.drive_folder_id,
+        folders=folders
+    )
+
+
+# ============================================================================
 # DELIVERABLES ENDPOINTS
 # ============================================================================
 

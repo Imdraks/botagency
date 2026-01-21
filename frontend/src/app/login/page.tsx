@@ -87,7 +87,7 @@ function LoginContent() {
   // Auto-redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push("/cockpit");
+      router.push("/today");
     }
   }, [authLoading, isAuthenticated, router]);
 
