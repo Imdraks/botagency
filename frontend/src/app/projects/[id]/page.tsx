@@ -1468,7 +1468,7 @@ export default function ProjectDetailPage() {
                 </Button>
                 <Button
                   onClick={() => createDeliverableMutation.mutate(newDeliverable)}
-                  disabled={!newDeliverable.name || isUploading || createDeliverableMutation.isPending || (selectedFile && !selectedFolderId)}
+                  disabled={!newDeliverable.name || isUploading || createDeliverableMutation.isPending || !!(selectedFile && !selectedFolderId)}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
                   {isUploading ? (
