@@ -36,6 +36,19 @@ function setupAuthInterceptor(instance: AxiosInstance) {
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      
+      // Automatically add workspace_id to all requests (for multi-tenant isolation)
+      if (typeof window !== "undefined") {
+        const workspaceId = localStorage.getItem("current_workspace_id");
+        if (workspaceId) {
+          // Add to query params
+          config.params = config.params || {};
+          if (!config.params.workspace_id) {
+            config.params.workspace_id = workspaceId;
+          }
+        }
+      }
+      
       return config;
     },
     (error) => Promise.reject(error)

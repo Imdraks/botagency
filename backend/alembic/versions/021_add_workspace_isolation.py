@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '021_add_workspace_isolation'
-down_revision = '020_workspace_inbox'
+down_revision = '020_workspace_invites'
 branch_labels = None
 depends_on = None
 
