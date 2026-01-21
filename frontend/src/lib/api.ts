@@ -1271,11 +1271,11 @@ export const projectDetailApi = {
 
   updateTask: async (taskId: number, data: Partial<{
     title: string;
-    description: string;
+    description: string | null;
     status: string;
     priority: string;
-    due_date: string;
-    assignee_id: number;
+    due_date: string | null;
+    assignee_id: number | null;
   }>): Promise<ProjectTask> => {
     const response = await api.patch(`/agency/projects/tasks/${taskId}`, data);
     return response.data;
