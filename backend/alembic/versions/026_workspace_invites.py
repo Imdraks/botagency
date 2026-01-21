@@ -1,7 +1,7 @@
 """Workspace invites - authorized emails per workspace
 
-Revision ID: 020_workspace_invites
-Revises: 019_agency_cockpit
+Revision ID: 026_workspace_invites
+Revises: 025_drive_folder_livrables
 Create Date: 2026-01-21
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers
-revision = '020_workspace_invites'
+revision = '026_workspace_invites'
 down_revision = '025_drive_folder_livrables'
 branch_labels = None
 depends_on = None

@@ -97,3 +97,11 @@ from .agency import (
     CalendarEventType,
     ActivityType,
 )
+
+# Workspace & Multi-tenant
+from .workspace import (
+    Workspace,
+    WorkspaceMember,
+    WorkspaceInvite,
+    WorkspaceRole,
+)
