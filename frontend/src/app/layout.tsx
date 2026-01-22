@@ -9,7 +9,11 @@ export const metadata: Metadata = {
   title: "Radar",
   description: "Plateforme de détection et gestion d'opportunités événementielles",
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/logo.svg" },
+    ],
+    apple: "/favicon.svg",
   },
 };
 
