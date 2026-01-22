@@ -128,8 +128,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware"""
     
     async def dispatch(self, request: Request, call_next):
-        # Skip rate limiting for health checks
-        if request.url.path in ["/health", "/health/detailed"]:
+        # Skip rate limiting for health checks and auth endpoints
+        path = request.url.path
+        if path in ["/health", "/health/detailed"]:
+            return await call_next(request)
+        
+        # Skip rate limiting for all auth endpoints (they have their own brute force protection)
+        if path.startswith("/api/v1/auth/"):
             return await call_next(request)
         
         # Get rate limit for this endpoint
