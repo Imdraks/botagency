@@ -27,7 +27,7 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-900">
+    <main className="min-h-screen bg-white">
       <LandingHeader />
       <Hero />
       <Workflow />

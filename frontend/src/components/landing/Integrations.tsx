@@ -41,24 +41,24 @@ const integrations = [
 
 export function Integrations() {
   return (
-    <section id="integrations" className="py-24 bg-slate-800 relative overflow-hidden">
+    <section id="integrations" className="py-24 bg-gray-50 relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-purple-900/20 to-transparent" />
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-purple-50 to-transparent" />
       
       <div className="container mx-auto px-6 relative z-10">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Content */}
           <div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 rounded-full text-sm text-purple-400 mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full text-sm text-purple-600 mb-4">
               Intégrations
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
               Unifié avec{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
                 Google Workspace
               </span>
             </h2>
-            <p className="text-gray-400 mb-8 text-lg">
+            <p className="text-gray-600 mb-8 text-lg">
               Radar se connecte nativement à votre environnement Google.
               Vos fichiers, calendriers et emails restent synchronisés.
             </p>
@@ -68,7 +68,7 @@ export function Integrations() {
               {integrations.map((integration) => (
                 <div
                   key={integration.name}
-                  className="bg-slate-700/50 backdrop-blur-sm border border-white/10 rounded-xl p-5 hover:border-purple-500/30 transition-colors"
+                  className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all"
                 >
                   <div className="flex items-start gap-4">
                     <div
@@ -78,21 +78,21 @@ export function Integrations() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-white">{integration.name}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{integration.name}</h3>
                         {integration.comingSoon && (
-                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">
                             Bientôt
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-400 text-sm mb-3">{integration.description}</p>
+                      <p className="text-gray-600 text-sm mb-3">{integration.description}</p>
                       <div className="flex flex-wrap gap-2">
                         {integration.features.map((feature) => (
                           <span
                             key={feature}
-                            className="inline-flex items-center gap-1 text-xs text-gray-300 bg-slate-600/50 px-2 py-1 rounded-md"
+                            className="inline-flex items-center gap-1 text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded-md"
                           >
-                            <Check className="h-3 w-3 text-green-400" />
+                            <Check className="h-3 w-3 text-green-600" />
                             {feature}
                           </span>
                         ))}
@@ -106,28 +106,28 @@ export function Integrations() {
 
           {/* Right: Diagram */}
           <div className="relative">
-            <div className="bg-slate-700/30 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+            <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg">
               {/* Central Radar */}
               <div className="flex flex-col items-center">
                 {/* Google Icons */}
                 <div className="flex items-center justify-center gap-8 mb-8">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="h-16 w-16 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                      <FolderOpen className="h-8 w-8 text-blue-400" />
+                    <div className="h-16 w-16 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <FolderOpen className="h-8 w-8 text-blue-600" />
                     </div>
-                    <span className="text-xs text-gray-400">Drive</span>
+                    <span className="text-xs text-gray-600">Drive</span>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <div className="h-16 w-16 bg-green-500/20 rounded-xl flex items-center justify-center">
-                      <Calendar className="h-8 w-8 text-green-400" />
+                    <div className="h-16 w-16 bg-green-100 rounded-xl flex items-center justify-center">
+                      <Calendar className="h-8 w-8 text-green-600" />
                     </div>
-                    <span className="text-xs text-gray-400">Calendar</span>
+                    <span className="text-xs text-gray-600">Calendar</span>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <div className="h-16 w-16 bg-red-500/20 rounded-xl flex items-center justify-center">
-                      <Mail className="h-8 w-8 text-red-400" />
+                    <div className="h-16 w-16 bg-red-100 rounded-xl flex items-center justify-center">
+                      <Mail className="h-8 w-8 text-red-600" />
                     </div>
-                    <span className="text-xs text-gray-400">Gmail</span>
+                    <span className="text-xs text-gray-600">Gmail</span>
                   </div>
                 </div>
 
@@ -140,15 +140,15 @@ export function Integrations() {
 
                 {/* Radar Logo */}
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-50" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-30" />
                   <div className="relative h-24 w-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
                     <span className="text-3xl font-bold text-white">R</span>
                   </div>
                 </div>
 
                 <div className="mt-6 text-center">
-                  <p className="text-white font-semibold">Radar centralise tout</p>
-                  <p className="text-gray-400 text-sm">Une seule interface, zéro dispersion</p>
+                  <p className="text-gray-900 font-semibold">Radar centralise tout</p>
+                  <p className="text-gray-600 text-sm">Une seule interface, zéro dispersion</p>
                 </div>
               </div>
             </div>

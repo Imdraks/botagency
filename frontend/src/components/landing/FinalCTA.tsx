@@ -14,10 +14,10 @@ export function FinalCTA() {
   }, []);
 
   return (
-    <section className="py-24 bg-gradient-to-b from-slate-900 to-slate-800 relative overflow-hidden">
+    <section className="py-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-100 rounded-full blur-[120px]" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
@@ -28,12 +28,12 @@ export function FinalCTA() {
           </div>
 
           {/* Headline */}
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
             Prêt à centraliser votre agence ?
           </h2>
 
           {/* Subheadline */}
-          <p className="text-lg text-gray-400 mb-10 max-w-xl mx-auto">
+          <p className="text-lg text-gray-600 mb-10 max-w-xl mx-auto">
             Rejoignez les agences qui ont choisi Radar pour piloter leur croissance.
             Fini les infos éparpillées, place à la clarté.
           </p>
@@ -53,7 +53,7 @@ export function FinalCTA() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-white/20 text-white hover:bg-white/10 text-lg px-8 py-6 rounded-xl"
+                className="w-full sm:w-auto border-gray-300 text-gray-900 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl"
               >
                 Se connecter
               </Button>

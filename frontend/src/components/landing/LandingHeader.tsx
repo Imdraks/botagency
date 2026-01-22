@@ -33,8 +33,8 @@ export function LandingHeader() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "bg-slate-900/95 backdrop-blur-lg border-b border-white/10 py-3"
-          : "bg-transparent py-5"
+          ? "bg-white/95 backdrop-blur-lg border-b border-gray-200 py-3 shadow-sm"
+          : "bg-white py-5"
       }`}
     >
       <div className="container mx-auto px-6">
@@ -44,7 +44,7 @@ export function LandingHeader() {
             <div className="h-10 w-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
               <Radar className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">Radar</span>
+            <span className="text-2xl font-bold text-gray-900">Radar</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -53,7 +53,7 @@ export function LandingHeader() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-gray-300 hover:text-white transition-colors text-sm font-medium"
+                className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
               >
                 {link.label}
               </a>
@@ -63,7 +63,7 @@ export function LandingHeader() {
           {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-white/10">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100">
                 Se connecter
               </Button>
             </Link>
@@ -76,7 +76,7 @@ export function LandingHeader() {
 
           {/* Mobile Menu Button */}
           <button
-            className="lg:hidden text-white p-2"
+            className="lg:hidden text-gray-900 p-2"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -85,13 +85,13 @@ export function LandingHeader() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden mt-4 pb-4 border-t border-white/10 pt-4">
+          <div className="lg:hidden mt-4 pb-4 border-t border-gray-200 pt-4">
             <nav className="flex flex-col gap-3">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
-                  className="text-gray-300 hover:text-white transition-colors py-2"
+                  className="text-gray-600 hover:text-gray-900 transition-colors py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
@@ -99,7 +99,7 @@ export function LandingHeader() {
               ))}
               <div className="flex flex-col gap-2 mt-4">
                 <Link href="/login">
-                  <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10">
+                  <Button variant="outline" className="w-full border-gray-300 text-gray-900 hover:bg-gray-100">
                     Se connecter
                   </Button>
                 </Link>

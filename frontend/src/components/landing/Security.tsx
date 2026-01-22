@@ -44,18 +44,18 @@ const stats = [
 
 export function Security() {
   return (
-    <section id="securite" className="py-24 bg-gradient-to-b from-slate-800 to-slate-900">
+    <section id="securite" className="py-24 bg-white">
       <div className="container mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 rounded-full text-sm text-green-400 mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 rounded-full text-sm text-green-700 mb-4">
             <Shield className="h-4 w-4" />
             Sécurité & Conformité
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
             Vos données en sécurité
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Radar est conçu pour les agences qui prennent la sécurité au sérieux.
             Infrastructure robuste, conforme aux standards européens.
           </p>
@@ -66,10 +66,10 @@ export function Security() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center"
+              className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center"
             >
-              <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-400">{stat.label}</div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+              <div className="text-sm text-gray-600">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -79,14 +79,14 @@ export function Security() {
           {securityFeatures.map((feature) => (
             <div
               key={feature.title}
-              className="flex items-start gap-4 bg-slate-800/30 backdrop-blur-sm border border-white/10 rounded-xl p-5 hover:border-green-500/30 transition-colors"
+              className="flex items-start gap-4 bg-gray-50 border border-gray-200 rounded-xl p-5 hover:border-green-300 transition-colors"
             >
-              <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <feature.icon className="h-5 w-5 text-green-400" />
+              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <feature.icon className="h-5 w-5 text-green-700" />
               </div>
               <div>
-                <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
+                <h3 className="text-gray-900 font-semibold mb-1">{feature.title}</h3>
+                <p className="text-gray-600 text-sm">{feature.description}</p>
               </div>
             </div>
           ))}
