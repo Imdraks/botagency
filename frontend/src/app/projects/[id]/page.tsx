@@ -1078,6 +1078,9 @@ export default function ProjectDetailPage() {
   const [isCreatingBrief, setIsCreatingBrief] = useState(false);
 
   const openDrive = useCallback(async () => {
+    // Prevent multiple clicks
+    if (isCreatingDrive) return;
+    
     if (project?.drive_folder_id) {
       window.open(`https://drive.google.com/drive/folders/${project.drive_folder_id}`, "_blank");
     } else {
@@ -1099,9 +1102,12 @@ export default function ProjectDetailPage() {
         setIsCreatingDrive(false);
       }
     }
-  }, [project, projectId, queryClient]);
+  }, [project, projectId, queryClient, isCreatingDrive]);
 
   const createBrief = useCallback(async () => {
+    // Prevent multiple clicks
+    if (isCreatingBrief) return;
+    
     if (project?.brief_doc_id) {
       window.open(`https://docs.google.com/document/d/${project.brief_doc_id}`, "_blank");
       return;
@@ -1122,7 +1128,7 @@ export default function ProjectDetailPage() {
     } finally {
       setIsCreatingBrief(false);
     }
-  }, [project, projectId, queryClient]);
+  }, [project, projectId, queryClient, isCreatingBrief]);
 
   if (!mounted || isLoading) {
     return (
