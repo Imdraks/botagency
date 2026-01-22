@@ -208,6 +208,9 @@ class Project(Base):
     # Owner
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     
+    # Workspace (multi-tenancy)
+    workspace_id: Mapped[Optional[int]] = mapped_column(ForeignKey("workspaces.id"))
+    
     # Description
     description: Mapped[Optional[str]] = mapped_column(Text)
     
