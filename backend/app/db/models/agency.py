@@ -358,6 +358,9 @@ class Asset(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
     project: Mapped["Project"] = relationship("Project", back_populates="assets")
     
+    # Workspace (multi-tenancy)
+    workspace_id: Mapped[Optional[int]] = mapped_column(ForeignKey("workspaces.id"))
+    
     # Infos - legacy fields (kept for compatibility)
     kind: Mapped[AssetKind] = mapped_column(
         Enum(AssetKind, values_callable=lambda x: [e.value for e in x]),
