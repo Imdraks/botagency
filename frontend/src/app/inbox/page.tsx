@@ -101,7 +101,7 @@ const typeColors: Record<string, string> = {
   bug: 'text-red-500 bg-red-50 dark:bg-red-900/20',
   content: 'text-purple-500 bg-purple-50 dark:bg-purple-900/20',
   task: 'text-green-500 bg-green-50 dark:bg-green-900/20',
-  other: 'text-gray-500 bg-gray-50 dark:bg-gray-900/20',
+  other: 'text-gray-500 bg-gray-50 dark:bg-neutral-950/20',
 };
 
 // Function to render text with colored mentions

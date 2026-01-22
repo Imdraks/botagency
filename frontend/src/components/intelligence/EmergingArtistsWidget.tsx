@@ -204,7 +204,7 @@ function ArtistCard({ artist, type, onAnalyze }: {
 
 function ArtistCardSkeleton() {
   return (
-    <div className="flex-shrink-0 w-[280px] p-4 rounded-lg border bg-gray-50 dark:bg-gray-900/20">
+    <div className="flex-shrink-0 w-[280px] p-4 rounded-lg border bg-gray-50 dark:bg-neutral-950/20">
       <div className="flex items-start justify-between mb-2">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-5 w-12" />

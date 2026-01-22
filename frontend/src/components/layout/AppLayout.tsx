@@ -229,7 +229,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const currentPage = [...mainNavigation, ...toolsNavigation, ...adminNavigation].find(item => pathname.startsWith(item.href));
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-black">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -243,15 +243,15 @@ function AppLayoutInner({ children }: AppLayoutProps) {
         data-onboarding="sidebar"
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
-          "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-sm",
+          "bg-white dark:bg-neutral-950 border-r border-gray-200 dark:border-neutral-800 shadow-sm",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-5 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between h-16 px-5 border-b border-gray-200 dark:border-neutral-800">
             <Link href="/today" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#0000FF] dark:bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 dark:shadow-blue-500/30">
+              <div className="w-9 h-9 rounded-xl bg-purple-600 dark:bg-purple-600 flex items-center justify-center shadow-md shadow-purple-500/20 dark:shadow-purple-500/30">
                 <Target className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -282,8 +282,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                       isActive
-                        ? "bg-[#0000FF] dark:bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                        ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
                     )}
                     onClick={() => setSidebarOpen(false)}
                   >
@@ -293,7 +293,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                     )} />
                     <span className="flex-1">{item.name}</span>
                     {shouldShowNewBadge(item) && !isActive && (
-                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-blue-100 dark:bg-blue-900/50 text-[#0000FF] dark:text-blue-400 rounded-full">
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 rounded-full">
                         New
                       </span>
                     )}
@@ -302,7 +302,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
               })}
               
               {/* Divider */}
-              <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
+              <div className="my-3 border-t border-gray-200 dark:border-neutral-700" />
               
               {/* Tools Section - Collapsible - Only for non-admin users */}
               {!isAdmin && (
@@ -320,7 +320,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                   </button>
                   
                   {toolsExpanded && (
-                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 pl-3">
+                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-neutral-800 pl-3">
                       {filteredToolsNavigation.map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href);
                         return (
@@ -330,8 +330,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                             className={cn(
                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
                               isActive
-                                ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
-                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
+                                ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white"
+                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-800/50 hover:text-gray-700 dark:hover:text-gray-300"
                             )}
                             onClick={() => setSidebarOpen(false)}
                           >
@@ -364,7 +364,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                   </button>
                   
                   {adminExpanded && (
-                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 pl-3">
+                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-neutral-800 pl-3">
                       {filteredAdminToolsNavigation.map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href);
                         return (
@@ -374,8 +374,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                             className={cn(
                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
                               isActive
-                                ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
-                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
+                                ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white"
+                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-800/50 hover:text-gray-700 dark:hover:text-gray-300"
                             )}
                             onClick={() => setSidebarOpen(false)}
                           >
@@ -405,8 +405,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                       isActive
-                        ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                        ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
                     )}
                     onClick={() => setSidebarOpen(false)}
                   >
@@ -422,8 +422,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           </ScrollArea>
 
           {/* User info & Logout */}
-          <div className="border-t border-gray-200 dark:border-gray-800 p-4" data-onboarding="user-menu">
-            <div className="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 mb-3">
+          <div className="border-t border-gray-200 dark:border-neutral-800 p-4" data-onboarding="user-menu">
+            <div className="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-800 mb-3">
               {/* Help button - top right */}
               <div className="absolute -top-2 -right-2">
                 <OnboardingTrigger variant="icon" />
@@ -456,13 +456,13 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between px-6 shadow-sm">
+        <header className="h-16 border-b border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 flex items-center justify-between px-6 shadow-sm">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -487,7 +487,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 pb-20 lg:pb-6 scroll-touch">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black p-4 sm:p-6 pb-20 lg:pb-6 scroll-touch">
           <div className="animate-fade-in">
             {children}
           </div>

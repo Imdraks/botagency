@@ -806,7 +806,7 @@ export function ArtistAnalysisDialog() {
 
                         {/* Confidence Indicator */}
                         {aiData.listener_prediction.confidence !== undefined && (
-                          <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                          <div className="p-4 border rounded-lg bg-slate-50 dark:bg-neutral-950/50">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium">Confiance de la prédiction</span>
                               <span className={`text-sm font-bold ${

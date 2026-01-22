@@ -244,7 +244,7 @@ export function WeeklyReportDialog() {
               </TabsList>
               <TabsContent value="html" className="mt-4">
                 <div
-                  className="border rounded-lg p-4 bg-white dark:bg-gray-900 max-h-96 overflow-y-auto"
+                  className="border rounded-lg p-4 bg-white dark:bg-neutral-950 max-h-96 overflow-y-auto"
                   dangerouslySetInnerHTML={{ __html: report.html_content }}
                 />
               </TabsContent>
