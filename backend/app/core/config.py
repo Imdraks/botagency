@@ -121,6 +121,10 @@ class Settings(BaseSettings):
     # Comma-separated list of always-allowed emails (e.g., "ceo@example.com,admin@example.com")
     allowed_emails: str = ""
     
+    # Resend API (for sending invitation emails)
+    resend_api_key: str = ""
+    resend_from_email: str = "Radar <noreply@radarapp.fr>"
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

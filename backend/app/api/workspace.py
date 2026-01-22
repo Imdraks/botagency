@@ -569,7 +569,7 @@ async def add_workspace_invite(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Add an authorized email to a workspace. Admin only."""
+    """Add an authorized email to a workspace and send invitation email. Admin only."""
     if current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Admin only")
     
@@ -596,6 +596,21 @@ async def add_workspace_invite(
     db.add(invite)
     db.commit()
     db.refresh(invite)
+    
+    # Send invitation email
+    try:
+        from app.services.email_service import email_service
+        if email_service.is_configured:
+            await email_service.send_workspace_invite(
+                to_email=invite.email,
+                workspace_name=workspace.name,
+                inviter_name=current_user.full_name or current_user.email,
+                role=invite.role,
+            )
+    except Exception as e:
+        # Log but don't fail if email sending fails
+        import logging
+        logging.error(f"Failed to send invitation email: {e}")
     
     return WorkspaceInviteResponse(
         id=invite.id,
