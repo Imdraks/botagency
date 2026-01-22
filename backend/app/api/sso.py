@@ -205,6 +205,11 @@ async def google_sso_callback(
             ttl=86400 * 30  # 30 days
         )
         
+        # Create Radar folder in Drive for new users or users without a folder
+        if is_new:
+            from app.workers.tasks import create_radar_folder_task
+            create_radar_folder_task.delay(user.id)
+        
         # Create session tokens
         session_tokens = sso_service.create_session_tokens(user)
         

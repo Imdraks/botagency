@@ -962,3 +962,58 @@ def analyze_artist_task(self, artist_name: str, force_refresh: bool = False, use
         print(f"   Traceback: {traceback.format_exc()}", flush=True)
         log.exception(f"Analyse artiste échouée: {artist_name}")
         raise self.retry(exc=e, countdown=30)
+
+
+# ============================================
+# CREATE RADAR FOLDER TASK
+# ============================================
+
+@celery_app.task(bind=True, max_retries=3)
+def create_radar_folder_task(self, user_id: int):
+    """
+    Create Radar folder structure in Google Drive for a new user.
+    Called after first SSO login.
+    """
+    import asyncio
+    from app.services.google_workspace import GoogleWorkspaceService
+    
+    print(f"\n🗂️ Creating Radar folder for user {user_id}...", flush=True)
+    
+    async def create_folder():
+        try:
+            service = GoogleWorkspaceService(user_id)
+            
+            # Step 1: Find or create "Radar" folder at root
+            radar_folder = await service.find_folder_by_name("Radar", parent_id=None)
+            if radar_folder:
+                print(f"   ✓ Radar folder already exists: {radar_folder['id']}", flush=True)
+                radar_folder_id = radar_folder["id"]
+            else:
+                radar = await service.create_folder("Radar")
+                radar_folder_id = radar["id"]
+                print(f"   ✓ Created Radar folder: {radar_folder_id}", flush=True)
+            
+            # Step 2: Create subfolders inside Radar
+            subfolders = ["Projets", "Archives", "Clients"]
+            for subfolder_name in subfolders:
+                existing = await service.find_folder_by_name(subfolder_name, radar_folder_id)
+                if not existing:
+                    await service.create_folder(subfolder_name, radar_folder_id)
+                    print(f"   ✓ Created {subfolder_name} folder", flush=True)
+            
+            print(f"✅ Radar folder structure created for user {user_id}", flush=True)
+            return {"success": True, "folder_id": radar_folder_id}
+            
+        except Exception as e:
+            print(f"❌ Failed to create Radar folder: {e}", flush=True)
+            raise
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(create_folder())
+        loop.close()
+        return result
+    except Exception as e:
+        print(f"❌ Error creating Radar folder: {e}", flush=True)
+        raise self.retry(exc=e, countdown=30)
