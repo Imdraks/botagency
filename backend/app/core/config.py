@@ -124,6 +124,8 @@ class Settings(BaseSettings):
     # Resend API (for sending invitation emails)
     resend_api_key: str = ""
     resend_from_email: str = "Radar <noreply@radarapp.fr>"
+    # Enable/disable sending invitation emails (can be toggled by admins)
+    send_invitation_emails: bool = True
     
     class Config:
         env_file = ".env"
