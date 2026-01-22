@@ -93,13 +93,17 @@ rate_limiter = RateLimiter()
 
 # Specific limits for sensitive endpoints
 RATE_LIMITS = {
-    "/api/v1/auth/login": {"max": 5, "window": 60},  # 5 attempts per minute
-    "/api/v1/auth/setup": {"max": 3, "window": 60},  # 3 attempts per minute
+    "/api/v1/auth/login": {"max": 10, "window": 60},  # 10 attempts per minute
+    "/api/v1/auth/setup": {"max": 5, "window": 60},  # 5 attempts per minute
     "/api/v1/auth/register": {"max": 5, "window": 300},  # 5 per 5 minutes
     "/api/v1/auth/forgot-password": {"max": 3, "window": 300},  # 3 per 5 minutes
     "/api/v1/auth/reset-password": {"max": 5, "window": 300},  # 5 per 5 minutes
-    "/api/v1/users": {"max": 30, "window": 60},  # 30 per minute
-    "default": {"max": 100, "window": 60},  # 100 per minute default
+    "/api/v1/auth/me": {"max": 200, "window": 60},  # 200 per minute (frequent)
+    "/api/v1/auth/refresh": {"max": 60, "window": 60},  # 60 per minute
+    "/api/v1/auth/setup-check": {"max": 120, "window": 60},  # 120 per minute
+    "/api/v1/auth/sso/google/init": {"max": 30, "window": 60},  # 30 per minute
+    "/api/v1/users": {"max": 60, "window": 60},  # 60 per minute
+    "default": {"max": 200, "window": 60},  # 200 per minute default
 }
 
 
