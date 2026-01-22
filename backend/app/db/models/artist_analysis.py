@@ -2,7 +2,8 @@
 Model for storing artist analysis history
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
@@ -11,6 +12,10 @@ class ArtistAnalysis(Base):
     __tablename__ = "artist_analyses"
 
     id = Column(Integer, primary_key=True, index=True)
+    
+    # Workspace isolation
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
+    workspace = relationship("Workspace", backref="artist_analyses")
     
     # Artiste info
     artist_name = Column(String(255), nullable=False, index=True)

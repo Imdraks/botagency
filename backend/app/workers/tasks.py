@@ -675,7 +675,7 @@ def run_intelligent_search(self, query: str, search_params: Dict[str, Any] = Non
 
 
 @celery_app.task(bind=True, max_retries=1)
-def analyze_artist_task(self, artist_name: str, force_refresh: bool = False, user_id: int = None):
+def analyze_artist_task(self, artist_name: str, force_refresh: bool = False, user_id: int = None, workspace_id: int = None):
     """
     Analyze an artist with AI-powered intelligence.
     
@@ -859,6 +859,9 @@ def analyze_artist_task(self, artist_name: str, force_refresh: bool = False, use
         try:
             db = get_db()
             analysis = ArtistAnalysis(
+                # Workspace isolation
+                workspace_id=workspace_id,
+                
                 # Basic info
                 artist_name=profile.name,
                 real_name=profile.real_name,

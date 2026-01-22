@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_current_workspace
 from app.db.models.user import User
+from app.db.models.workspace import Workspace
 from app.db.models.artist_analysis import ArtistAnalysis
 from app.intelligence.known_artists_db import (
     get_emerging_artists,
@@ -111,9 +112,10 @@ async def get_artist_history(
     sort_order: str = Query("desc", regex="^(asc|desc)$"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_workspace: Workspace = Depends(get_current_workspace),
 ):
-    """Get paginated artist analysis history"""
-    query = db.query(ArtistAnalysis)
+    """Get paginated artist analysis history for current workspace"""
+    query = db.query(ArtistAnalysis).filter(ArtistAnalysis.workspace_id == current_workspace.id)
     
     # Filters
     if search:
@@ -155,24 +157,32 @@ async def get_artist_history(
 async def get_artist_statistics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_workspace: Workspace = Depends(get_current_workspace),
 ):
-    """Get statistics about artist analyses"""
-    total = db.query(ArtistAnalysis).count()
-    unique = db.query(func.count(func.distinct(ArtistAnalysis.artist_name))).scalar()
+    """Get statistics about artist analyses for current workspace"""
+    base_query = db.query(ArtistAnalysis).filter(ArtistAnalysis.workspace_id == current_workspace.id)
+    total = base_query.count()
+    unique = db.query(func.count(func.distinct(ArtistAnalysis.artist_name))).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id
+    ).scalar()
     
     # Calculate average fees based on UNIQUE artists (latest analysis per artist)
-    # Subquery to get the latest analysis ID for each artist
+    # Subquery to get the latest analysis ID for each artist in this workspace
     from sqlalchemy import and_
     
     latest_per_artist = db.query(
         ArtistAnalysis.artist_name,
         func.max(ArtistAnalysis.id).label('latest_id')
+    ).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id
     ).group_by(ArtistAnalysis.artist_name).subquery()
     
     # Get average fees from only the latest analysis of each unique artist
     avg_fees = db.query(
         func.avg(ArtistAnalysis.fee_min),
         func.avg(ArtistAnalysis.fee_max)
+    ).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id
     ).join(
         latest_per_artist,
         and_(
@@ -185,6 +195,8 @@ async def get_artist_statistics(
     total_fees = db.query(
         func.sum(ArtistAnalysis.fee_min),
         func.sum(ArtistAnalysis.fee_max)
+    ).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id
     ).join(
         latest_per_artist,
         and_(
@@ -193,29 +205,37 @@ async def get_artist_statistics(
         )
     ).first()
     
-    # Most searched artist
+    # Most searched artist in this workspace
     most_searched = db.query(
         ArtistAnalysis.artist_name,
         func.count(ArtistAnalysis.id).label('count')
+    ).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id
     ).group_by(ArtistAnalysis.artist_name).order_by(desc('count')).first()
     
     # Tier distribution
     tiers = db.query(
         ArtistAnalysis.market_tier,
         func.count(ArtistAnalysis.id)
+    ).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id
     ).group_by(ArtistAnalysis.market_tier).all()
     
     tier_distribution = {tier: count for tier, count in tiers if tier}
     
     # AI Statistics
     avg_ai_score = db.query(func.avg(ArtistAnalysis.ai_score)).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id,
         ArtistAnalysis.ai_score.isnot(None)
     ).scalar()
     
     ai_tiers = db.query(
         ArtistAnalysis.ai_tier,
         func.count(ArtistAnalysis.id)
-    ).filter(ArtistAnalysis.ai_tier.isnot(None)).group_by(ArtistAnalysis.ai_tier).all()
+    ).filter(
+        ArtistAnalysis.workspace_id == current_workspace.id,
+        ArtistAnalysis.ai_tier.isnot(None)
+    ).group_by(ArtistAnalysis.ai_tier).all()
     
     ai_tier_distribution = {tier: count for tier, count in ai_tiers if tier}
     

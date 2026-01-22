@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.db.models.user import User
+from app.db.models.workspace import Workspace
 from app.db.models.ingestion import IngestionRun, IngestionStatus
 from app.db.models.source import SourceConfig
 from app.schemas.ingestion import IngestionRunResponse, IngestionTriggerRequest
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, get_current_workspace
 from app.workers.tasks import run_ingestion_task, run_intelligent_search, analyze_artist_task
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -205,6 +206,7 @@ def trigger_artist_analysis(
     request: ArtistAnalysisRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_workspace: Workspace = Depends(get_current_workspace),
 ):
     """
     Analyze an artist to get their estimated fee, recent events, and booking contacts.
@@ -220,7 +222,12 @@ def trigger_artist_analysis(
             detail="Artist name must be at least 2 characters",
         )
     
-    task = analyze_artist_task.delay(request.artist_name.strip(), request.force_refresh)
+    task = analyze_artist_task.delay(
+        request.artist_name.strip(), 
+        request.force_refresh,
+        user_id=current_user.id,
+        workspace_id=current_workspace.id
+    )
     
     return {
         "message": f"Artist analysis started for: {request.artist_name}",
