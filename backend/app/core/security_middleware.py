@@ -23,9 +23,22 @@ logger = logging.getLogger(__name__)
 class RateLimiter:
     """In-memory rate limiter with sliding window"""
     
+    # IPs whitelistées (jamais rate limited)
+    WHITELISTED_IPS: Set[str] = {
+        "127.0.0.1",
+        "localhost",
+        "91.163.219.107",  # Ayman - Admin
+    }
+    
     def __init__(self):
         self.requests: Dict[str, list] = defaultdict(list)
         self.blocked_ips: Dict[str, datetime] = {}
+        # Charger les IPs whitelistées depuis env
+        import os
+        extra_ips = os.getenv("WHITELISTED_IPS", "")
+        if extra_ips:
+            for ip in extra_ips.split(","):
+                self.WHITELISTED_IPS.add(ip.strip())
         
     def _get_client_ip(self, request: Request) -> str:
         """Get client IP, handling proxies"""
@@ -68,6 +81,10 @@ class RateLimiter:
         Returns True if allowed, False if rate limited.
         """
         ip = self._get_client_ip(request)
+        
+        # Whitelisted IPs bypass rate limiting
+        if ip in self.WHITELISTED_IPS:
+            return True
         
         # Check if IP is blocked
         if self.is_blocked(ip):
