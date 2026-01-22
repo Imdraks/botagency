@@ -23,7 +23,7 @@ from app.schemas.opportunity import (
     TaskCreate, TaskUpdate, TaskResponse,
     BudgetStatsResponse
 )
-from app.api.deps import get_current_user, require_bizdev, require_admin
+from app.api.deps import get_current_user, require_bizdev, require_admin, require_workspace_member, get_user_workspace_id
 
 router = APIRouter(prefix="/opportunities", tags=["opportunities"])
 
@@ -56,10 +56,13 @@ def list_opportunities(
     sort_order: str = Query("desc", regex="^(asc|desc)$"),
     # Auth
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_workspace_member),
 ):
     """List opportunities with filters and pagination"""
-    query = db.query(Opportunity)
+    # Get user's workspace
+    ws_id = current_user.workspace_id
+    
+    query = db.query(Opportunity).filter(Opportunity.workspace_id == ws_id)
     
     # Apply filters
     if status:

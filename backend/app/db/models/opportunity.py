@@ -68,6 +68,9 @@ class Opportunity(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     
+    # Workspace isolation
+    workspace_id = Column(Integer, ForeignKey('workspaces.id'), nullable=False, index=True)
+    
     # External identification (for deduplication)
     external_id = Column(String(255), unique=True, index=True, nullable=False)
     

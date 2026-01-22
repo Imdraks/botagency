@@ -54,6 +54,9 @@ class Entity(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
+    # Workspace isolation
+    workspace_id = Column(Integer, ForeignKey('workspaces.id'), nullable=False, index=True)
+    
     # Core identity
     name = Column(String(255), nullable=False, index=True)
     normalized_name = Column(String(255), nullable=False, index=True)  # lowercase, stripped
