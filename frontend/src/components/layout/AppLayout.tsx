@@ -456,28 +456,17 @@ function AppLayoutInner({ children }: AppLayoutProps) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="h-16 border-b border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 flex items-center justify-between px-6 shadow-sm">
+        {/* Top bar - Desktop */}
+        <header className="hidden lg:flex h-16 border-b border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 items-center justify-between px-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            
             {/* Breadcrumb */}
-            <div className="hidden lg:flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm">
               <span className="text-gray-400 dark:text-gray-500">Radar</span>
               <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
               <span className="text-gray-900 dark:text-white font-semibold">
                 {currentPage?.name || "Dashboard"}
               </span>
             </div>
-            
-            <span className="lg:hidden text-gray-900 dark:text-white font-bold text-lg">Radar</span>
           </div>
           
           <div className="flex items-center gap-2">
@@ -487,8 +476,36 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           </div>
         </header>
 
+        {/* Top bar - Mobile (compact) */}
+        <header className="lg:hidden h-14 border-b border-gray-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-lg flex items-center justify-between px-4 sticky top-0 z-40">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(true)}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 -ml-2"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 bg-gradient-to-r from-purple-600 to-pink-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xs">R</span>
+              </div>
+              <span className="text-gray-900 dark:text-white font-bold">
+                {currentPage?.name || "Radar"}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <NotificationCenter />
+            <ThemeToggle />
+          </div>
+        </header>
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black p-4 sm:p-6 pb-20 lg:pb-6 scroll-touch">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black p-4 sm:p-6 pb-24 lg:pb-6 scroll-touch overscroll-contain">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
