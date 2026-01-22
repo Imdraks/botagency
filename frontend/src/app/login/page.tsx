@@ -137,8 +137,14 @@ function LoginContent() {
   // Check for SSO error in URL
   useEffect(() => {
     const ssoError = searchParams.get("error");
+    const ssoMessage = searchParams.get("message");
+    
     if (ssoError) {
-      setError(`Erreur SSO: ${ssoError}`);
+      if (ssoError === "access_denied" && ssoMessage) {
+        setError(decodeURIComponent(ssoMessage));
+      } else {
+        setError(`Erreur SSO: ${ssoError}`);
+      }
     }
   }, [searchParams]);
   
