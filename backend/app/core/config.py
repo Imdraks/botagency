@@ -130,6 +130,31 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+    
+    def validate_security_settings(self) -> list[str]:
+        """Validate critical security settings. Returns list of warnings."""
+        warnings = []
+        
+        # Check for default/weak secrets
+        if self.secret_key == "change-this-in-production":
+            warnings.append("CRITICAL: secret_key is using default value!")
+        if self.jwt_secret_key == "your-jwt-secret-key":
+            warnings.append("CRITICAL: jwt_secret_key is using default value!")
+        if len(self.secret_key) < 32:
+            warnings.append("WARNING: secret_key should be at least 32 characters")
+        if len(self.jwt_secret_key) < 32:
+            warnings.append("WARNING: jwt_secret_key should be at least 32 characters")
+        if self.admin_password == "change-this-password":
+            warnings.append("CRITICAL: admin_password is using default value!")
+            
+        # Check for production settings
+        if self.app_env == "production":
+            if self.debug:
+                warnings.append("WARNING: debug=True in production!")
+            if "localhost" in self.database_url:
+                warnings.append("WARNING: Using localhost database in production!")
+                
+        return warnings
 
 
 @lru_cache()
@@ -139,3 +164,15 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+# Log security warnings on startup (only in non-test environments)
+import os
+if os.environ.get("TESTING") != "true":
+    import logging
+    _logger = logging.getLogger(__name__)
+    _warnings = settings.validate_security_settings()
+    for w in _warnings:
+        if "CRITICAL" in w:
+            _logger.critical(w)
+        else:
+            _logger.warning(w)

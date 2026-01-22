@@ -86,6 +86,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Import security middlewares
+from app.core.security_middleware import (
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    InputValidationMiddleware,
+    RequestIdMiddleware,
+    AuditLogMiddleware,
+    BotProtectionMiddleware,
+)
 
 # Performance monitoring middleware
 class TimingMiddleware(BaseHTTPMiddleware):
@@ -105,8 +114,8 @@ app = FastAPI(
     title=settings.app_name,
     description="API pour la veille et qualification d'opportunités événementielles",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.app_env == "development" else None,  # Disable docs in production
+    redoc_url="/redoc" if settings.app_env == "development" else None,  # Disable redoc in production
 )
 
 # CORS configuration - dynamic based on environment
@@ -122,30 +131,60 @@ cors_origins = [
 if settings.app_env == "development":
     cors_origins.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
 
+# ============================================================================
+# SECURITY MIDDLEWARES - Order matters! (first added = last executed)
+# ============================================================================
+
 # Add GZip compression for responses > 500 bytes
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Add timing middleware for performance monitoring
 app.add_middleware(TimingMiddleware)
 
+# Security headers (XSS, Clickjacking protection)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Request ID for tracing
+app.add_middleware(RequestIdMiddleware)
+
+# Rate limiting (brute force protection)
+app.add_middleware(RateLimitMiddleware)
+
+# Input validation (SQL injection, XSS detection)
+app.add_middleware(InputValidationMiddleware)
+
+# Audit logging for sensitive actions
+app.add_middleware(AuditLogMiddleware)
+
+# Block malicious bots and scanners
+app.add_middleware(BotProtectionMiddleware)
+
+# CORS (must be after security middlewares)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["X-Process-Time"],
+    expose_headers=["X-Process-Time", "X-Request-ID"],
     max_age=600,  # Cache preflight for 10 minutes
 )
 
 
-# Exception handler
+# Exception handler - Don't expose internal errors in production
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.exception(f"Unhandled error: {exc}")
+    # Log full error internally
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    logger.exception(f"[{request_id}] Unhandled error: {exc}")
+    
+    # Return generic error to client (don't expose internals)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"},
+        content={
+            "detail": "Une erreur interne est survenue",
+            "request_id": request_id
+        },
     )
 
 
