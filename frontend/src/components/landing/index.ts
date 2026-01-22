@@ -1,3 +1,4 @@
+export { LandingWrapper } from "./LandingWrapper";
 export { LandingHeader } from "./LandingHeader";
 export { Hero } from "./Hero";
 export { Workflow } from "./Workflow";

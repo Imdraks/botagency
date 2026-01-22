@@ -1,4 +1,5 @@
 import {
+  LandingWrapper,
   LandingHeader,
   Hero,
   Workflow,
@@ -27,7 +28,7 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <div className="light" data-theme="light">
+    <LandingWrapper>
       <main className="min-h-screen bg-white text-gray-900">
         <LandingHeader />
         <Hero />
@@ -39,6 +40,6 @@ export default function HomePage() {
         <FinalCTA />
         <LandingFooter />
       </main>
-    </div>
+    </LandingWrapper>
   );
 }
