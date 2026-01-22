@@ -16,7 +16,8 @@ import {
   Calendar,
   FolderOpen,
   Sparkles,
-  Plus
+  Plus,
+  Building2
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
@@ -69,6 +70,13 @@ interface InboxItemPreview {
   age_hours: number;
 }
 
+interface UserWorkspace {
+  id: number;
+  name: string;
+  role: string;
+  members_count: number;
+}
+
 interface DashboardData {
   todos: TodoItem[];
   todos_count: number;
@@ -95,6 +103,7 @@ export default function TodayPage() {
 function TodayContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [inboxItems, setInboxItems] = useState<InboxItemPreview[]>([]);
+  const [workspaces, setWorkspaces] = useState<UserWorkspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,6 +135,19 @@ function TodayContent() {
         }
       } catch (e) {
         // Inbox is optional
+      }
+      
+      // Fetch user's workspaces
+      try {
+        const wsRes = await fetch('/api/v1/workspaces', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (wsRes.ok) {
+          const wsData = await wsRes.json();
+          setWorkspaces(wsData.items || []);
+        }
+      } catch (e) {
+        // Workspaces are optional
       }
       
       setError(null);
@@ -198,6 +220,20 @@ function TodayContent() {
           </Button>
         </div>
       </div>
+
+      {/* Workspace Info */}
+      {workspaces.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Building2 className="h-4 w-4 text-gray-400" />
+          <span className="text-sm text-gray-500 dark:text-gray-400">Workspace{workspaces.length > 1 ? 's' : ''} :</span>
+          {workspaces.map((ws) => (
+            <Badge key={ws.id} variant="secondary" className="text-xs">
+              {ws.name}
+              <span className="ml-1 text-gray-400">({ws.members_count} membre{ws.members_count > 1 ? 's' : ''})</span>
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
       {allEmpty && (
