@@ -8,3 +8,4 @@ export { Security } from "./Security";
 export { FAQ } from "./FAQ";
 export { FinalCTA } from "./FinalCTA";
 export { LandingFooter } from "./LandingFooter";
+export { ForceLightMode } from "./ForceLightMode";

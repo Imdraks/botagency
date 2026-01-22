@@ -9,6 +9,7 @@ import {
   FAQ,
   FinalCTA,
   LandingFooter,
+  ForceLightMode,
 } from "@/components/landing";
 
 export const metadata = {
@@ -28,18 +29,20 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <LandingWrapper>
-      <main className="min-h-screen bg-white text-gray-900">
-        <LandingHeader />
-        <Hero />
-        <Workflow />
-        <FeaturesGrid />
-        <Integrations />
-        <Security />
-        <FAQ />
-        <FinalCTA />
-        <LandingFooter />
-      </main>
-    </LandingWrapper>
+    <ForceLightMode>
+      <LandingWrapper>
+        <main className="min-h-screen bg-white text-gray-900">
+          <LandingHeader />
+          <Hero />
+          <Workflow />
+          <FeaturesGrid />
+          <Integrations />
+          <Security />
+          <FAQ />
+          <FinalCTA />
+          <LandingFooter />
+        </main>
+      </LandingWrapper>
+    </ForceLightMode>
   );
 }
