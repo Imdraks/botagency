@@ -1044,6 +1044,7 @@ async def create_project_asset(
     
     asset = Asset(
         project_id=project_id,
+        workspace_id=project.workspace_id,  # Inherit from project
         kind=AssetKind(data.kind),
         name=data.name,
         url=data.url,

@@ -402,6 +402,7 @@ async def create_asset(
     
     asset = Asset(
         project_id=asset_in.project_id,
+        workspace_id=project.workspace_id,  # Inherit from project
         kind=asset_in.kind.value if asset_in.kind else AssetKind.LINK,
         name=asset_in.name,
         url=asset_in.url,
