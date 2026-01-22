@@ -62,14 +62,14 @@ export function LandingHeader() {
 
           {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-3">
-            <a href="#produit">
+            <Link href="/login">
               <Button variant="ghost" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100">
-                Voir le produit
+                Se connecter
               </Button>
-            </a>
+            </Link>
             <Link href={isLoggedIn ? "/today" : "/login"}>
               <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 btn-press">
-                {isLoggedIn ? "Dashboard" : "Se connecter"}
+                {isLoggedIn ? "Dashboard" : "Créer un espace"}
               </Button>
             </Link>
           </div>
@@ -98,14 +98,14 @@ export function LandingHeader() {
                 </a>
               ))}
               <div className="flex flex-col gap-2 mt-4">
-                <a href="#produit" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full border-gray-300 text-gray-900 hover:bg-gray-100">
-                    Voir le produit
+                    Se connecter
                   </Button>
-                </a>
+                </Link>
                 <Link href={isLoggedIn ? "/today" : "/login"}>
                   <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 btn-press">
-                    {isLoggedIn ? "Dashboard" : "Se connecter"}
+                    {isLoggedIn ? "Dashboard" : "Créer un espace"}
                   </Button>
                 </Link>
               </div>

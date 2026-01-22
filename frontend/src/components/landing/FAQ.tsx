@@ -5,9 +5,14 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    question: "Radar est-il accessible au public ?",
+    question: "Radar est-il ouvert à tout le monde ?",
     answer:
-      "Non, Radar est une plateforme privée destinée aux agences. Chaque équipe dispose de son propre espace sécurisé (workspace). Les données sont isolées entre les différentes agences.",
+      "Non. Radar est conçu pour un usage agence. L'accès se fait par création d'un espace ou sur invitation, afin de garantir une expérience cohérente et professionnelle. Ce n'est pas un outil grand public.",
+  },
+  {
+    question: "Qui peut utiliser Radar ?",
+    answer:
+      "Radar s'adresse aux agences de production, studios créatifs et équipes qui gèrent des projets clients au quotidien. Chaque équipe dispose de son propre espace sécurisé (workspace) avec des données totalement isolées.",
   },
   {
     question: "Qu'est-ce qui est synchronisé avec Google Workspace ?",

@@ -47,8 +47,12 @@ export function Hero() {
             <p className="text-lg sm:text-xl text-gray-600 mb-4 max-w-xl mx-auto lg:mx-0">
               Centralisez pipeline, projets, production et assets.
             </p>
-            <p className="text-lg sm:text-xl text-gray-900 font-medium mb-8 max-w-xl mx-auto lg:mx-0">
+            <p className="text-lg sm:text-xl text-gray-900 font-medium mb-4 max-w-xl mx-auto lg:mx-0">
               Fin des infos éparpillées entre Drive, Notion et messages.
+            </p>
+            {/* Filtre naturel */}
+            <p className="text-sm text-gray-500 mb-8 max-w-xl mx-auto lg:mx-0">
+              Plateforme privée conçue pour les agences de production.
             </p>
 
             {/* CTA Buttons */}
@@ -58,7 +62,7 @@ export function Hero() {
                   size="lg"
                   className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg px-8 py-6 rounded-xl btn-press"
                 >
-                  {isLoggedIn ? "Accéder au dashboard" : "Se connecter"}
+                  {isLoggedIn ? "Accéder au dashboard" : "Créer un espace"}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>

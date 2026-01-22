@@ -24,14 +24,14 @@ export function FinalCTA() {
         <div className="max-w-3xl mx-auto text-center">
           {/* Headline */}
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-            Centralisez votre agence dès maintenant
+            Prêt à centraliser votre agence ?
           </h2>
 
           {/* Subheadline */}
           <p className="text-lg text-gray-600 mb-10 max-w-xl mx-auto">
             Pipeline, projets, production, assets, calendrier — tout au même endroit.
             <br />
-            Fini la dispersion.
+            Accès sur création d'espace ou invitation.
           </p>
 
           {/* CTA Button - Single, clear */}
@@ -41,7 +41,7 @@ export function FinalCTA() {
                 size="lg"
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg px-10 py-6 rounded-xl btn-press"
               >
-                {isLoggedIn ? "Accéder au dashboard" : "Se connecter"}
+                {isLoggedIn ? "Accéder au dashboard" : "Créer un espace"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -49,7 +49,7 @@ export function FinalCTA() {
 
           {/* Trust note */}
           <p className="mt-8 text-sm text-gray-500">
-            Pensé pour les agences • Intégré à Google Workspace • RGPD
+            Plateforme privée • Intégration Google Workspace • Hébergement RGPD Europe
           </p>
         </div>
       </div>
