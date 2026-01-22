@@ -156,3 +156,36 @@ def delete_user(
     db.delete(user)
     db.commit()
     return {"message": "User deleted successfully"}
+
+
+# ============================================================================
+# ADMIN SETTINGS
+# ============================================================================
+
+@router.get("/admin/settings")
+def get_admin_settings(
+    current_user: User = Depends(require_admin),
+):
+    """Get all admin settings"""
+    from app.core.admin_settings import get_admin_settings as get_settings
+    from app.services.email_service import email_service
+    
+    settings = get_settings()
+    # Add email configuration status
+    settings["email_configured"] = email_service.is_configured
+    return settings
+
+
+@router.put("/admin/settings")
+def update_admin_settings(
+    updates: dict,
+    current_user: User = Depends(require_admin),
+):
+    """Update admin settings"""
+    from app.core.admin_settings import set_admin_settings
+    
+    # Only allow specific settings to be updated
+    allowed_keys = {"send_invitation_emails"}
+    filtered_updates = {k: v for k, v in updates.items() if k in allowed_keys}
+    
+    return set_admin_settings(filtered_updates)

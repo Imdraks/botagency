@@ -597,10 +597,12 @@ async def add_workspace_invite(
     db.commit()
     db.refresh(invite)
     
-    # Send invitation email
+    # Send invitation email if enabled
     try:
+        from app.core.admin_settings import get_admin_setting
         from app.services.email_service import email_service
-        if email_service.is_configured:
+        
+        if get_admin_setting("send_invitation_emails", True) and email_service.is_configured:
             await email_service.send_workspace_invite(
                 to_email=invite.email,
                 workspace_name=workspace.name,

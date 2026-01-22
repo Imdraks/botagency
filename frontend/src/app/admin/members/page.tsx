@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Users, UserPlus, Mail, Trash2, CheckCircle, Clock, 
   Building2, Shield, Eye, Loader2, Search, RefreshCw,
-  AlertCircle, Copy, Check
+  AlertCircle, Copy, Check, Settings
 } from 'lucide-react';
 import { ProtectedRoute, AdminLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import api from "@/lib/api";
 
@@ -102,6 +103,11 @@ function AdminMembersContent() {
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
   
+  // Admin settings
+  const [sendEmails, setSendEmails] = useState(true);
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
+  
   // Dialog states
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [newInviteEmail, setNewInviteEmail] = useState('');
@@ -157,11 +163,39 @@ function AdminMembersContent() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await Promise.all([fetchWorkspaces(), fetchAllUsers()]);
+      await Promise.all([fetchWorkspaces(), fetchAllUsers(), fetchAdminSettings()]);
       setLoading(false);
     };
     load();
   }, [fetchWorkspaces, fetchAllUsers]);
+
+  // Fetch admin settings
+  const fetchAdminSettings = async () => {
+    try {
+      const response = await api.get('/api/v1/users/admin/settings');
+      setSendEmails(response.data.send_invitation_emails ?? true);
+      setEmailConfigured(response.data.email_configured ?? false);
+    } catch (error) {
+      console.error('Error fetching admin settings:', error);
+    }
+  };
+
+  // Update email toggle
+  const handleToggleEmails = async (enabled: boolean) => {
+    setUpdatingSettings(true);
+    try {
+      await api.put('/api/v1/users/admin/settings', {
+        send_invitation_emails: enabled,
+      });
+      setSendEmails(enabled);
+      toast.success(enabled ? 'Emails d\'invitation activés' : 'Emails d\'invitation désactivés');
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
 
   // Load workspace data when selection changes
   useEffect(() => {
@@ -257,13 +291,32 @@ function AdminMembersContent() {
           </p>
         </div>
         
-        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-          <DialogTrigger asChild>
-            <Button disabled={!selectedWorkspace}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Inviter
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-4">
+          {/* Email toggle */}
+          <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <Mail className={`h-4 w-4 ${emailConfigured ? 'text-green-500' : 'text-gray-400'}`} />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Emails d'invitation
+              </span>
+              {!emailConfigured && (
+                <span className="text-xs text-amber-500">Non configuré</span>
+              )}
+            </div>
+            <Switch
+              checked={sendEmails}
+              onCheckedChange={handleToggleEmails}
+              disabled={updatingSettings || !emailConfigured}
+            />
+          </div>
+          
+          <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button disabled={!selectedWorkspace}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Inviter
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Inviter un membre</DialogTitle>
@@ -322,6 +375,7 @@ function AdminMembersContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Workspace selector */}
