@@ -106,12 +106,12 @@ export function Hero() {
               </div>
 
               {/* Real Screenshot - Dashboard Today */}
-              <div className="aspect-[16/10] bg-gradient-to-br from-gray-900 to-gray-800 relative">
+              <div className="aspect-[16/10] bg-gradient-to-br from-gray-900 to-gray-800 relative overflow-hidden">
                 <Image
                   src="/screenshots/dashboard-today.png"
                   alt="Dashboard Radar - Vue Today avec pipeline et projets"
                   fill
-                  className="object-cover object-top"
+                  className="object-contain object-center"
                   priority
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
