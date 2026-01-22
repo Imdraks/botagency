@@ -1,7 +1,7 @@
 """add workspace_id to artist_analyses
 
-Revision ID: 010_artist_workspace
-Revises: 009_entity_brief_system
+Revision ID: 030_artist_workspace
+Revises: 029
 Create Date: 2026-01-22
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '010_artist_workspace'
-down_revision = '009_entity_brief_system'
+revision = '030_artist_workspace'
+down_revision = '029'
 branch_labels = None
 depends_on = None
 
