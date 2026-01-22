@@ -96,6 +96,13 @@ from app.core.security_middleware import (
     BotProtectionMiddleware,
 )
 
+# Import advanced security (backdoor, reverse shell, injection protection)
+from app.core.advanced_security import (
+    AdvancedSecurityMiddleware,
+    FileUploadSecurityMiddleware,
+    HoneypotMiddleware,
+)
+
 # Performance monitoring middleware
 class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -158,6 +165,19 @@ app.add_middleware(AuditLogMiddleware)
 
 # Block malicious bots and scanners
 app.add_middleware(BotProtectionMiddleware)
+
+# ============================================================================
+# ADVANCED SECURITY (Backdoors, Reverse Shells, etc.)
+# ============================================================================
+
+# Honeypot endpoints (detect attackers looking for common vulnerabilities)
+app.add_middleware(HoneypotMiddleware)
+
+# Advanced attack detection (command injection, path traversal, reverse shells)
+app.add_middleware(AdvancedSecurityMiddleware)
+
+# File upload security
+app.add_middleware(FileUploadSecurityMiddleware)
 
 # CORS (must be after security middlewares)
 app.add_middleware(

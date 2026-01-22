@@ -48,6 +48,22 @@ class AssetStatusEnum(str, Enum):
     FINAL = "FINAL"
 
 
+def sanitize_asset_input(value: str) -> str:
+    """Sanitize string input to prevent XSS/injection"""
+    if not value:
+        return value
+    # Remove potentially dangerous characters
+    import re
+    # Remove script tags and event handlers
+    value = re.sub(r'<script[^>]*>.*?</script>', '', value, flags=re.IGNORECASE | re.DOTALL)
+    value = re.sub(r'on\w+\s*=', '', value, flags=re.IGNORECASE)
+    # Remove other dangerous HTML
+    dangerous = ['<', '>', '"', "'"]
+    for char in dangerous:
+        value = value.replace(char, '')
+    return value.strip()[:500]  # Limit length
+
+
 class AssetCreateRequest(BaseModel):
     project_id: int
     name: str
@@ -57,6 +73,19 @@ class AssetCreateRequest(BaseModel):
     status: Optional[AssetStatusEnum] = AssetStatusEnum.DRAFT
     drive_file_id: Optional[str] = None
     drive_folder_id: Optional[str] = None
+    
+    def sanitized(self):
+        """Return sanitized version of the request"""
+        return AssetCreateRequest(
+            project_id=self.project_id,
+            name=sanitize_asset_input(self.name),
+            url=self.url[:2000] if self.url else "",  # Limit URL length
+            type=self.type,
+            version=sanitize_asset_input(self.version) if self.version else None,
+            status=self.status,
+            drive_file_id=self.drive_file_id[:255] if self.drive_file_id else None,
+            drive_folder_id=self.drive_folder_id[:255] if self.drive_folder_id else None,
+        )
 
 
 class AssetUpdateRequest(BaseModel):
@@ -67,6 +96,18 @@ class AssetUpdateRequest(BaseModel):
     status: Optional[AssetStatusEnum] = None
     drive_file_id: Optional[str] = None
     drive_folder_id: Optional[str] = None
+    
+    def sanitized(self):
+        """Return sanitized version of the request"""
+        return AssetUpdateRequest(
+            name=sanitize_asset_input(self.name) if self.name else None,
+            url=self.url[:2000] if self.url else None,
+            type=self.type,
+            version=sanitize_asset_input(self.version) if self.version else None,
+            status=self.status,
+            drive_file_id=self.drive_file_id[:255] if self.drive_file_id else None,
+            drive_folder_id=self.drive_folder_id[:255] if self.drive_folder_id else None,
+        )
 
 
 class AssetResponse(BaseModel):
@@ -245,6 +286,9 @@ async def create_asset(
     
     The asset type will be auto-detected from the URL if not provided.
     """
+    # Sanitize input
+    data = data.sanitized()
+    
     # Verify project exists
     project = db.query(Project).filter(Project.id == data.project_id).first()
     if not project:
@@ -300,6 +344,9 @@ async def update_asset(
     current_user: User = Depends(get_current_user)
 ):
     """Update an existing asset"""
+    # Sanitize input
+    data = data.sanitized()
+    
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     
     if not asset:

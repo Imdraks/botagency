@@ -282,6 +282,7 @@ async def upload_file_to_drive(
     Use this if direct browser upload fails due to CORS.
     """
     import httpx
+    from app.core.advanced_security import validate_file_upload, sanitize_filename
     
     try:
         service = get_google_workspace_service(current_user.id)
@@ -289,7 +290,16 @@ async def upload_file_to_drive(
         
         # Read file content
         content = await file.read()
-        final_name = file_name or file.filename
+        final_name = sanitize_filename(file_name or file.filename)
+        
+        # ============ SECURITY: Validate file upload ============
+        is_valid, error_msg = validate_file_upload(final_name, content, max_size_mb=50)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
+            )
+        # ========================================================
         
         # Metadata
         metadata = {
