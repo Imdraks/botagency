@@ -156,6 +156,14 @@ async def google_sso_callback(
         name = claims.get("name")
         avatar_url = claims.get("picture")
         
+        # Check if email is allowed (whitelist check)
+        from app.services.email_whitelist import is_email_allowed
+        is_allowed, reason = is_email_allowed(db, email)
+        
+        if not is_allowed:
+            error_url = f"{settings.frontend_url}/login?error=access_denied&message=Votre+email+n%27est+pas+autoris%C3%A9.+Demandez+une+invitation+%C3%A0+un+administrateur."
+            return RedirectResponse(url=error_url)
+        
         # Find or create user
         user, is_new = sso_service.find_or_create_user_from_sso(
             provider="google",
@@ -313,6 +321,14 @@ async def apple_sso_callback(
                 name = f"{first_name} {last_name}".strip() or None
             except json.JSONDecodeError:
                 pass
+        
+        # Check if email is allowed (whitelist check)
+        from app.services.email_whitelist import is_email_allowed
+        is_allowed, reason = is_email_allowed(db, email)
+        
+        if not is_allowed:
+            error_url = f"{settings.frontend_url}/login?error=access_denied&message=Votre+email+n%27est+pas+autoris%C3%A9.+Demandez+une+invitation+%C3%A0+un+administrateur."
+            return RedirectResponse(url=error_url)
         
         # Find or create user
         user, is_new = sso_service.find_or_create_user_from_sso(
