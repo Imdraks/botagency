@@ -1,0 +1,87 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+
+const faqs = [
+  {
+    question: "Radar est-il accessible au public ?",
+    answer:
+      "Non, Radar est une plateforme privée destinée aux agences. Chaque équipe dispose de son propre espace sécurisé (workspace). Les données sont isolées entre les différentes agences.",
+  },
+  {
+    question: "Qu'est-ce qui est synchronisé avec Google Workspace ?",
+    answer:
+      "Radar se connecte à Google Drive pour créer automatiquement l'arborescence de vos projets (dossiers, sous-dossiers, templates). Il synchronise également vos deadlines et rendez-vous avec Google Calendar.",
+  },
+  {
+    question: "Comment sont organisés les fichiers sur Google Drive ?",
+    answer:
+      "Quand vous créez un projet, Radar génère automatiquement une structure de dossiers : Client > Projet > (Briefs, Livrables, Assets, etc.). Vous pouvez personnaliser les templates de documents.",
+  },
+  {
+    question: "Comment fonctionne le scoring des leads ?",
+    answer:
+      "Le scoring analyse plusieurs critères : budget estimé, deadline, correspondance avec vos services, localisation, etc. L'IA attribue un score de 0 à 100 pour prioriser vos opportunités.",
+  },
+  {
+    question: "Comment gérer les rôles et permissions ?",
+    answer:
+      "Radar propose 4 rôles : Admin (accès total), BizDev (pipeline, leads), PM (projets, production) et Viewer (lecture seule). Chaque membre ne voit que ce qui le concerne.",
+  },
+  {
+    question: "Peut-on importer des données depuis d'autres outils ?",
+    answer:
+      "Oui, vous pouvez importer vos clients et projets via fichier CSV. L'import depuis Notion et Airtable est en cours de développement.",
+  },
+];
+
+export function FAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  return (
+    <section id="faq" className="py-24 bg-slate-900">
+      <div className="container mx-auto px-6">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 rounded-full text-sm text-purple-400 mb-4">
+            FAQ
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Questions fréquentes
+          </h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Tout ce que vous devez savoir avant de commencer avec Radar.
+          </p>
+        </div>
+
+        {/* FAQ Items */}
+        <div className="max-w-3xl mx-auto space-y-4">
+          {faqs.map((faq, index) => (
+            <div
+              key={index}
+              className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden"
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-700/30 transition-colors"
+              >
+                <span className="font-medium text-white pr-4">{faq.question}</span>
+                <ChevronDown
+                  className={`h-5 w-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+                    openIndex === index ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {openIndex === index && (
+                <div className="px-5 pb-5">
+                  <p className="text-gray-400 leading-relaxed">{faq.answer}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
