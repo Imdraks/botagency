@@ -14,7 +14,7 @@ from app.db.models.agency import (
     ProjectStatus, DeliverableStatus, ApprovalStatus, DealStatus
 )
 from app.db.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_workspace_member
 from app.schemas.agency import (
     # Project
     ProjectCreate, ProjectUpdate, ProjectResponse, ProjectListResponse,
@@ -51,7 +51,7 @@ async def list_projects(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Liste des projets"""
     query = db.query(Project).join(Client)
@@ -199,7 +199,7 @@ async def create_project(
     project_in: ProjectCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau projet avec création automatique du dossier Drive"""
     client = None
@@ -260,7 +260,7 @@ async def create_project(
 async def get_project(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un projet"""
     project = db.query(Project).join(Client).filter(Project.id == project_id).first()
@@ -326,7 +326,7 @@ async def update_project(
     project_id: int,
     project_in: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un projet"""
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -359,7 +359,7 @@ async def update_project_status(
     project_id: int,
     status: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update"""
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -377,7 +377,7 @@ async def delete_project(
     project_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un projet et déplacer son dossier Drive vers Archives"""
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -458,7 +458,7 @@ async def list_deliverables(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Liste des livrables"""
     query = db.query(Deliverable).join(Project).join(Client)
@@ -511,7 +511,7 @@ async def list_deliverables(
 async def create_deliverable(
     deliverable_in: DeliverableCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau livrable"""
     project = db.query(Project).filter(Project.id == deliverable_in.project_id).first()
@@ -551,7 +551,7 @@ async def create_deliverable(
 async def get_deliverable(
     deliverable_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un livrable"""
     d = db.query(Deliverable).join(Project).join(Client).filter(
@@ -593,7 +593,7 @@ async def update_deliverable(
     deliverable_id: int,
     deliverable_in: DeliverableUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un livrable"""
     d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
@@ -624,7 +624,7 @@ async def update_deliverable_status(
     deliverable_id: int,
     status: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update (for kanban)"""
     d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
@@ -642,7 +642,7 @@ async def delete_deliverable(
     deliverable_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un livrable et déplacer son fichier Drive vers 99_Archive du projet"""
     d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
@@ -708,7 +708,7 @@ async def archive_item_to_project_folder(
 async def get_production(
     project_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Production Kanban - tous les livrables par statut"""
     columns = []
@@ -787,7 +787,7 @@ async def list_approvals(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Liste des demandes de validation"""
     query = db.query(Approval).join(Deliverable).join(Project).join(Client)
@@ -826,7 +826,7 @@ async def list_approvals(
 async def create_approval(
     approval_in: ApprovalCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Demander une validation"""
     deliverable = db.query(Deliverable).filter(
@@ -865,7 +865,7 @@ async def decide_approval(
     status: str,  # "approved" or "changes"
     feedback: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Décider d'une validation"""
     approval = db.query(Approval).filter(Approval.id == approval_id).first()

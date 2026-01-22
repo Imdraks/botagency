@@ -14,7 +14,7 @@ from app.db.models.agency import (
     DealStatus, ProjectStatus, DeliverableStatus, ApprovalStatus, TaskStatus
 )
 from app.db.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_workspace_member
 from app.schemas.agency import (
     # Client
     ClientCreate, ClientUpdate, ClientResponse, ClientListResponse,
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/agency", tags=["agency-cockpit"])
 @router.get("/dashboard", response_model=DashboardV2Response)
 async def get_dashboard_v2(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """
     Dashboard V2 avec 3 blocs :
@@ -296,7 +296,7 @@ async def list_clients(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Liste tous les clients"""
     query = db.query(Client)
@@ -333,7 +333,7 @@ async def list_clients(
 async def create_client(
     client_in: ClientCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau client"""
     client = Client(
@@ -359,7 +359,7 @@ async def create_client(
 async def get_client(
     client_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un client"""
     client = db.query(Client).filter(Client.id == client_id).first()
@@ -399,7 +399,7 @@ async def update_client(
     client_id: int,
     client_in: ClientUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un client"""
     client = db.query(Client).filter(Client.id == client_id).first()
@@ -423,7 +423,7 @@ async def update_client(
 async def delete_client(
     client_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un client"""
     client = db.query(Client).filter(Client.id == client_id).first()
@@ -442,7 +442,7 @@ async def delete_client(
 @router.get("/pipeline", response_model=PipelineResponse)
 async def get_pipeline(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Pipeline commercial Kanban"""
     columns = []
@@ -513,7 +513,7 @@ async def list_deals(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Liste des deals"""
     query = db.query(Deal).join(Client)
@@ -558,7 +558,7 @@ async def list_deals(
 async def create_deal(
     deal_in: DealCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau deal"""
     # Vérifier que le client existe
@@ -604,7 +604,7 @@ async def create_deal(
 async def get_deal(
     deal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un deal"""
     deal = db.query(Deal).join(Client).filter(Deal.id == deal_id).first()
@@ -642,7 +642,7 @@ async def update_deal(
     deal_id: int,
     deal_in: DealUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un deal"""
     deal = db.query(Deal).filter(Deal.id == deal_id).first()
@@ -683,7 +683,7 @@ async def update_deal_status(
     deal_id: int,
     status: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update (for kanban drag & drop)"""
     deal = db.query(Deal).filter(Deal.id == deal_id).first()
@@ -701,7 +701,7 @@ async def update_deal_status(
 async def delete_deal(
     deal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un deal"""
     deal = db.query(Deal).filter(Deal.id == deal_id).first()

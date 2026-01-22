@@ -65,6 +65,17 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Handle NO_WORKSPACE_ACCESS - redirect to waiting page
+    if (error.response?.status === 403) {
+      const detail = (error.response?.data as { detail?: string })?.detail;
+      if (detail === "NO_WORKSPACE_ACCESS") {
+        if (typeof window !== "undefined" && !window.location.pathname.includes("/no-workspace")) {
+          window.location.href = "/no-workspace";
+        }
+        return Promise.reject(error);
+      }
+    }
+
     // If 401 and not already retrying, try to refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

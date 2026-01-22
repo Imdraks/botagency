@@ -44,6 +44,41 @@ def get_current_user(
     return user
 
 
+def require_workspace_member(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Require user to be a member of at least one workspace.
+    Returns user with workspace_id attribute attached.
+    """
+    from app.db.models.workspace import WorkspaceMember
+    
+    # Admin/superuser can proceed (they can access any workspace)
+    if current_user.is_superuser or current_user.role == Role.ADMIN:
+        member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == current_user.id
+        ).first()
+        current_user.workspace_id = member.workspace_id if member else None
+        return current_user
+    
+    # Regular user must be a member of at least one workspace
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.user_id == current_user.id
+    ).first()
+    
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="NO_WORKSPACE_ACCESS",
+            headers={"X-Error-Code": "NO_WORKSPACE_ACCESS"},
+        )
+    
+    # Attach workspace_id to user for convenience
+    current_user.workspace_id = member.workspace_id
+    return current_user
+
+
 def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
