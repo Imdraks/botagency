@@ -16,13 +16,27 @@ from app.db.models.user import User
 from app.db.models.account import Account
 from app.core.config import settings
 from app.core.sso import SSOService
+from app.core.cache import cache_get, cache_set, cache_delete
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth/sso", tags=["sso"])
 
 
-# State storage (in production, use Redis)
-_oauth_states: dict = {}
+# OAuth state helpers using Redis for persistence
+OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+def store_oauth_state(state: str, data: dict):
+    """Store OAuth state in Redis"""
+    cache_set(f"oauth_state:{state}", data, ttl=OAUTH_STATE_TTL)
+
+
+def get_oauth_state(state: str) -> Optional[dict]:
+    """Get and remove OAuth state from Redis"""
+    data = cache_get(f"oauth_state:{state}")
+    if data:
+        cache_delete(f"oauth_state:{state}")
+    return data
 
 
 class SSOInitResponse(BaseModel):
@@ -85,12 +99,12 @@ async def google_sso_init(request: Request):
     state = secrets.token_urlsafe(32)
     nonce = secrets.token_urlsafe(32)
     
-    # Store state (in production, use Redis with TTL)
-    _oauth_states[state] = {
+    # Store state in Redis with TTL
+    store_oauth_state(state, {
         "provider": "google",
         "nonce": nonce,
-        "created_at": datetime.utcnow(),
-    }
+        "created_at": datetime.utcnow().isoformat(),
+    })
     
     redirect_uri = f"{settings.backend_url}/api/v1/auth/sso/google/callback"
     
@@ -120,19 +134,12 @@ async def google_sso_callback(
     Handle Google OAuth callback.
     Exchanges code for tokens and creates/links user account.
     """
-    # Verify state
-    stored_state = _oauth_states.pop(state, None)
-    if not stored_state or stored_state["provider"] != "google":
+    # Verify state from Redis
+    stored_state = get_oauth_state(state)
+    if not stored_state or stored_state.get("provider") != "google":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired state"
-        )
-    
-    # Check state age (max 10 minutes)
-    if datetime.utcnow() - stored_state["created_at"] > timedelta(minutes=10):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="State expired"
         )
     
     sso_service = SSOService(db)
@@ -236,11 +243,12 @@ async def apple_sso_init(request: Request):
     state = secrets.token_urlsafe(32)
     nonce = secrets.token_urlsafe(32)
     
-    _oauth_states[state] = {
+    # Store state in Redis with TTL
+    store_oauth_state(state, {
         "provider": "apple",
         "nonce": nonce,
-        "created_at": datetime.utcnow(),
-    }
+        "created_at": datetime.utcnow().isoformat(),
+    })
     
     redirect_uri = f"{settings.backend_url}/api/v1/auth/sso/apple/callback"
     
@@ -281,9 +289,9 @@ async def apple_sso_callback(
             detail="Missing code or state"
         )
     
-    # Verify state
-    stored_state = _oauth_states.pop(state, None)
-    if not stored_state or stored_state["provider"] != "apple":
+    # Verify state from Redis
+    stored_state = get_oauth_state(state)
+    if not stored_state or stored_state.get("provider") != "apple":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired state"
