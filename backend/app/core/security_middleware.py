@@ -91,19 +91,19 @@ class RateLimiter:
 rate_limiter = RateLimiter()
 
 
-# Specific limits for sensitive endpoints
+# Specific limits for sensitive endpoints (scaled for 10+ concurrent users)
 RATE_LIMITS = {
-    "/api/v1/auth/login": {"max": 10, "window": 60},  # 10 attempts per minute
-    "/api/v1/auth/setup": {"max": 5, "window": 60},  # 5 attempts per minute
-    "/api/v1/auth/register": {"max": 5, "window": 300},  # 5 per 5 minutes
-    "/api/v1/auth/forgot-password": {"max": 3, "window": 300},  # 3 per 5 minutes
-    "/api/v1/auth/reset-password": {"max": 5, "window": 300},  # 5 per 5 minutes
-    "/api/v1/auth/me": {"max": 200, "window": 60},  # 200 per minute (frequent)
-    "/api/v1/auth/refresh": {"max": 60, "window": 60},  # 60 per minute
-    "/api/v1/auth/setup-check": {"max": 120, "window": 60},  # 120 per minute
-    "/api/v1/auth/sso/google/init": {"max": 30, "window": 60},  # 30 per minute
-    "/api/v1/users": {"max": 60, "window": 60},  # 60 per minute
-    "default": {"max": 200, "window": 60},  # 200 per minute default
+    "/api/v1/auth/login": {"max": 30, "window": 60},  # 30 attempts per minute (brute force protection)
+    "/api/v1/auth/setup": {"max": 20, "window": 60},  # 20 attempts per minute
+    "/api/v1/auth/register": {"max": 10, "window": 300},  # 10 per 5 minutes
+    "/api/v1/auth/forgot-password": {"max": 10, "window": 300},  # 10 per 5 minutes
+    "/api/v1/auth/reset-password": {"max": 15, "window": 300},  # 15 per 5 minutes
+    "/api/v1/auth/me": {"max": 1000, "window": 60},  # 1000 per minute (very frequent polling)
+    "/api/v1/auth/refresh": {"max": 300, "window": 60},  # 300 per minute (token refresh)
+    "/api/v1/auth/setup-check": {"max": 500, "window": 60},  # 500 per minute (app init)
+    "/api/v1/auth/sso/google/init": {"max": 60, "window": 60},  # 60 per minute
+    "/api/v1/users": {"max": 300, "window": 60},  # 300 per minute
+    "default": {"max": 600, "window": 60},  # 600 per minute default (10 users * 60 requests)
 }
 
 
