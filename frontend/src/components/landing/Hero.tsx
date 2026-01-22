@@ -34,12 +34,12 @@ export function Hero() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={{ color: '#111827' }}>
-              Votre{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-gray-900 dark:!text-gray-900" style={{ color: '#111827' }}>
+              <span style={{ color: '#111827' }}>Votre</span>{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600" style={{ color: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text' }}>
                 cockpit
               </span>{" "}
-              pour piloter votre agence
+              <span style={{ color: '#111827' }}>pour piloter votre agence</span>
             </h1>
 
             {/* Subheadline */}
