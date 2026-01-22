@@ -154,10 +154,14 @@ def get_budget_stats(
     category: Optional[OpportunityCategory] = None,
     region: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_workspace_member),
 ):
     """Get budget statistics for histogram filter"""
-    query = db.query(Opportunity).filter(Opportunity.budget_amount.isnot(None))
+    ws_id = current_user.workspace_id
+    query = db.query(Opportunity).filter(
+        Opportunity.workspace_id == ws_id,
+        Opportunity.budget_amount.isnot(None)
+    )
     
     # Apply same filters
     if status:
@@ -251,10 +255,14 @@ def get_budget_stats(
 def get_opportunity(
     opportunity_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_workspace_member),
 ):
     """Get opportunity by ID"""
-    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    ws_id = current_user.workspace_id
+    opportunity = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
     if not opportunity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -268,10 +276,14 @@ def update_opportunity(
     opportunity_id: int,
     update_data: OpportunityUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_bizdev),
+    current_user: User = Depends(require_workspace_member),
 ):
     """Update opportunity"""
-    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    ws_id = current_user.workspace_id
+    opportunity = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
     if not opportunity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
