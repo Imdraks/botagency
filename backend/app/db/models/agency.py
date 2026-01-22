@@ -13,7 +13,7 @@ from sqlalchemy import (
     Boolean, Enum, Float, JSON, Index, Table
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PgEnum
 import uuid
 
 from app.db.base import Base
@@ -135,7 +135,10 @@ class Deal(Base):
     
     # Infos deal
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    status: Mapped[DealStatus] = mapped_column(Enum(DealStatus), default=DealStatus.NEW)
+    status: Mapped[DealStatus] = mapped_column(
+        Enum(DealStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DealStatus.NEW
+    )
     value: Mapped[Optional[float]] = mapped_column(Float)  # Montant estimé
     
     # Suivi
@@ -190,7 +193,10 @@ class Project(Base):
     
     # Infos projet
     name: Mapped[str] = mapped_column(String(500), nullable=False)
-    status: Mapped[ProjectStatus] = mapped_column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE)
+    status: Mapped[ProjectStatus] = mapped_column(
+        Enum(ProjectStatus, values_callable=lambda x: [e.value for e in x]),
+        default=ProjectStatus.ACTIVE
+    )
     deadline: Mapped[Optional[datetime]] = mapped_column(DateTime)
     budget: Mapped[Optional[float]] = mapped_column(Float)
     
@@ -256,7 +262,10 @@ class Deliverable(Base):
     # Infos
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     type: Mapped[Optional[str]] = mapped_column(String(100))  # video, design, document, etc.
-    status: Mapped[DeliverableStatus] = mapped_column(Enum(DeliverableStatus), default=DeliverableStatus.DRAFT)
+    status: Mapped[DeliverableStatus] = mapped_column(
+        Enum(DeliverableStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DeliverableStatus.DRAFT
+    )
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     link: Mapped[Optional[str]] = mapped_column(String(1000))
     drive_file_id: Mapped[Optional[str]] = mapped_column(String(100))  # Google Drive file ID
@@ -289,7 +298,10 @@ class Approval(Base):
     deliverable: Mapped["Deliverable"] = relationship("Deliverable", back_populates="approvals")
     
     # Statut
-    status: Mapped[ApprovalStatus] = mapped_column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
+    status: Mapped[ApprovalStatus] = mapped_column(
+        Enum(ApprovalStatus, values_callable=lambda x: [e.value for e in x]),
+        default=ApprovalStatus.PENDING
+    )
     
     # Feedback
     feedback: Mapped[Optional[str]] = mapped_column(Text)
@@ -339,7 +351,10 @@ class Asset(Base):
     project: Mapped["Project"] = relationship("Project", back_populates="assets")
     
     # Infos - legacy fields (kept for compatibility)
-    kind: Mapped[AssetKind] = mapped_column(Enum(AssetKind), default=AssetKind.LINK)
+    kind: Mapped[AssetKind] = mapped_column(
+        Enum(AssetKind, values_callable=lambda x: [e.value for e in x]),
+        default=AssetKind.LINK
+    )
     asset_type: Mapped[Optional[str]] = mapped_column(String(50))  # brief, report, template, other (legacy)
     
     # Infos - new unified fields
@@ -387,8 +402,14 @@ class AgencyTask(Base):
     # Infos
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.TODO)
-    priority: Mapped[TaskPriority] = mapped_column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    status: Mapped[TaskStatus] = mapped_column(
+        Enum(TaskStatus, values_callable=lambda x: [e.value for e in x]),
+        default=TaskStatus.TODO
+    )
+    priority: Mapped[TaskPriority] = mapped_column(
+        Enum(TaskPriority, values_callable=lambda x: [e.value for e in x]),
+        default=TaskPriority.MEDIUM
+    )
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     
     # Assignee
@@ -424,7 +445,10 @@ class CalendarEvent(Base):
     
     # Infos événement
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    type: Mapped[CalendarEventType] = mapped_column(Enum(CalendarEventType), default=CalendarEventType.OTHER)
+    type: Mapped[CalendarEventType] = mapped_column(
+        Enum(CalendarEventType, values_callable=lambda x: [e.value for e in x]),
+        default=CalendarEventType.OTHER
+    )
     start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end: Mapped[Optional[datetime]] = mapped_column(DateTime)
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -470,7 +494,10 @@ class ProjectActivityLog(Base):
     
     # Log content
     message: Mapped[str] = mapped_column(String(1000), nullable=False)
-    activity_type: Mapped[Optional[ActivityType]] = mapped_column(Enum(ActivityType), nullable=True)
+    activity_type: Mapped[Optional[ActivityType]] = mapped_column(
+        Enum(ActivityType, values_callable=lambda x: [e.value for e in x]),
+        nullable=True
+    )
     
     # Metadata
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
