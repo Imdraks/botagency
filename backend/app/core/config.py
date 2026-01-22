@@ -113,6 +113,14 @@ class Settings(BaseSettings):
     admin_email: str = "admin@youragency.com"
     admin_password: str = "change-this-password"
     
+    # Security - Registration Whitelist
+    # If True, only users with a pending workspace invite can register/login
+    require_workspace_invite: bool = True
+    # Comma-separated list of always-allowed email domains (e.g., "youragency.com,partner.com")
+    allowed_email_domains: str = ""
+    # Comma-separated list of always-allowed emails (e.g., "ceo@example.com,admin@example.com")
+    allowed_emails: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
