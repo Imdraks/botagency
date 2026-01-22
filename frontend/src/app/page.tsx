@@ -27,8 +27,8 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <div className="light">
-      <main className="min-h-screen bg-white">
+    <div className="light" data-theme="light">
+      <main className="min-h-screen bg-white text-gray-900">
         <LandingHeader />
         <Hero />
         <Workflow />
