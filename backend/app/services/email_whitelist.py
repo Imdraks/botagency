@@ -5,7 +5,7 @@ Checks if an email is authorized to register/login based on:
 2. Allowed email domains
 3. Specific allowed emails
 """
-from typing import Tuple, Optional
+from typing import Tuple, List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -75,7 +75,7 @@ def is_email_allowed(db: Session, email: str) -> Tuple[bool, str]:
     return (False, "not_allowed")
 
 
-def get_pending_invites(db: Session, email: str) -> list:
+def get_pending_invites(db: Session, email: str) -> List[Dict[str, Any]]:
     """
     Get all pending workspace invites for an email.
     """
