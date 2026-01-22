@@ -121,10 +121,34 @@ function TodayContent() {
       const dashboardData = await dashboardRes.json();
       setData(dashboardData);
       
-      // Fetch recent inbox items (preview)
+      // Fetch user's workspaces first
+      let userWorkspaces: UserWorkspace[] = [];
+      try {
+        const wsRes = await fetch('/api/v1/workspaces', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (wsRes.ok) {
+          const wsData = await wsRes.json();
+          userWorkspaces = wsData.items || [];
+          setWorkspaces(userWorkspaces);
+          
+          // Update localStorage with valid workspace if needed
+          if (userWorkspaces.length > 0) {
+            const currentWsId = localStorage.getItem('current_workspace_id');
+            const hasAccess = userWorkspaces.some(ws => ws.id.toString() === currentWsId);
+            if (!hasAccess) {
+              localStorage.setItem('current_workspace_id', userWorkspaces[0].id.toString());
+            }
+          }
+        }
+      } catch (e) {
+        // Workspaces are optional
+      }
+      
+      // Fetch recent inbox items (preview) - use valid workspace
       try {
         const workspaceId = localStorage.getItem('current_workspace_id');
-        if (workspaceId) {
+        if (workspaceId && userWorkspaces.some(ws => ws.id.toString() === workspaceId)) {
           const inboxRes = await fetch(`/api/v1/inbox?workspace_id=${workspaceId}&limit=5`, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
@@ -135,19 +159,6 @@ function TodayContent() {
         }
       } catch (e) {
         // Inbox is optional
-      }
-      
-      // Fetch user's workspaces
-      try {
-        const wsRes = await fetch('/api/v1/workspaces', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (wsRes.ok) {
-          const wsData = await wsRes.json();
-          setWorkspaces(wsData.items || []);
-        }
-      } catch (e) {
-        // Workspaces are optional
       }
       
       setError(null);
