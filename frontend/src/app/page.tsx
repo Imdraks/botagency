@@ -4,6 +4,7 @@ import {
   Hero,
   Workflow,
   FeaturesGrid,
+  WhyRadar,
   Integrations,
   Security,
   FAQ,
@@ -34,8 +35,9 @@ export default function HomePage() {
         <main className="min-h-screen bg-white text-gray-900">
           <LandingHeader />
           <Hero />
-          <Workflow />
           <FeaturesGrid />
+          <WhyRadar />
+          <Workflow />
           <Integrations />
           <Security />
           <FAQ />

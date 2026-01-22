@@ -3,6 +3,7 @@ export { LandingHeader } from "./LandingHeader";
 export { Hero } from "./Hero";
 export { Workflow } from "./Workflow";
 export { FeaturesGrid } from "./FeaturesGrid";
+export { WhyRadar } from "./WhyRadar";
 export { Integrations } from "./Integrations";
 export { Security } from "./Security";
 export { FAQ } from "./FAQ";

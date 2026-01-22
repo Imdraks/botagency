@@ -1,56 +1,38 @@
 "use client";
 
 import {
-  LayoutGrid,
+  Target,
   FolderKanban,
-  FileBox,
+  CheckCircle2,
+  HardDrive,
   Calendar,
-  Sparkles,
-  Users,
-  BarChart3,
-  Bell,
 } from "lucide-react";
 
 const features = [
   {
-    icon: LayoutGrid,
-    title: "Pipeline Kanban",
-    description: "Visualisez tous vos deals en un coup d'œil. Drag & drop intuitif.",
+    icon: Target,
+    title: "Pipeline & Leads",
+    description: "Kanban visuel pour suivre vos opportunités du premier contact au closing.",
   },
   {
     icon: FolderKanban,
     title: "Projets & Livrables",
-    description: "Suivez l'avancement, gérez les validations clients en temps réel.",
+    description: "Organisez chaque projet client avec ses phases, tâches et échéances.",
   },
   {
-    icon: FileBox,
-    title: "Assets centralisés",
-    description: "Tous vos fichiers clients au même endroit. Liens et documents.",
+    icon: CheckCircle2,
+    title: "Production & Validations",
+    description: "Cycle de validation client intégré. Commentaires et versions centralisés.",
+  },
+  {
+    icon: HardDrive,
+    title: "Assets & Google Drive",
+    description: "Arborescence Drive automatique par projet. Templates Docs/Sheets inclus.",
   },
   {
     icon: Calendar,
     title: "Calendrier & Deadlines",
-    description: "Vue planning des échéances. Synchro Google Calendar.",
-  },
-  {
-    icon: Sparkles,
-    title: "Daily Picks IA",
-    description: "Chaque jour, l'IA vous suggère les leads les plus prometteurs.",
-  },
-  {
-    icon: BarChart3,
-    title: "Scoring intelligent",
-    description: "Priorisez automatiquement vos opportunités selon vos critères.",
-  },
-  {
-    icon: Users,
-    title: "Gestion d'équipe",
-    description: "Rôles et permissions. Chaque membre voit ce qui le concerne.",
-  },
-  {
-    icon: Bell,
-    title: "Notifications",
-    description: "Alertes deadlines, nouveaux leads, validations en attente.",
+    description: "Vue planning unifiée. Synchronisation bidirectionnelle avec Google Calendar.",
   },
 ];
 
@@ -61,22 +43,22 @@ export function FeaturesGrid() {
         {/* Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full text-sm text-purple-600 mb-4">
-            Fonctionnalités
+            5 workflows unifiés
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Tout pour piloter votre agence
+            Tout ce qu'il faut pour piloter une agence
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Une plateforme pensée pour les agences qui veulent gagner du temps et garder le contrôle.
+            Un seul outil. Zéro dispersion.
           </p>
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature, index) => (
+        {/* Grid - 5 features max */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+          {features.map((feature) => (
             <div
               key={feature.title}
-              className="group bg-white border border-gray-200 rounded-2xl p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-300"
+              className="group bg-white border border-gray-200 rounded-2xl p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-300 card-hover"
             >
               {/* Icon */}
               <div className="h-12 w-12 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center mb-4 group-hover:from-purple-200 group-hover:to-pink-200 transition-colors">

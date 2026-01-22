@@ -62,14 +62,14 @@ export function LandingHeader() {
 
           {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link href="/login">
+            <a href="#produit">
               <Button variant="ghost" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100">
-                Se connecter
+                Voir le produit
               </Button>
-            </Link>
+            </a>
             <Link href={isLoggedIn ? "/today" : "/login"}>
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0">
-                {isLoggedIn ? "Dashboard" : "Commencer"}
+              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 btn-press">
+                {isLoggedIn ? "Dashboard" : "Se connecter"}
               </Button>
             </Link>
           </div>
@@ -98,14 +98,14 @@ export function LandingHeader() {
                 </a>
               ))}
               <div className="flex flex-col gap-2 mt-4">
-                <Link href="/login">
+                <a href="#produit" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full border-gray-300 text-gray-900 hover:bg-gray-100">
-                    Se connecter
+                    Voir le produit
                   </Button>
-                </Link>
+                </a>
                 <Link href={isLoggedIn ? "/today" : "/login"}>
-                  <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600">
-                    Commencer
+                  <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 btn-press">
+                    {isLoggedIn ? "Dashboard" : "Se connecter"}
                   </Button>
                 </Link>
               </div>
