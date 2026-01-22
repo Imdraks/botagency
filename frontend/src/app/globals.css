@@ -663,6 +663,73 @@
   animation: shimmer 1.5s infinite;
 }
 
+/* Page transitions */
+@keyframes page-enter {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-exit {
+  from { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes stagger-fade-in {
+  from { 
+    opacity: 0; 
+    transform: translateY(12px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter { animation: page-enter 0.25s ease-out forwards; }
+.animate-page-exit { animation: page-exit 0.15s ease-in forwards; }
+
+/* Staggered animations for lists */
+.stagger-item { opacity: 0; animation: stagger-fade-in 0.3s ease-out forwards; }
+.stagger-item:nth-child(1) { animation-delay: 0ms; }
+.stagger-item:nth-child(2) { animation-delay: 50ms; }
+.stagger-item:nth-child(3) { animation-delay: 100ms; }
+.stagger-item:nth-child(4) { animation-delay: 150ms; }
+.stagger-item:nth-child(5) { animation-delay: 200ms; }
+.stagger-item:nth-child(6) { animation-delay: 250ms; }
+.stagger-item:nth-child(7) { animation-delay: 300ms; }
+.stagger-item:nth-child(8) { animation-delay: 350ms; }
+.stagger-item:nth-child(9) { animation-delay: 400ms; }
+.stagger-item:nth-child(10) { animation-delay: 450ms; }
+
+/* Card hover effects */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Button press effect */
+.btn-press {
+  transition: transform 0.1s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
 /* ============================================
    RESPONSIVE HELPERS
    ============================================ */

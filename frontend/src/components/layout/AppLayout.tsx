@@ -41,6 +41,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -488,9 +489,17 @@ function AppLayoutInner({ children }: AppLayoutProps) {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black p-4 sm:p-6 pb-20 lg:pb-6 scroll-touch">
-          <div className="animate-fade-in">
-            {children}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
       
