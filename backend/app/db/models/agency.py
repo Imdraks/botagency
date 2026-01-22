@@ -92,10 +92,15 @@ class Client(Base):
     __tablename__ = "clients"
     __table_args__ = (
         Index("ix_clients_name", "name"),
+        Index("ix_clients_workspace_id", "workspace_id"),
         {"extend_existing": True}
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    # Workspace association - CRITICAL for multi-tenancy
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id"), nullable=False, index=True)
+    
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     
     # Contacts stockés en JSON: [{"name": "...", "email": "...", "phone": "...", "role": "..."}]

@@ -14,7 +14,7 @@ from app.db.models.agency import (
     DealStatus, ProjectStatus, DeliverableStatus, ApprovalStatus, TaskStatus
 )
 from app.db.models.user import User
-from app.api.deps import get_current_user, require_workspace_member
+from app.api.deps import get_current_user, require_workspace_member, get_user_workspace_id
 from app.schemas.agency import (
     # Client
     ClientCreate, ClientUpdate, ClientResponse, ClientListResponse,
@@ -36,6 +36,7 @@ router = APIRouter(prefix="/agency", tags=["agency-cockpit"])
 
 @router.get("/dashboard", response_model=DashboardV2Response)
 async def get_dashboard_v2(
+    workspace_id: Optional[int] = Query(None, description="Workspace ID (optional, uses user's default)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
@@ -45,6 +46,13 @@ async def get_dashboard_v2(
     - Urgences (deadlines < 72h, projets bloqués)
     - Business (leads chauds, devis envoyés)
     """
+    # Get workspace_id - use provided or user's default
+    ws_id = workspace_id or getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
@@ -60,6 +68,7 @@ async def get_dashboard_v2(
     
     # 1. Relances (deals avec next_action_date aujourd'hui ou dépassée)
     followups = db.query(Deal).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.next_action_date <= today_end,
         Deal.status.notin_([DealStatus.WON, DealStatus.LOST])
     ).all()
@@ -78,6 +87,7 @@ async def get_dashboard_v2(
     
     # 2. Validations en attente
     pending_approvals = db.query(Approval).join(Deliverable).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         Approval.status == ApprovalStatus.PENDING
     ).all()
     
@@ -95,7 +105,8 @@ async def get_dashboard_v2(
         ))
     
     # 3. Tâches du jour
-    today_tasks = db.query(AgencyTask).filter(
+    today_tasks = db.query(AgencyTask).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         AgencyTask.due_date <= today_end,
         AgencyTask.status != TaskStatus.DONE
     ).all()
@@ -119,6 +130,7 @@ async def get_dashboard_v2(
     
     # 1. Deadlines < 72h
     urgent_projects = db.query(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         Project.deadline <= urgency_threshold,
         Project.deadline >= now,
         Project.status == ProjectStatus.ACTIVE
@@ -140,6 +152,7 @@ async def get_dashboard_v2(
     
     # 2. Livrables urgents (due_date < 72h et pas approved)
     urgent_deliverables = db.query(Deliverable).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deliverable.due_date <= urgency_threshold,
         Deliverable.due_date >= now,
         Deliverable.status.notin_([DeliverableStatus.APPROVED, DeliverableStatus.DELIVERED])
@@ -161,6 +174,7 @@ async def get_dashboard_v2(
     
     # 3. Projets bloqués
     blocked_projects = db.query(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         Project.status == ProjectStatus.BLOCKED
     ).all()
     
@@ -176,7 +190,8 @@ async def get_dashboard_v2(
         ))
     
     # 4. Tâches en retard
-    overdue_tasks = db.query(AgencyTask).filter(
+    overdue_tasks = db.query(AgencyTask).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         AgencyTask.due_date < now,
         AgencyTask.status != TaskStatus.DONE
     ).all()
@@ -199,6 +214,7 @@ async def get_dashboard_v2(
     
     # 1. Leads chauds (new ou contacted, récents)
     hot_leads = db.query(Deal).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.status.in_([DealStatus.NEW, DealStatus.CONTACTED]),
         Deal.created_at >= now - timedelta(days=7)
     ).order_by(Deal.value.desc().nullslast()).limit(10).all()
@@ -217,6 +233,7 @@ async def get_dashboard_v2(
     
     # 2. Devis envoyés (en attente de réponse)
     quote_sent = db.query(Deal).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.status == DealStatus.QUOTE_SENT
     ).all()
     
@@ -235,6 +252,7 @@ async def get_dashboard_v2(
     
     # 3. Deals en négociation
     negotiating = db.query(Deal).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.status == DealStatus.NEGOTIATION
     ).all()
     
@@ -253,21 +271,25 @@ async def get_dashboard_v2(
     # QUICK STATS
     # ========================================================================
     
-    active_projects_count = db.query(func.count(Project.id)).filter(
+    active_projects_count = db.query(func.count(Project.id)).join(Client).filter(
+        Client.workspace_id == ws_id,
         Project.status == ProjectStatus.ACTIVE
     ).scalar() or 0
     
-    pending_validations_count = db.query(func.count(Approval.id)).filter(
+    pending_validations_count = db.query(func.count(Approval.id)).join(Deliverable).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         Approval.status == ApprovalStatus.PENDING
     ).scalar() or 0
     
-    hot_leads_count = db.query(func.count(Deal.id)).filter(
+    hot_leads_count = db.query(func.count(Deal.id)).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.status.in_([DealStatus.NEW, DealStatus.CONTACTED])
     ).scalar() or 0
     
     # Revenus du mois (deals won ce mois)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    monthly_revenue = db.query(func.sum(Deal.value)).filter(
+    monthly_revenue = db.query(func.sum(Deal.value)).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.status == DealStatus.WON,
         Deal.updated_at >= month_start
     ).scalar() or 0
@@ -293,13 +315,21 @@ async def get_dashboard_v2(
 @router.get("/clients", response_model=List[ClientListResponse])
 async def list_clients(
     search: Optional[str] = Query(None),
+    workspace_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
-    """Liste tous les clients"""
-    query = db.query(Client)
+    """Liste tous les clients du workspace"""
+    # Get workspace_id
+    ws_id = workspace_id or getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    query = db.query(Client).filter(Client.workspace_id == ws_id)
     
     if search:
         query = query.filter(Client.name.ilike(f"%{search}%"))
@@ -332,11 +362,23 @@ async def list_clients(
 @router.post("/clients", response_model=ClientResponse)
 async def create_client(
     client_in: ClientCreate,
+    workspace_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
-    """Créer un nouveau client"""
+    """Créer un nouveau client dans le workspace"""
+    # Get workspace_id
+    ws_id = workspace_id or getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    if not ws_id:
+        raise HTTPException(status_code=400, detail="Workspace ID required")
+    
     client = Client(
+        workspace_id=ws_id,
         name=client_in.name,
         contacts=[c.dict() for c in client_in.contacts] if client_in.contacts else [],
         notes=client_in.notes
@@ -362,7 +404,17 @@ async def get_client(
     current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un client"""
-    client = db.query(Client).filter(Client.id == client_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    client = db.query(Client).filter(
+        Client.id == client_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -402,7 +454,17 @@ async def update_client(
     current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un client"""
-    client = db.query(Client).filter(Client.id == client_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    client = db.query(Client).filter(
+        Client.id == client_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -426,7 +488,17 @@ async def delete_client(
     current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un client"""
-    client = db.query(Client).filter(Client.id == client_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    client = db.query(Client).filter(
+        Client.id == client_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -441,10 +513,18 @@ async def delete_client(
 
 @router.get("/pipeline", response_model=PipelineResponse)
 async def get_pipeline(
+    workspace_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
     """Pipeline commercial Kanban"""
+    # Get workspace_id
+    ws_id = workspace_id or getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
     columns = []
     total_deals = 0
     total_value = 0
@@ -461,7 +541,10 @@ async def get_pipeline(
     now = datetime.utcnow()
     
     for status in DealStatus:
-        deals = db.query(Deal).join(Client).filter(Deal.status == status).all()
+        deals = db.query(Deal).join(Client).filter(
+            Client.workspace_id == ws_id,
+            Deal.status == status
+        ).all()
         
         deal_items = []
         column_value = 0
@@ -510,13 +593,21 @@ async def get_pipeline(
 async def list_deals(
     status: Optional[str] = Query(None),
     client_id: Optional[int] = Query(None),
+    workspace_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
-    """Liste des deals"""
-    query = db.query(Deal).join(Client)
+    """Liste des deals du workspace"""
+    # Get workspace_id
+    ws_id = workspace_id or getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    query = db.query(Deal).join(Client).filter(Client.workspace_id == ws_id)
     
     if status:
         # Convert string to enum (case-insensitive)
@@ -561,8 +652,18 @@ async def create_deal(
     current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau deal"""
-    # Vérifier que le client existe
-    client = db.query(Client).filter(Client.id == deal_in.client_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    # Vérifier que le client existe et appartient au workspace
+    client = db.query(Client).filter(
+        Client.id == deal_in.client_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -607,7 +708,17 @@ async def get_deal(
     current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un deal"""
-    deal = db.query(Deal).join(Client).filter(Deal.id == deal_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    deal = db.query(Deal).join(Client).filter(
+        Deal.id == deal_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
     
@@ -645,7 +756,17 @@ async def update_deal(
     current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un deal"""
-    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    deal = db.query(Deal).join(Client).filter(
+        Deal.id == deal_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
     
@@ -686,7 +807,17 @@ async def update_deal_status(
     current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update (for kanban drag & drop)"""
-    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    deal = db.query(Deal).join(Client).filter(
+        Deal.id == deal_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
     
@@ -704,7 +835,17 @@ async def delete_deal(
     current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un deal"""
-    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    # Get user's workspace
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        from app.db.models.workspace import WorkspaceMember
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    
+    deal = db.query(Deal).join(Client).filter(
+        Deal.id == deal_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
     

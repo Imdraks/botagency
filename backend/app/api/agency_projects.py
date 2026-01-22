@@ -15,6 +15,7 @@ from app.db.models.agency import (
 )
 from app.db.models.user import User
 from app.api.deps import get_current_user, require_workspace_member
+from app.db.models.workspace import WorkspaceMember
 from app.schemas.agency import (
     # Project
     ProjectCreate, ProjectUpdate, ProjectResponse, ProjectListResponse,
@@ -40,6 +41,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agency", tags=["agency-projects"])
 
 
+def get_ws_id(current_user: User, db: Session, workspace_id: Optional[int] = None) -> int:
+    """Helper to get workspace_id from user or parameter"""
+    ws_id = workspace_id or getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    return ws_id
+
+
 # ============================================================================
 # PROJECTS
 # ============================================================================
@@ -48,13 +58,16 @@ router = APIRouter(prefix="/agency", tags=["agency-projects"])
 async def list_projects(
     status: Optional[str] = Query(None),
     client_id: Optional[int] = Query(None),
+    workspace_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
-    """Liste des projets"""
-    query = db.query(Project).join(Client)
+    """Liste des projets du workspace"""
+    ws_id = get_ws_id(current_user, db, workspace_id)
+    
+    query = db.query(Project).join(Client).filter(Client.workspace_id == ws_id)
     
     if status:
         # Convert string to enum (case-insensitive)
@@ -263,7 +276,12 @@ async def get_project(
     current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un projet"""
-    project = db.query(Project).join(Client).filter(Project.id == project_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    project = db.query(Project).join(Client).filter(
+        Project.id == project_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -329,7 +347,12 @@ async def update_project(
     current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un projet"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    project = db.query(Project).join(Client).filter(
+        Project.id == project_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -362,7 +385,12 @@ async def update_project_status(
     current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    project = db.query(Project).join(Client).filter(
+        Project.id == project_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -380,7 +408,12 @@ async def delete_project(
     current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un projet et déplacer son dossier Drive vers Archives"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    project = db.query(Project).join(Client).filter(
+        Project.id == project_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -455,13 +488,16 @@ async def archive_project_folder(user_id: int, drive_folder_id: str, project_nam
 async def list_deliverables(
     project_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
+    workspace_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
-    """Liste des livrables"""
-    query = db.query(Deliverable).join(Project).join(Client)
+    """Liste des livrables du workspace"""
+    ws_id = get_ws_id(current_user, db, workspace_id)
+    
+    query = db.query(Deliverable).join(Project).join(Client).filter(Client.workspace_id == ws_id)
     
     if project_id:
         query = query.filter(Deliverable.project_id == project_id)
@@ -514,7 +550,12 @@ async def create_deliverable(
     current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau livrable"""
-    project = db.query(Project).filter(Project.id == deliverable_in.project_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    project = db.query(Project).join(Client).filter(
+        Project.id == deliverable_in.project_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -554,8 +595,11 @@ async def get_deliverable(
     current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un livrable"""
+    ws_id = get_ws_id(current_user, db)
+    
     d = db.query(Deliverable).join(Project).join(Client).filter(
-        Deliverable.id == deliverable_id
+        Deliverable.id == deliverable_id,
+        Client.workspace_id == ws_id
     ).first()
     if not d:
         raise HTTPException(status_code=404, detail="Deliverable not found")
@@ -596,7 +640,12 @@ async def update_deliverable(
     current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un livrable"""
-    d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    d = db.query(Deliverable).join(Project).join(Client).filter(
+        Deliverable.id == deliverable_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not d:
         raise HTTPException(status_code=404, detail="Deliverable not found")
     
@@ -627,7 +676,12 @@ async def update_deliverable_status(
     current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update (for kanban)"""
-    d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    d = db.query(Deliverable).join(Project).join(Client).filter(
+        Deliverable.id == deliverable_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not d:
         raise HTTPException(status_code=404, detail="Deliverable not found")
     
@@ -645,14 +699,22 @@ async def delete_deliverable(
     current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un livrable et déplacer son fichier Drive vers 99_Archive du projet"""
-    d = db.query(Deliverable).filter(Deliverable.id == deliverable_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    d = db.query(Deliverable).join(Project).join(Client).filter(
+        Deliverable.id == deliverable_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not d:
         raise HTTPException(status_code=404, detail="Deliverable not found")
     
     # Get info before deletion
     drive_file_id = d.drive_file_id
     deliverable_name = d.name
-    project = db.query(Project).filter(Project.id == d.project_id).first()
+    project = db.query(Project).join(Client).filter(
+        Project.id == d.project_id,
+        Client.workspace_id == ws_id
+    ).first()
     archive_folder_id = project.drive_folder_archive if project else None
     user_id = current_user.id
     
@@ -711,6 +773,8 @@ async def get_production(
     current_user: User = Depends(require_workspace_member)
 ):
     """Production Kanban - tous les livrables par statut"""
+    ws_id = get_ws_id(current_user, db)
+    
     columns = []
     total_items = 0
     now = datetime.utcnow()
@@ -725,7 +789,8 @@ async def get_production(
     
     for status in DeliverableStatus:
         query = db.query(Deliverable).join(Project).join(Client).filter(
-            Deliverable.status == status
+            Deliverable.status == status,
+            Client.workspace_id == ws_id
         )
         
         if project_id:
@@ -790,7 +855,11 @@ async def list_approvals(
     current_user: User = Depends(require_workspace_member)
 ):
     """Liste des demandes de validation"""
-    query = db.query(Approval).join(Deliverable).join(Project).join(Client)
+    ws_id = get_ws_id(current_user, db)
+    
+    query = db.query(Approval).join(Deliverable).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id
+    )
     
     if status:
         # Convert string to enum (case-insensitive)
@@ -829,8 +898,11 @@ async def create_approval(
     current_user: User = Depends(require_workspace_member)
 ):
     """Demander une validation"""
-    deliverable = db.query(Deliverable).filter(
-        Deliverable.id == approval_in.deliverable_id
+    ws_id = get_ws_id(current_user, db)
+    
+    deliverable = db.query(Deliverable).join(Project).join(Client).filter(
+        Deliverable.id == approval_in.deliverable_id,
+        Client.workspace_id == ws_id
     ).first()
     if not deliverable:
         raise HTTPException(status_code=404, detail="Deliverable not found")
@@ -868,7 +940,12 @@ async def decide_approval(
     current_user: User = Depends(require_workspace_member)
 ):
     """Décider d'une validation"""
-    approval = db.query(Approval).filter(Approval.id == approval_id).first()
+    ws_id = get_ws_id(current_user, db)
+    
+    approval = db.query(Approval).join(Deliverable).join(Project).join(Client).filter(
+        Approval.id == approval_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not approval:
         raise HTTPException(status_code=404, detail="Approval not found")
     
@@ -877,7 +954,7 @@ async def decide_approval(
     approval.decided_at = datetime.utcnow()
     approval.decided_by = current_user.id
     
-    # Update deliverable status
+    # Update deliverable status - already filtered by approval's workspace
     deliverable = db.query(Deliverable).filter(
         Deliverable.id == approval.deliverable_id
     ).first()
