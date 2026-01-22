@@ -105,46 +105,93 @@ export function Hero() {
                 </div>
               </div>
 
-              {/* Real Screenshot - Dashboard Today */}
-              <div className="aspect-[16/10] bg-gradient-to-br from-gray-900 to-gray-800 relative overflow-hidden">
-                <Image
-                  src="/screenshots/dashboard-today.png"
-                  alt="Dashboard Radar - Vue Today avec pipeline et projets"
-                  fill
-                  className="object-contain object-center"
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
-                {/* Fallback gradient si pas d'image */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-50 -z-10">
-                  {/* Mock Dashboard Fallback */}
-                  <div className="h-full flex flex-col gap-4 p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg" />
-                        <div className="h-4 w-20 bg-gray-300 rounded" />
+              {/* Mockup Dashboard - Données fictives */}
+              <div className="bg-gray-50 p-4">
+                {/* Header Dashboard */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">R</span>
+                    </div>
+                    <span className="font-semibold text-gray-900 text-sm">Cockpit</span>
+                  </div>
+                  <button className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg">
+                    + Nouveau projet
+                  </button>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="text-[10px] text-gray-500">Projets actifs</div>
+                    <div className="text-lg font-bold text-gray-900">7</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="text-[10px] text-gray-500">Validations</div>
+                    <div className="text-lg font-bold text-orange-500">3</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="text-[10px] text-gray-500">Leads chauds</div>
+                    <div className="text-lg font-bold text-green-500">5</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="text-[10px] text-gray-500">CA du mois</div>
+                    <div className="text-lg font-bold text-gray-900">24k€</div>
+                  </div>
+                </div>
+
+                {/* Columns */}
+                <div className="grid grid-cols-3 gap-2">
+                  {/* À faire */}
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-700">À faire</span>
+                      <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">4</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="bg-purple-50 border-l-2 border-purple-500 p-1.5 rounded text-[10px]">
+                        <div className="font-medium text-gray-800">Maquettes V2</div>
+                        <div className="text-gray-500">Studio Neon</div>
                       </div>
-                      <div className="flex gap-2">
-                        <div className="h-8 w-8 bg-gray-200 rounded-lg" />
-                        <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+                      <div className="bg-gray-50 border-l-2 border-gray-300 p-1.5 rounded text-[10px]">
+                        <div className="font-medium text-gray-800">Brief client</div>
+                        <div className="text-gray-500">Agence Pulse</div>
                       </div>
                     </div>
-                    <div className="flex-1 grid grid-cols-3 gap-4">
-                      <div className="col-span-1 space-y-2">
-                        {[...Array(5)].map((_, i) => (
-                          <div key={i} className={`h-8 rounded-lg ${i === 0 ? "bg-purple-200" : "bg-gray-200"}`} />
-                        ))}
+                  </div>
+
+                  {/* En cours */}
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-700">En cours</span>
+                      <span className="text-[10px] bg-blue-100 px-1.5 py-0.5 rounded text-blue-600">3</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="bg-blue-50 border-l-2 border-blue-500 p-1.5 rounded text-[10px]">
+                        <div className="font-medium text-gray-800">Développement</div>
+                        <div className="text-gray-500">MediaLab Paris</div>
                       </div>
-                      <div className="col-span-2 space-y-3">
-                        <div className="h-6 w-32 bg-gray-300 rounded" />
-                        <div className="grid grid-cols-4 gap-2">
-                          {[...Array(4)].map((_, i) => (
-                            <div key={i} className="h-16 bg-white rounded-lg p-2 border border-gray-200">
-                              <div className="h-3 w-8 bg-gray-300 rounded mb-2" />
-                              <div className="h-6 w-12 bg-purple-200 rounded" />
-                            </div>
-                          ))}
-                        </div>
+                      <div className="bg-blue-50 border-l-2 border-blue-500 p-1.5 rounded text-[10px]">
+                        <div className="font-medium text-gray-800">Motion design</div>
+                        <div className="text-gray-500">Creative House</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pipeline */}
+                  <div className="bg-white rounded-lg p-2 border border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-700">Pipeline</span>
+                      <span className="text-[10px] bg-green-100 px-1.5 py-0.5 rounded text-green-600">66k€</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="bg-green-50 border-l-2 border-green-500 p-1.5 rounded text-[10px]">
+                        <div className="font-medium text-gray-800">Refonte e-commerce</div>
+                        <div className="text-green-600 font-medium">15 000€</div>
+                      </div>
+                      <div className="bg-yellow-50 border-l-2 border-yellow-500 p-1.5 rounded text-[10px]">
+                        <div className="font-medium text-gray-800">App mobile MVP</div>
+                        <div className="text-yellow-600 font-medium">25 000€</div>
                       </div>
                     </div>
                   </div>
