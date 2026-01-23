@@ -189,7 +189,8 @@ function PlanCard({ plan, config, isCurrentPlan, onSelect, isLoading }: PlanCard
             </Button>
           ) : (
             <Button
-              asChild
+              onClick={onSelect}
+              disabled={isLoading}
               className={`
                 w-full mt-4
                 ${isRecommended
@@ -199,10 +200,17 @@ function PlanCard({ plan, config, isCurrentPlan, onSelect, isLoading }: PlanCard
               `}
               variant={isRecommended ? 'default' : 'outline'}
             >
-              <a href="mailto:contact@radarapp.fr?subject=Demande%20plan%20${plan}">
-                Contactez-nous
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </a>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Changement...
+                </>
+              ) : (
+                <>
+                  Sélectionner
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
             </Button>
           )}
         </CardContent>
