@@ -345,7 +345,7 @@ function TodayContent() {
                 <CardTitle className="text-lg">Urgences</CardTitle>
               </div>
               <CardDescription>
-                Deadlines < 72h et projets bloqués
+                Deadlines &lt; 72h et projets bloqués
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
