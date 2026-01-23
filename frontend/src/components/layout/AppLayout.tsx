@@ -40,6 +40,8 @@ import {
   Sun,
   Inbox,
   Lock,
+  Receipt,
+  FileCheck,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -110,6 +112,9 @@ const mainNavigation: NavItem[] = [
   { name: "Production", href: "/production", icon: Palette, feature: 'production' },
   { name: "Assets", href: "/assets", icon: Package, feature: 'assets' },
   { name: "Calendrier", href: "/agency-calendar", icon: Calendar, feature: 'calendar' },
+  // Radar Business (addon)
+  { name: "Devis", href: "/quotes", icon: Receipt, feature: 'quotes' },
+  { name: "Factures", href: "/invoices", icon: FileCheck, feature: 'invoices' },
 ];
 
 // Outils navigation (collapsible) - for daily workflows
