@@ -142,13 +142,6 @@ function PlanCard({ plan, config, isCurrentPlan, onSelect, isLoading }: PlanCard
           
           <CardTitle className="text-2xl capitalize">{plan}</CardTitle>
           <CardDescription>{config.description}</CardDescription>
-          
-          <div className="pt-4">
-            <span className="text-4xl font-bold text-gray-900 dark:text-white">
-              {config.price}€
-            </span>
-            <span className="text-gray-500 dark:text-gray-400">/mois</span>
-          </div>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -186,29 +179,32 @@ function PlanCard({ plan, config, isCurrentPlan, onSelect, isLoading }: PlanCard
           </div>
           
           {/* CTA */}
-          <Button
-            onClick={onSelect}
-            disabled={isCurrentPlan || isLoading}
-            className={`
-              w-full mt-4
-              ${isRecommended && !isCurrentPlan
-                ? 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white'
-                : ''
-              }
-            `}
-            variant={isCurrentPlan ? 'outline' : isRecommended ? 'default' : 'outline'}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isCurrentPlan ? (
-              'Plan actuel'
-            ) : (
-              <>
-                Choisir {plan}
+          {isCurrentPlan ? (
+            <Button
+              variant="outline"
+              disabled
+              className="w-full mt-4"
+            >
+              Plan actuel
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className={`
+                w-full mt-4
+                ${isRecommended
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white'
+                  : ''
+                }
+              `}
+              variant={isRecommended ? 'default' : 'outline'}
+            >
+              <a href="mailto:contact@radarapp.fr?subject=Demande%20plan%20${plan}">
+                Contactez-nous
                 <ArrowRight className="h-4 w-4 ml-2" />
-              </>
-            )}
-          </Button>
+              </a>
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -373,14 +369,11 @@ export default function SubscriptionPage() {
                 </div>
               </div>
               
-              <div className="text-right">
-                <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {currentPlan === 'premium' ? 'Inclus' : '+49€'}
-                </span>
-                {currentPlan !== 'premium' && (
-                  <span className="text-gray-500 dark:text-gray-400">/mois</span>
-                )}
-              </div>
+              {currentPlan === 'premium' && (
+                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                  Inclus
+                </Badge>
+              )}
             </div>
           </CardHeader>
           
@@ -400,16 +393,21 @@ export default function SubscriptionPage() {
               </div>
             </div>
             
-            {currentPlan !== 'premium' && (
+            {currentPlan !== 'premium' && !hasRadarBusiness && (
               <Button
-                variant={hasRadarBusiness ? 'outline' : 'default'}
-                className={!hasRadarBusiness ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600' : ''}
-                onClick={() => handleAddonToggle('radar_business')}
-                disabled={!isAdmin}
+                asChild
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
               >
-                {hasRadarBusiness ? 'Désactiver' : 'Activer Radar Business'}
-                <ChevronRight className="h-4 w-4 ml-2" />
+                <a href="mailto:contact@radarapp.fr?subject=Demande%20Radar%20Business">
+                  Contactez-nous
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </a>
               </Button>
+            )}
+            {hasRadarBusiness && currentPlan !== 'premium' && (
+              <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                Actif
+              </Badge>
             )}
           </CardContent>
         </Card>
