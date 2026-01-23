@@ -8,6 +8,7 @@ import {
   Integrations,
   Security,
   FAQ,
+  Pricing,
   FinalCTA,
   LandingFooter,
   ForceLightMode,
@@ -40,6 +41,7 @@ export default function HomePage() {
           <Workflow />
           <Integrations />
           <Security />
+          <Pricing />
           <FAQ />
           <FinalCTA />
           <LandingFooter />
