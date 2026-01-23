@@ -210,3 +210,28 @@ def get_current_workspace(
         )
     
     return workspace
+
+
+def get_current_workspace_id(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> int:
+    """
+    Get the current workspace ID for the authenticated user.
+    Returns workspace_id as integer.
+    """
+    from app.db.models.workspace import WorkspaceMember
+    
+    # Find the user's workspace membership
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.user_id == current_user.id
+    ).first()
+    
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="NO_WORKSPACE_ACCESS",
+            headers={"X-Error-Code": "NO_WORKSPACE_ACCESS"},
+        )
+    
+    return member.workspace_id
