@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSubscriptionStore, Feature, Addon } from "@/store/subscriptionStore";
+import { useSubscriptionStore, Addon } from "@/store/subscriptionStore";
 import { useAuthStore } from "@/store/auth";
 import ModuleNotActivated from "./ModuleNotActivated";
 

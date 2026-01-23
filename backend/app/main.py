@@ -83,7 +83,9 @@ from app.api.subscription import router as subscription_router
 # ============================================================================
 # BILLING - Quotes (Devis) & Invoices (Factures) - Radar Business
 # ============================================================================
-from app.api.billing import router as billing_router# ============================================================================
+from app.api.billing import router as billing_router
+
+# ============================================================================
 # UNIFIED ASSETS API - Single source of truth for all assets
 # ============================================================================
 from app.api.assets import router as unified_assets_router
