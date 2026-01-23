@@ -195,6 +195,7 @@ interface SubscriptionState {
   // Plan management (admin only)
   changePlan: (plan: Plan) => Promise<boolean>;
   toggleAddon: (addon: Addon, enable: boolean) => Promise<boolean>;
+  togglePack: (pack: Pack, enable: boolean) => Promise<boolean>;
   
   // Reset
   reset: () => void;
@@ -371,6 +372,38 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           return false;
         } catch (err) {
           console.error('Failed to toggle addon:', err);
+          return false;
+        }
+      },
+      
+      togglePack: async (pack: Pack, enable: boolean): Promise<boolean> => {
+        try {
+          const token = localStorage.getItem('access_token');
+          const { subscription } = get();
+          
+          const url = subscription 
+            ? `/api/v1/subscription/toggle-pack?workspace_id=${subscription.workspace_id}`
+            : '/api/v1/subscription/toggle-pack';
+          
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ pack, enable }),
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            set({ subscription: data });
+            // Refresh navigation
+            get().fetchNavigation(data.workspace_id);
+            return true;
+          }
+          return false;
+        } catch (err) {
+          console.error('Failed to toggle pack:', err);
           return false;
         }
       },

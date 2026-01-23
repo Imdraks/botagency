@@ -95,6 +95,11 @@ class ToggleAddonRequest(BaseModel):
     enable: bool
 
 
+class TogglePackRequest(BaseModel):
+    pack: str
+    enable: bool
+
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
@@ -426,6 +431,52 @@ async def toggle_addon(
             logger.info(f"Workspace {workspace.id}: addon {addon.value} disabled")
     
     workspace.addons = current_addons
+    db.commit()
+    db.refresh(workspace)
+    
+    return await get_current_subscription(workspace.id, db, current_user)
+
+
+@router.post("/toggle-pack", response_model=WorkspaceSubscription)
+async def toggle_pack(
+    request: TogglePackRequest,
+    workspace_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    📦 Toggle Pack
+    
+    Enable or disable a pack for the workspace.
+    Only workspace admins can manage packs.
+    Note: Core pack cannot be disabled.
+    """
+    workspace = get_workspace_for_user(db, current_user, workspace_id)
+    
+    if not is_workspace_admin(db, current_user, workspace):
+        raise HTTPException(status_code=403, detail="Seuls les admins peuvent gérer les packs")
+    
+    try:
+        pack = Pack(request.pack)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Pack inconnu: {request.pack}")
+    
+    # Core pack cannot be disabled
+    if pack == Pack.CORE and not request.enable:
+        raise HTTPException(status_code=400, detail="Le pack Core ne peut pas être désactivé")
+    
+    current_packs = workspace.enabled_packs or []
+    
+    if request.enable:
+        if pack.value not in current_packs:
+            current_packs.append(pack.value)
+            logger.info(f"Workspace {workspace.id}: pack {pack.value} enabled")
+    else:
+        if pack.value in current_packs:
+            current_packs.remove(pack.value)
+            logger.info(f"Workspace {workspace.id}: pack {pack.value} disabled")
+    
+    workspace.enabled_packs = current_packs
     db.commit()
     db.refresh(workspace)
     

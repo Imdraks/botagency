@@ -15,9 +15,11 @@ import {
   Star,
   ArrowRight,
   Loader2,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   useSubscriptionStore, 
@@ -229,10 +231,12 @@ export default function SubscriptionPage() {
     isLoading, 
     fetchSubscription, 
     changePlan,
-    toggleAddon 
+    toggleAddon,
+    togglePack 
   } = useSubscriptionStore();
   const { user } = useAuthStore();
   const [changingPlan, setChangingPlan] = React.useState<Plan | null>(null);
+  const [togglingPack, setTogglingPack] = React.useState<Pack | null>(null);
   
   const isAdmin = user?.role === 'admin';
   
@@ -254,6 +258,30 @@ export default function SubscriptionPage() {
       toast.error('Erreur lors du changement de plan');
     } finally {
       setChangingPlan(null);
+    }
+  };
+  
+  const handlePackToggle = async (pack: Pack) => {
+    if (!isAdmin) {
+      toast.error('Seuls les admins peuvent gérer les packs');
+      return;
+    }
+    
+    if (pack === 'core') {
+      toast.error('Le pack Core ne peut pas être désactivé');
+      return;
+    }
+    
+    const isCurrentlyEnabled = subscription?.enabled_packs?.includes(pack);
+    
+    setTogglingPack(pack);
+    try {
+      await togglePack(pack, !isCurrentlyEnabled);
+      toast.success(`Pack ${pack} ${isCurrentlyEnabled ? 'désactivé' : 'activé'}`);
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour du pack');
+    } finally {
+      setTogglingPack(null);
     }
   };
   
@@ -424,28 +452,57 @@ export default function SubscriptionPage() {
       {/* Packs detail */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Détail des packs
+          Packs activés
         </h2>
         
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
           {(['core', 'clients', 'leads', 'talents', 'intelligence'] as Pack[]).map((pack) => {
-            const isEnabled = subscription?.enabled_packs.includes(pack);
+            const isEnabled = subscription?.enabled_packs?.includes(pack) ?? false;
+            const isCore = pack === 'core';
+            const isToggling = togglingPack === pack;
             
             return (
               <Card 
                 key={pack}
-                className={isEnabled ? 'border-green-200 dark:border-green-800' : 'opacity-60'}
+                className={`transition-all ${isEnabled ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' : ''}`}
               >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    {PACK_LABELS[pack]}
-                    {isEnabled && <Check className="h-5 w-5 text-green-500" />}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {PACK_DESCRIPTIONS[pack]}
-                  </p>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isEnabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                        <Package className={`h-5 w-5 ${isEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {PACK_LABELS[pack]}
+                          </span>
+                          {isCore && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Obligatoire
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {PACK_DESCRIPTIONS[pack]}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      {isToggling ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      ) : isEnabled ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : null}
+                      
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => handlePackToggle(pack)}
+                        disabled={isCore || !isAdmin || isToggling}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
