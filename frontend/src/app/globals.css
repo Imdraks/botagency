@@ -90,57 +90,69 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
-  /* Dark mode - Complete theme - TRUE BLACK */
+  /* Dark mode - Complete theme - SOFT DARK (easier on eyes) */
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
+    /* Fond principal: gris très foncé avec légère teinte bleue, pas noir pur */
+    --background: 222 20% 10%;
+    --foreground: 210 20% 90%;
     
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 98%;
+    /* Cartes: légèrement plus clair que le fond */
+    --card: 222 18% 13%;
+    --card-foreground: 210 20% 90%;
     
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 98%;
+    /* Popovers */
+    --popover: 222 18% 13%;
+    --popover-foreground: 210 20% 90%;
     
-    --primary: 270 100% 60%;
+    /* Primary - Violet plus doux */
+    --primary: 270 80% 65%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 98%;
+    /* Secondary */
+    --secondary: 222 15% 18%;
+    --secondary-foreground: 210 20% 88%;
     
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
+    /* Muted - texte secondaire moins contrasté */
+    --muted: 222 15% 20%;
+    --muted-foreground: 215 15% 55%;
     
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
+    /* Accent */
+    --accent: 222 15% 22%;
+    --accent-foreground: 210 20% 90%;
     
-    --destructive: 0 62% 50%;
+    /* Destructive */
+    --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
     
-    --success: 142 70% 45%;
+    /* Success */
+    --success: 142 60% 50%;
     --success-foreground: 0 0% 100%;
     
-    --warning: 38 92% 50%;
+    /* Warning */
+    --warning: 38 85% 55%;
     --warning-foreground: 0 0% 0%;
     
-    --info: 199 89% 48%;
+    /* Info */
+    --info: 199 80% 55%;
     --info-foreground: 0 0% 100%;
     
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 270 100% 60%;
+    /* Bordures plus douces */
+    --border: 222 15% 22%;
+    --input: 222 15% 22%;
+    --ring: 270 80% 65%;
   }
 
-  /* Dark mode typography */
+  /* Dark mode typography - softer contrast */
   .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
-    color: hsl(0 0% 98%);
+    color: hsl(210 20% 92%);
   }
 
   .dark p {
-    color: hsl(220 9% 60%);
+    color: hsl(215 15% 65%);
   }
 
   .dark a {
-    color: hsl(240 100% 70%);
+    color: hsl(240 80% 75%);
   }
 
   /* Base Reset */

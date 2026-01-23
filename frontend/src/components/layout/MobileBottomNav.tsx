@@ -62,12 +62,12 @@ export function MobileBottomNav() {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="lg:hidden fixed bottom-20 left-4 right-4 z-50"
             >
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 shadow-2xl border border-gray-200 dark:border-neutral-700">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-2xl border border-gray-200 dark:border-slate-700/50">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900 dark:text-white">Actions rapides</h3>
                   <button 
                     onClick={() => setShowQuickActions(false)}
-                    className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800"
+                    className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
                   >
                     <X className="h-5 w-5 text-gray-500" />
                   </button>
@@ -79,7 +79,7 @@ export function MobileBottomNav() {
                       key={action.name}
                       href={action.href}
                       onClick={() => setShowQuickActions(false)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                     >
                       <div className={cn("p-2 rounded-full text-white", action.color)}>
                         <action.icon className="h-5 w-5" />
@@ -97,7 +97,7 @@ export function MobileBottomNav() {
       </AnimatePresence>
 
       {/* Bottom Navigation Bar */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-lg border-t border-gray-200 dark:border-neutral-800 safe-bottom">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-700/50 safe-bottom">
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNav.map((item) => {
             const isActive = pathname === item.href || 

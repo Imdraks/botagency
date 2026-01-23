@@ -98,7 +98,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-black">
+    <div className="flex h-screen bg-gray-100 dark:bg-slate-950">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -241,7 +241,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
-        <header className="bg-white dark:bg-neutral-950 border-b border-gray-200 dark:border-neutral-800 px-4 py-3">
+        <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/50 px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -268,7 +268,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950">
           {children}
         </main>
       </div>

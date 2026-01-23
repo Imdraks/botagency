@@ -31,8 +31,8 @@ export function MobileStatCard({
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        "bg-white dark:bg-neutral-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-neutral-800",
-        onClick && "cursor-pointer active:bg-gray-50 dark:active:bg-neutral-800"
+        "bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-700/50",
+        onClick && "cursor-pointer active:bg-gray-50 dark:active:bg-slate-800"
       )}
     >
       <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ export function MobileKanbanCard({
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        "bg-white dark:bg-neutral-900 rounded-xl p-3 border-l-4 shadow-sm",
+        "bg-white dark:bg-slate-900 rounded-xl p-3 border-l-4 shadow-sm",
         borderColor,
         onClick && "cursor-pointer"
       )}
@@ -161,7 +161,7 @@ interface MobileEmptyStateProps {
 export function MobileEmptyState({ icon: Icon, title, description, action }: MobileEmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-      <div className="p-4 bg-gray-100 dark:bg-neutral-800 rounded-full mb-4">
+      <div className="p-4 bg-gray-100 dark:bg-slate-800 rounded-full mb-4">
         <Icon className="h-8 w-8 text-gray-400" />
       </div>
       <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
@@ -195,8 +195,8 @@ export function MobileListItem({
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 p-3 bg-white dark:bg-neutral-900 rounded-xl border border-gray-100 dark:border-neutral-800",
-        onClick && "cursor-pointer active:bg-gray-50 dark:active:bg-neutral-800"
+        "flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700/50",
+        onClick && "cursor-pointer active:bg-gray-50 dark:active:bg-slate-800"
       )}
     >
       {Icon && (
@@ -253,7 +253,7 @@ export function MobileSwipeableCard({
       </div>
       
       {/* Main Content */}
-      <div className="relative bg-white dark:bg-neutral-900 rounded-xl">
+      <div className="relative bg-white dark:bg-slate-900 rounded-xl">
         {children}
       </div>
     </motion.div>
