@@ -486,6 +486,7 @@ async def admin_update_workspace_subscription(
     🔑 [ADMIN] Update workspace subscription
     
     Allows super admin to modify any workspace's plan, packs, addons, seats.
+    When changing plan, automatically applies the plan's default packs and addons.
     """
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
@@ -493,13 +494,21 @@ async def admin_update_workspace_subscription(
     
     if request.plan is not None:
         try:
-            Plan(request.plan)
+            new_plan = Plan(request.plan)
             workspace.plan = request.plan
+            
+            # Auto-apply plan's default packs and addons
+            plan_config = PLAN_CONFIGS[new_plan]
+            workspace.enabled_packs = [p.value for p in plan_config.included_packs]
+            workspace.addons = [a.value for a in plan_config.included_addons]
+            workspace.max_seats = plan_config.max_seats
+            
+            logger.info(f"Plan changed to {request.plan}, applied packs: {workspace.enabled_packs}, addons: {workspace.addons}")
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Plan inconnu: {request.plan}")
     
+    # Allow manual override of packs (after plan change)
     if request.enabled_packs is not None:
-        # Validate packs
         valid_packs = [p.value for p in Pack]
         for pack in request.enabled_packs:
             if pack not in valid_packs:

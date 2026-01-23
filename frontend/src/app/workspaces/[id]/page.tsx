@@ -80,21 +80,21 @@ interface WorkspaceSubscription {
 }
 
 const PLANS = [
-  { value: 'mini', label: 'Mini', icon: Zap, color: 'bg-blue-100 text-blue-700' },
-  { value: 'standard', label: 'Standard', icon: Building2, color: 'bg-purple-100 text-purple-700' },
-  { value: 'premium', label: 'Premium', icon: Rocket, color: 'bg-orange-100 text-orange-700' },
+  { value: 'mini', label: 'Mini', icon: Zap, color: 'bg-blue-100 text-blue-700', packs: ['core', 'clients'] },
+  { value: 'standard', label: 'Standard', icon: Building2, color: 'bg-purple-100 text-purple-700', packs: ['core', 'clients', 'leads', 'talents'] },
+  { value: 'premium', label: 'Premium', icon: Rocket, color: 'bg-orange-100 text-orange-700', packs: ['core', 'clients', 'leads', 'talents', 'intelligence'] },
 ];
 
 const PACKS = [
-  { value: 'core', label: 'Core', description: 'Pipeline, Projets, Dashboard' },
-  { value: 'clients', label: 'Clients', description: 'Gestion des clients' },
-  { value: 'leads', label: 'Leads', description: 'Leads & opportunités' },
-  { value: 'talents', label: 'Talents', description: 'Artistes & talents' },
-  { value: 'intelligence', label: 'Intelligence', description: 'Enrichissement IA' },
+  { value: 'core', label: 'Core', description: 'Cockpit, Pipeline, Projets, Production, Assets, Calendrier', minPlan: 'mini' },
+  { value: 'clients', label: 'Clients', description: 'Gestion des clients, Dossiers, Daily Picks', minPlan: 'mini' },
+  { value: 'leads', label: 'Leads', description: 'Leads, Kanban, Scoring', minPlan: 'standard' },
+  { value: 'talents', label: 'Talents', description: 'Artistes, Profils, Découverte, Comparaison, Map', minPlan: 'standard' },
+  { value: 'intelligence', label: 'Intelligence', description: 'Analytics, Veille concurrentielle, Prédictions IA', minPlan: 'premium' },
 ];
 
 const ADDONS = [
-  { value: 'radar_business', label: 'Radar Business', description: 'Veille concurrentielle' },
+  { value: 'radar_business', label: 'Radar Business', description: 'CRM étendu, Devis, Factures', includedIn: 'premium' },
 ];
 
 const roleLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -413,27 +413,40 @@ function WorkspaceDetailContent() {
 
           {/* Packs */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Packs activés</Label>
+            <Label className="text-sm font-medium">Packs activés (selon le plan)</Label>
             <div className="grid gap-3">
               {PACKS.map((pack) => {
                 const isEnabled = subscription?.enabled_packs?.includes(pack.value);
+                const currentPlan = PLANS.find(p => p.value === subscription?.plan);
+                const includedInPlan = currentPlan?.packs?.includes(pack.value) || false;
                 return (
                   <div
                     key={pack.value}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                    className={`flex items-center justify-between p-3 rounded-lg ${
+                      isEnabled ? 'bg-green-50 dark:bg-green-950 border border-green-200' : 'bg-gray-50 dark:bg-gray-800'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Package className="h-5 w-5 text-gray-400" />
+                      <Package className={`h-5 w-5 ${isEnabled ? 'text-green-600' : 'text-gray-400'}`} />
                       <div>
-                        <p className="font-medium">{pack.label}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{pack.label}</p>
+                          {includedInPlan && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                              Inclus dans {currentPlan?.label}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{pack.description}</p>
                       </div>
                     </div>
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={() => togglePack(pack.value)}
-                      disabled={savingSubscription || pack.value === 'core'}
-                    />
+                    <div className="flex items-center gap-2">
+                      {isEnabled ? (
+                        <Check className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <span className="text-sm text-gray-400">Non inclus</span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -446,23 +459,39 @@ function WorkspaceDetailContent() {
             <div className="grid gap-3">
               {ADDONS.map((addon) => {
                 const isEnabled = subscription?.addons?.includes(addon.value);
+                const includedInPremium = subscription?.plan === 'premium';
                 return (
                   <div
                     key={addon.value}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                    className={`flex items-center justify-between p-3 rounded-lg ${
+                      isEnabled ? 'bg-yellow-50 dark:bg-yellow-950 border border-yellow-200' : 'bg-gray-50 dark:bg-gray-800'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Zap className="h-5 w-5 text-yellow-500" />
+                      <Zap className={`h-5 w-5 ${isEnabled ? 'text-yellow-600' : 'text-gray-400'}`} />
                       <div>
-                        <p className="font-medium">{addon.label}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{addon.label}</p>
+                          {includedInPremium && (
+                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                              Inclus dans Premium
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{addon.description}</p>
                       </div>
                     </div>
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={() => toggleAddon(addon.value)}
-                      disabled={savingSubscription}
-                    />
+                    <div className="flex items-center gap-2">
+                      {isEnabled ? (
+                        <Check className="h-5 w-5 text-yellow-600" />
+                      ) : (
+                        <Switch
+                          checked={false}
+                          onCheckedChange={() => toggleAddon(addon.value)}
+                          disabled={savingSubscription}
+                        />
+                      )}
+                    </div>
                   </div>
                 );
               })}
