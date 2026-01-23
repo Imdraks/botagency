@@ -78,7 +78,12 @@ from app.api.google_drive import router as google_drive_router
 # ============================================================================
 # SUBSCRIPTION - Plans, Packs & Features
 # ============================================================================
-from app.api.subscription import router as subscription_router# ============================================================================
+from app.api.subscription import router as subscription_router
+
+# ============================================================================
+# BILLING - Quotes (Devis) & Invoices (Factures) - Radar Business
+# ============================================================================
+from app.api.billing import router as billing_router# ============================================================================
 # UNIFIED ASSETS API - Single source of truth for all assets
 # ============================================================================
 from app.api.assets import router as unified_assets_router
@@ -284,6 +289,11 @@ app.include_router(google_drive_router, prefix="/api/v1", tags=["Google Drive"])
 # SUBSCRIPTION - Plans, Packs & Features
 # ============================================================================
 app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
+
+# ============================================================================
+# BILLING - Quotes (Devis) & Invoices (Factures) - Radar Business
+# ============================================================================
+app.include_router(billing_router, prefix="/api/v1/billing", tags=["Billing"])
 
 # ============================================================================
 # UNIFIED ASSETS API - Single source of truth
