@@ -459,7 +459,7 @@ async def admin_get_workspace_subscription(
     ).count()
     
     plan = Plan(workspace.plan) if workspace.plan else Plan.STANDARD
-    available_features = [f.value for f in get_plan_features(plan, workspace.enabled_packs or [], workspace.addons or [])]
+    available_features = [f.value for f in get_plan_features(plan, workspace.addons or [])]
     
     return WorkspaceSubscription(
         workspace_id=workspace.id,
