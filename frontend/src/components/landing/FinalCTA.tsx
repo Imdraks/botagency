@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function FinalCTA() {
@@ -34,8 +34,8 @@ export function FinalCTA() {
             Accès sur création d'espace ou invitation.
           </p>
 
-          {/* CTA Button - Single, clear */}
-          <div className="flex justify-center">
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href={isLoggedIn ? "/today" : "/login"}>
               <Button
                 size="lg"
@@ -43,6 +43,16 @@ export function FinalCTA() {
               >
                 {isLoggedIn ? "Accéder au dashboard" : "Créer un espace"}
                 <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-gray-300 text-gray-900 hover:bg-gray-100 text-lg px-10 py-6 rounded-xl btn-press"
+              >
+                <Eye className="mr-2 h-5 w-5" />
+                Choisir un abonnement
               </Button>
             </Link>
           </div>

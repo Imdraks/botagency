@@ -66,16 +66,16 @@ export function Hero() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <a href="#produit">
+              <Link href="/pricing">
                 <Button
                   size="lg"
                   variant="outline"
                   className="w-full sm:w-auto border-gray-300 text-gray-900 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl btn-press"
                 >
                   <Eye className="mr-2 h-5 w-5" />
-                  Voir le produit
+                  Voir les abonnements
                 </Button>
-              </a>
+              </Link>
             </div>
 
             {/* Trust badges - Micro-ligne de confiance */}

@@ -26,6 +26,7 @@ export function LandingHeader() {
     { href: "#workflow", label: "Workflow" },
     { href: "#integrations", label: "Intégrations" },
     { href: "#securite", label: "Sécurité" },
+    { href: "/pricing", label: "Abonnements", isPage: true },
     { href: "#faq", label: "FAQ" },
   ];
 
@@ -50,13 +51,23 @@ export function LandingHeader() {
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
-              >
-                {link.label}
-              </a>
+              link.isPage ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
+                >
+                  {link.label}
+                </a>
+              )
             ))}
           </nav>
 
@@ -88,14 +99,25 @@ export function LandingHeader() {
           <div className="lg:hidden mt-4 pb-4 border-t border-gray-200 pt-4">
             <nav className="flex flex-col gap-3">
               {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-gray-600 hover:text-gray-900 transition-colors py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.label}
-                </a>
+                link.isPage ? (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-gray-600 hover:text-gray-900 transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="text-gray-600 hover:text-gray-900 transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.label}
+                  </a>
+                )
               ))}
               <div className="flex flex-col gap-2 mt-4">
                 <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
