@@ -76,6 +76,9 @@ from app.api.workspace import router as workspace_router
 from app.api.inbox import router as inbox_router
 from app.api.google_drive import router as google_drive_router
 # ============================================================================
+# SUBSCRIPTION - Plans, Packs & Features
+# ============================================================================
+from app.api.subscription import router as subscription_router# ============================================================================
 # UNIFIED ASSETS API - Single source of truth for all assets
 # ============================================================================
 from app.api.assets import router as unified_assets_router
@@ -276,6 +279,11 @@ app.include_router(project_detail_router, prefix="/api/v1", tags=["Project Detai
 app.include_router(workspace_router, prefix="/api/v1", tags=["Workspaces"])
 app.include_router(inbox_router, prefix="/api/v1", tags=["Inbox"])
 app.include_router(google_drive_router, prefix="/api/v1", tags=["Google Drive"])
+
+# ============================================================================
+# SUBSCRIPTION - Plans, Packs & Features
+# ============================================================================
+app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
 
 # ============================================================================
 # UNIFIED ASSETS API - Single source of truth

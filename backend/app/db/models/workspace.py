@@ -79,6 +79,25 @@ class Workspace(Base):
     # Settings (JSON for extensibility)
     settings: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     
+    # =========== SUBSCRIPTION ===========
+    # Plan: mini, standard, premium
+    plan: Mapped[str] = mapped_column(String(20), default="standard", nullable=False)
+    
+    # Enabled packs (JSON array): ["core", "clients", "leads", "talents"]
+    enabled_packs: Mapped[list] = mapped_column(JSON, default=lambda: ["core", "clients", "leads", "talents"])
+    
+    # Add-ons (JSON array): ["radar_business"]
+    addons: Mapped[list] = mapped_column(JSON, default=list)
+    
+    # Seat limits
+    max_seats: Mapped[int] = mapped_column(default=10)
+    
+    # Billing (Stripe)
+    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(255))
+    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(255))
+    billing_email: Mapped[Optional[str]] = mapped_column(String(255))
+    plan_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
