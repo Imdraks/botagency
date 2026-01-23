@@ -43,8 +43,8 @@ class PaymentMethod(str, PyEnum):
     OTHER = "OTHER"
 
 
-class Client(Base):
-    """Client for quotes and invoices"""
+class BillingClient(Base):
+    """Client for quotes and invoices (Radar Business)"""
     __tablename__ = "billing_clients"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -75,8 +75,8 @@ class Client(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    quotes = relationship("Quote", back_populates="client", cascade="all, delete-orphan")
-    invoices = relationship("Invoice", back_populates="client", cascade="all, delete-orphan")
+    quotes = relationship("Quote", back_populates="billing_client", cascade="all, delete-orphan")
+    invoices = relationship("Invoice", back_populates="billing_client", cascade="all, delete-orphan")
 
 
 class Quote(Base):
@@ -129,7 +129,7 @@ class Quote(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    client = relationship("Client", back_populates="quotes")
+    billing_client = relationship("BillingClient", back_populates="quotes")
     items = relationship("QuoteItem", back_populates="quote", cascade="all, delete-orphan")
     invoice = relationship("Invoice", foreign_keys=[invoice_id])
     opportunity = relationship("Opportunity")
@@ -214,7 +214,7 @@ class Invoice(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    client = relationship("Client", back_populates="invoices")
+    billing_client = relationship("BillingClient", back_populates="invoices")
     items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
     source_quote = relationship("Quote", foreign_keys=[source_quote_id])
     opportunity = relationship("Opportunity")

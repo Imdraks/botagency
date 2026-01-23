@@ -14,7 +14,7 @@ from sqlalchemy import func, and_, or_
 from app.api.deps import get_db, get_current_user, get_current_workspace_id
 from app.db.models.user import User
 from app.db.models.billing import (
-    Client, Quote, QuoteItem, Invoice, InvoiceItem,
+    BillingClient, Quote, QuoteItem, Invoice, InvoiceItem,
     QuoteStatus, InvoiceStatus
 )
 from app.schemas.billing import (
@@ -113,18 +113,18 @@ async def list_clients(
     workspace_id: int = Depends(get_current_workspace_id)
 ):
     """List all clients for the workspace"""
-    query = db.query(Client).filter(Client.workspace_id == workspace_id)
+    query = db.query(BillingClient).filter(BillingClient.workspace_id == workspace_id)
     
     if search:
         query = query.filter(
             or_(
-                Client.name.ilike(f"%{search}%"),
-                Client.email.ilike(f"%{search}%"),
-                Client.company_name.ilike(f"%{search}%")
+                BillingClient.name.ilike(f"%{search}%"),
+                BillingClient.email.ilike(f"%{search}%"),
+                BillingClient.company_name.ilike(f"%{search}%")
             )
         )
     
-    return query.order_by(Client.name).all()
+    return query.order_by(BillingClient.name).all()
 
 
 @router.post("/clients", response_model=ClientResponse)
@@ -135,7 +135,7 @@ async def create_client(
     workspace_id: int = Depends(get_current_workspace_id)
 ):
     """Create a new client"""
-    client = Client(
+    client = BillingClient(
         workspace_id=workspace_id,
         **client_in.model_dump()
     )
@@ -153,9 +153,9 @@ async def get_client(
     workspace_id: int = Depends(get_current_workspace_id)
 ):
     """Get a specific client"""
-    client = db.query(Client).filter(
-        Client.id == client_id,
-        Client.workspace_id == workspace_id
+    client = db.query(BillingClient).filter(
+        BillingClient.id == client_id,
+        BillingClient.workspace_id == workspace_id
     ).first()
     
     if not client:
@@ -173,9 +173,9 @@ async def update_client(
     workspace_id: int = Depends(get_current_workspace_id)
 ):
     """Update a client"""
-    client = db.query(Client).filter(
-        Client.id == client_id,
-        Client.workspace_id == workspace_id
+    client = db.query(BillingClient).filter(
+        BillingClient.id == client_id,
+        BillingClient.workspace_id == workspace_id
     ).first()
     
     if not client:
@@ -198,9 +198,9 @@ async def delete_client(
     workspace_id: int = Depends(get_current_workspace_id)
 ):
     """Delete a client"""
-    client = db.query(Client).filter(
-        Client.id == client_id,
-        Client.workspace_id == workspace_id
+    client = db.query(BillingClient).filter(
+        BillingClient.id == client_id,
+        BillingClient.workspace_id == workspace_id
     ).first()
     
     if not client:

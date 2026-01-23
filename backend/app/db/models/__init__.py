@@ -108,7 +108,7 @@ from .workspace import (
 
 # Billing - Radar Business (Quotes & Invoices)
 from .billing import (
-    Client as BillingClient,
+    BillingClient,
     Quote,
     QuoteItem,
     Invoice,
