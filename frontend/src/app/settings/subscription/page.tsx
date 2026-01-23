@@ -259,8 +259,10 @@ export default function SubscriptionPage() {
       return;
     }
     
+    const isCurrentlyEnabled = subscription?.addons?.includes(addon);
+    
     try {
-      await toggleAddon(addon);
+      await toggleAddon(addon, !isCurrentlyEnabled);
       toast.success('Add-on mis à jour');
     } catch (error) {
       toast.error('Erreur lors de la mise à jour de l\'add-on');
