@@ -273,6 +273,33 @@ def get_plan_features(plan: Plan, addons: List[Addon] = None) -> Set[Feature]:
     return features
 
 
+def get_workspace_features(enabled_packs: List[str], addons: List[str] = None) -> Set[Feature]:
+    """Get all features available based on workspace's enabled_packs and addons.
+    
+    This function uses the actual packs/addons stored in the workspace,
+    not the default plan configuration. This allows for custom pack configurations.
+    """
+    features = set()
+    
+    # Features from enabled packs
+    for pack_str in (enabled_packs or []):
+        try:
+            pack = Pack(pack_str)
+            features.update(PACK_FEATURES.get(pack, set()))
+        except ValueError:
+            pass  # Unknown pack, skip
+    
+    # Features from addons
+    for addon_str in (addons or []):
+        try:
+            addon = Addon(addon_str)
+            features.update(ADDON_FEATURES.get(addon, set()))
+        except ValueError:
+            pass  # Unknown addon, skip
+    
+    return features
+
+
 def get_pack_from_feature(feature: Feature) -> Optional[Pack]:
     """Find which pack contains a feature"""
     for pack, pack_features in PACK_FEATURES.items():

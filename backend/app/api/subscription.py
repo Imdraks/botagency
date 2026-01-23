@@ -16,7 +16,7 @@ from app.db.models.user import User
 from app.core.subscription import (
     Plan, Pack, Addon, Feature,
     PLAN_CONFIGS, ADDON_CONFIGS, PACK_FEATURES, ADDON_FEATURES,
-    get_plan_features, is_feature_available, get_upgrade_message,
+    get_plan_features, get_workspace_features, is_feature_available, get_upgrade_message,
     EXTRA_SEAT_PRICE, NAV_SECTIONS, ADMIN_ONLY_FEATURES
 )
 import logging
@@ -222,9 +222,12 @@ async def get_current_subscription(
     plan = Plan(workspace.plan) if workspace.plan else Plan.STANDARD
     plan_config = PLAN_CONFIGS.get(plan, PLAN_CONFIGS[Plan.STANDARD])
     
-    # Calculate available features
-    addons = [Addon(a) for a in (workspace.addons or [])]
-    features = get_plan_features(plan, addons)
+    # Calculate available features from workspace's actual enabled_packs and addons
+    # This respects the workspace's specific configuration, not just the plan defaults
+    features = get_workspace_features(
+        workspace.enabled_packs or [],
+        workspace.addons or []
+    )
     
     return WorkspaceSubscription(
         workspace_id=workspace.id,
@@ -459,7 +462,11 @@ async def admin_get_workspace_subscription(
     ).count()
     
     plan = Plan(workspace.plan) if workspace.plan else Plan.STANDARD
-    available_features = [f.value for f in get_plan_features(plan, workspace.addons or [])]
+    # Use workspace's actual enabled_packs and addons
+    available_features = [f.value for f in get_workspace_features(
+        workspace.enabled_packs or [],
+        workspace.addons or []
+    )]
     
     return WorkspaceSubscription(
         workspace_id=workspace.id,
@@ -473,6 +480,53 @@ async def admin_get_workspace_subscription(
         available_features=available_features,
         plan_expires_at=workspace.plan_expires_at.isoformat() if workspace.plan_expires_at else None
     )
+
+
+@router.post("/admin/migrate-workspaces")
+async def admin_migrate_all_workspaces(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin_user)
+):
+    """
+    🔑 [ADMIN] Migrate all workspaces to have correct packs based on their plan
+    
+    This is a one-time migration for workspaces created before the subscription system.
+    It applies the default packs/addons for each workspace's current plan.
+    """
+    workspaces = db.query(Workspace).all()
+    migrated = []
+    
+    for workspace in workspaces:
+        old_packs = workspace.enabled_packs or []
+        old_addons = workspace.addons or []
+        
+        # Get plan config
+        plan = Plan(workspace.plan) if workspace.plan else Plan.STANDARD
+        plan_config = PLAN_CONFIGS[plan]
+        
+        # Apply plan's default packs and addons
+        workspace.enabled_packs = [p.value for p in plan_config.included_packs]
+        workspace.addons = [a.value for a in plan_config.included_addons]
+        workspace.max_seats = workspace.max_seats or plan_config.max_seats
+        
+        migrated.append({
+            "workspace_id": workspace.id,
+            "workspace_name": workspace.name,
+            "plan": workspace.plan,
+            "old_packs": old_packs,
+            "new_packs": workspace.enabled_packs,
+            "old_addons": old_addons,
+            "new_addons": workspace.addons,
+        })
+    
+    db.commit()
+    
+    logger.info(f"Admin {admin.id} migrated {len(migrated)} workspaces")
+    
+    return {
+        "message": f"Migré {len(migrated)} workspaces",
+        "migrated": migrated
+    }
 
 
 @router.patch("/admin/workspace/{workspace_id}", response_model=WorkspaceSubscription)
