@@ -312,7 +312,7 @@ export default function SubscriptionPage() {
                 Plan {subscription.plan}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {subscription.enabledPacks.length} pack(s) actif(s) • {subscription.maxSeats} place(s)
+                {subscription.enabled_packs.length} pack(s) actif(s) • {subscription.max_seats} place(s)
               </p>
             </div>
             
@@ -423,7 +423,7 @@ export default function SubscriptionPage() {
         
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {(['core', 'clients', 'leads', 'talents', 'intelligence'] as Pack[]).map((pack) => {
-            const isEnabled = subscription?.enabledPacks.includes(pack);
+            const isEnabled = subscription?.enabled_packs.includes(pack);
             
             return (
               <Card 
