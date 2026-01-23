@@ -119,6 +119,54 @@ export const FEATURE_ROUTES: Record<string, Feature> = {
 export const ADMIN_ONLY_FEATURES: Feature[] = ['sources', 'source_health'];
 
 // ============================================================================
+// PLAN CONFIGS (for UI display)
+// ============================================================================
+
+export interface PlanConfig {
+  description: string;
+  price: number;
+  maxSeats: number;
+  packs: Pack[];
+  highlights: string[];
+}
+
+export const PLAN_CONFIGS: Record<Plan, PlanConfig> = {
+  mini: {
+    description: "L'essentiel pour piloter ton agence.",
+    price: 29,
+    maxSeats: 3,
+    packs: ['core', 'clients'],
+    highlights: [
+      'Cockpit + Pipeline + Projets + Production',
+      'Gestion clients et dossiers',
+      'Daily Picks pour ne rien oublier',
+    ],
+  },
+  standard: {
+    description: 'Le plan que 80% des agences choisissent.',
+    price: 79,
+    maxSeats: 10,
+    packs: ['core', 'clients', 'leads', 'talents'],
+    highlights: [
+      'Tout Mini inclus',
+      'Leads + Kanban + Scoring',
+      'Artistes, Profils, Découverte, Comparaison',
+    ],
+  },
+  premium: {
+    description: 'Radar complet. Zéro limite.',
+    price: 149,
+    maxSeats: 999,
+    packs: ['core', 'clients', 'leads', 'talents', 'intelligence'],
+    highlights: [
+      'Tout Standard inclus',
+      'Analytics, Veille Concur., Prédictions IA',
+      'Radar Business inclus (devis + factures)',
+    ],
+  },
+};
+
+// ============================================================================
 // STORE
 // ============================================================================
 
