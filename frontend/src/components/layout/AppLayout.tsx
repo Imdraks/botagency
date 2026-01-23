@@ -39,6 +39,7 @@ import {
   Package,
   Sun,
   Inbox,
+  Lock,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/store/auth";
+import { useSubscriptionStore, Feature, FEATURE_ROUTES } from "@/store/subscriptionStore";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { BackgroundTasksIndicator } from "@/components/tasks/BackgroundTasksIndicator";
@@ -96,44 +98,45 @@ interface NavItem {
   isNew?: boolean;
   adminOnly?: boolean;
   superadminOnly?: boolean;
+  feature?: Feature; // Feature required to access this page
 }
 
 // Main navigation - always visible at top
 const mainNavigation: NavItem[] = [
-  { name: "Aujourd'hui", href: "/today", icon: Sun, isNew: true },
-  { name: "Inbox", href: "/inbox", icon: Inbox, isNew: true },
-  { name: "Pipeline", href: "/pipeline", icon: DollarSign },
-  { name: "Projets", href: "/projects", icon: FolderOpen },
-  { name: "Production", href: "/production", icon: Palette },
-  { name: "Assets", href: "/assets", icon: Package },
-  { name: "Calendrier", href: "/agency-calendar", icon: Calendar },
+  { name: "Aujourd'hui", href: "/today", icon: Sun, isNew: true, feature: 'cockpit' },
+  { name: "Inbox", href: "/inbox", icon: Inbox, isNew: true, feature: 'cockpit' },
+  { name: "Pipeline", href: "/pipeline", icon: DollarSign, feature: 'pipeline' },
+  { name: "Projets", href: "/projects", icon: FolderOpen, feature: 'projects' },
+  { name: "Production", href: "/production", icon: Palette, feature: 'production' },
+  { name: "Assets", href: "/assets", icon: Package, feature: 'assets' },
+  { name: "Calendrier", href: "/agency-calendar", icon: Calendar, feature: 'calendar' },
 ];
 
 // Outils navigation (collapsible) - for daily workflows
 const toolsNavigation: NavItem[] = [
-  { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard },
-  { name: "Clients", href: "/clients", icon: Briefcase },
-  { name: "Daily Picks", href: "/shortlist", icon: Sparkles },
-  { name: "Leads", href: "/leads", icon: Target },
-  { name: "Dossiers", href: "/dossiers", icon: FileText },
-  { name: "Kanban Leads", href: "/leads/kanban", icon: Kanban },
-  { name: "Deadlines", href: "/deadlines", icon: Clock },
-  { name: "Analytics", href: "/analytics", icon: TrendingUp },
-  { name: "Artistes", href: "/artist-history", icon: Music },
-  { name: "Découverte", href: "/discovery", icon: Search },
-  { name: "Comparaison", href: "/comparison", icon: GitCompare },
-  { name: "Carte", href: "/map", icon: Map },
-  { name: "Veille Concur.", href: "/competitive", icon: Eye },
+  { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard, feature: 'cockpit' },
+  { name: "Clients", href: "/clients", icon: Briefcase, feature: 'clients' },
+  { name: "Daily Picks", href: "/shortlist", icon: Sparkles, feature: 'daily_picks' },
+  { name: "Leads", href: "/leads", icon: Target, feature: 'leads' },
+  { name: "Dossiers", href: "/dossiers", icon: FileText, feature: 'dossiers' },
+  { name: "Kanban Leads", href: "/leads/kanban", icon: Kanban, feature: 'kanban_leads' },
+  { name: "Deadlines", href: "/deadlines", icon: Clock, feature: 'projects' },
+  { name: "Analytics", href: "/analytics", icon: TrendingUp, feature: 'analytics' },
+  { name: "Artistes", href: "/artist-history", icon: Music, feature: 'artists' },
+  { name: "Découverte", href: "/discovery", icon: Search, feature: 'discovery' },
+  { name: "Comparaison", href: "/comparison", icon: GitCompare, feature: 'comparison' },
+  { name: "Carte", href: "/map", icon: Map, feature: 'map' },
+  { name: "Veille Concur.", href: "/competitive", icon: Eye, feature: 'competitor_watch' },
 ];
 
 // Admin Tools navigation (collapsible) - technical/admin only
 const adminToolsNavigation: NavItem[] = [
   { name: "Workspaces", href: "/workspaces", icon: FolderOpen, adminOnly: true },
-  { name: "Sources", href: "/sources", icon: Rss, adminOnly: true },
-  { name: "Source Health", href: "/source-health", icon: HeartPulse, adminOnly: true },
+  { name: "Sources", href: "/sources", icon: Rss, adminOnly: true, feature: 'sources' },
+  { name: "Source Health", href: "/source-health", icon: HeartPulse, adminOnly: true, feature: 'source_health' },
   { name: "Profils", href: "/profiles", icon: Sliders, adminOnly: true },
-  { name: "Scoring", href: "/scoring", icon: BarChart3, adminOnly: true },
-  { name: "Prédictions IA", href: "/predictions", icon: Brain, adminOnly: true },
+  { name: "Scoring", href: "/scoring", icon: BarChart3, adminOnly: true, feature: 'scoring' },
+  { name: "Prédictions IA", href: "/predictions", icon: Brain, adminOnly: true, feature: 'ai_predictions' },
 ];
 
 // Bottom navigation
@@ -153,10 +156,28 @@ interface AppLayoutProps {
 function AppLayoutInner({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const { subscription, fetchSubscription, hasFeature, setAdmin } = useSubscriptionStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitedPages, setVisitedPages] = useState<string[]>([]);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
+
+  // Load subscription on mount
+  useEffect(() => {
+    const workspaceId = localStorage.getItem('current_workspace_id');
+    if (workspaceId) {
+      fetchSubscription(parseInt(workspaceId));
+    } else {
+      fetchSubscription();
+    }
+  }, [fetchSubscription]);
+
+  // Update admin status
+  useEffect(() => {
+    if (user) {
+      setAdmin(user.role === 'admin' || user.is_superuser === true);
+    }
+  }, [user, setAdmin]);
 
   // Load visited pages on mount
   useEffect(() => {
@@ -200,32 +221,36 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     return item.isNew && !visitedPages.includes(item.href);
   }, [visitedPages]);
 
+  // Check if a feature is available
+  const isFeatureAvailable = useCallback((item: NavItem): boolean => {
+    // No feature requirement = always available
+    if (!item.feature) return true;
+    // Use the hasFeature from subscription store
+    return hasFeature(item.feature);
+  }, [hasFeature]);
+
   const isAdmin = user?.role === "admin";
   const isSuperuser = user?.is_superuser === true;
 
-  const filteredToolsNavigation = toolsNavigation.filter(
-    (item) => {
-      if (item.superadminOnly) return isSuperuser;
-      if (item.adminOnly) return isAdmin || isSuperuser;
+  // Filter navigation items based on role AND feature availability
+  const filterNavItems = useCallback((items: NavItem[]) => {
+    return items.filter((item) => {
+      // Role check
+      if (item.superadminOnly && !isSuperuser) return false;
+      if (item.adminOnly && !isAdmin && !isSuperuser) return false;
+      // Feature check - show but locked, or hide completely? 
+      // For now, show all but we'll mark locked ones
       return true;
-    }
-  );
+    });
+  }, [isAdmin, isSuperuser]);
+
+  const filteredMainNavigation = filterNavItems(mainNavigation);
   
-  const filteredAdminToolsNavigation = adminToolsNavigation.filter(
-    (item) => {
-      if (item.superadminOnly) return isSuperuser;
-      if (item.adminOnly) return isAdmin || isSuperuser;
-      return true;
-    }
-  );
+  const filteredToolsNavigation = filterNavItems(toolsNavigation);
   
-  const filteredAdminNavigation = adminNavigation.filter(
-    (item) => {
-      if (item.superadminOnly) return isSuperuser;
-      if (item.adminOnly) return isAdmin || isSuperuser;
-      return true;
-    }
-  );
+  const filteredAdminToolsNavigation = filterNavItems(adminToolsNavigation);
+  
+  const filteredAdminNavigation = filterNavItems(adminNavigation);
 
   const currentPage = [...mainNavigation, ...toolsNavigation, ...adminNavigation].find(item => pathname.startsWith(item.href));
 
@@ -273,27 +298,39 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           <ScrollArea className="flex-1 py-4">
             <nav className="px-3 space-y-1">
               {/* Main Navigation - 7 items */}
-              {mainNavigation.map((item) => {
+              {filteredMainNavigation.map((item: NavItem) => {
                 const isActive = pathname === item.href || 
                   (item.href !== "/today" && pathname.startsWith(item.href));
+                const isLocked = item.feature && !isFeatureAvailable(item);
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
+                    href={isLocked ? "#" : item.href}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                      isActive
+                      isLocked
+                        ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60"
+                        : isActive
                         ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
                     )}
-                    onClick={() => setSidebarOpen(false)}
+                    onClick={(e) => {
+                      if (isLocked) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setSidebarOpen(false);
+                    }}
                   >
                     <item.icon className={cn(
                       "h-5 w-5 flex-shrink-0",
-                      isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
+                      isLocked ? "text-gray-400" : isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
                     )} />
                     <span className="flex-1">{item.name}</span>
-                    {shouldShowNewBadge(item) && !isActive && (
+                    {isLocked && (
+                      <Lock className="h-4 w-4 text-gray-400" />
+                    )}
+                    {!isLocked && shouldShowNewBadge(item) && !isActive && (
                       <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 rounded-full">
                         New
                       </span>
@@ -322,25 +359,37 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                   
                   {toolsExpanded && (
                     <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-neutral-800 pl-3">
-                      {filteredToolsNavigation.map((item) => {
+                      {filteredToolsNavigation.map((item: NavItem) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href);
+                        const isLocked = item.feature && !isFeatureAvailable(item);
                         return (
                           <Link
                             key={item.name}
-                            href={item.href}
+                            href={isLocked ? "#" : item.href}
                             className={cn(
                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                              isActive
+                              isLocked
+                                ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60"
+                                : isActive
                                 ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white"
                                 : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-800/50 hover:text-gray-700 dark:hover:text-gray-300"
                             )}
-                            onClick={() => setSidebarOpen(false)}
+                            onClick={(e) => {
+                              if (isLocked) {
+                                e.preventDefault();
+                                return;
+                              }
+                              setSidebarOpen(false);
+                            }}
                           >
                             <item.icon className={cn(
                               "h-4 w-4 flex-shrink-0",
-                              isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                              isLocked ? "text-gray-400" : isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
                             )} />
                             <span className="flex-1">{item.name}</span>
+                            {isLocked && (
+                              <Lock className="h-3 w-3 text-gray-400" />
+                            )}
                           </Link>
                         );
                       })}
@@ -366,25 +415,37 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                   
                   {adminExpanded && (
                     <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-neutral-800 pl-3">
-                      {filteredAdminToolsNavigation.map((item) => {
+                      {filteredAdminToolsNavigation.map((item: NavItem) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href);
+                        const isLocked = item.feature && !isFeatureAvailable(item);
                         return (
                           <Link
                             key={item.name}
-                            href={item.href}
+                            href={isLocked ? "#" : item.href}
                             className={cn(
                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                              isActive
+                              isLocked
+                                ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60"
+                                : isActive
                                 ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white"
                                 : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-800/50 hover:text-gray-700 dark:hover:text-gray-300"
                             )}
-                            onClick={() => setSidebarOpen(false)}
+                            onClick={(e) => {
+                              if (isLocked) {
+                                e.preventDefault();
+                                return;
+                              }
+                              setSidebarOpen(false);
+                            }}
                           >
                             <item.icon className={cn(
                               "h-4 w-4 flex-shrink-0",
-                              isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                              isLocked ? "text-gray-400" : isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
                             )} />
                             <span className="flex-1">{item.name}</span>
+                            {isLocked && (
+                              <Lock className="h-3 w-3 text-gray-400" />
+                            )}
                           </Link>
                         );
                       })}
@@ -397,7 +458,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
               <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
               
               {/* Bottom Navigation - Paramètres + Admin items */}
-              {filteredAdminNavigation.map((item) => {
+              {filteredAdminNavigation.map((item: NavItem) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href);
                 return (
                   <Link
