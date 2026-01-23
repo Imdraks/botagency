@@ -175,7 +175,7 @@ function TodayContent() {
   }, []);
 
   const now = new Date();
-  const greeting = now.getHours() < 12 ? 'Bonjour' : now.getHours() < 18 ? 'Bon apr├¿s-midi' : 'Bonsoir';
+  const greeting = now.getHours() < 12 ? 'Bonjour' : now.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir';
 
   if (loading) {
     return (
@@ -191,7 +191,7 @@ function TodayContent() {
         <p className="text-gray-500">{error}</p>
         <Button onClick={fetchDashboard} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" />
-          R├®essayer
+          Réessayer
         </Button>
       </div>
     );
@@ -208,7 +208,7 @@ function TodayContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {greeting} ­ƒæï
+            {greeting}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             {format(now, "EEEE d MMMM yyyy", { locale: fr })}
@@ -252,16 +252,16 @@ function TodayContent() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Sparkles className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Tout est clair ! ­ƒÄë
+              Tout est clair !
             </h2>
             <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
-              Aucune action urgente pour le moment. C'est le bon moment pour capturer de nouvelles id├®es ou avancer sur vos projets.
+              Aucune action urgente pour le moment. C'est le bon moment pour capturer de nouvelles idées ou avancer sur vos projets.
             </p>
             <div className="flex gap-3">
               <Link href="/inbox">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Capturer une id├®e
+                  Capturer une idée
                 </Button>
               </Link>
               <Link href="/projects">
@@ -279,12 +279,12 @@ function TodayContent() {
       {!allEmpty && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Block A: ├Ç faire aujourd'hui */}
+          {/* Block A: À faire aujourd'hui */}
           <Card className="lg:col-span-1">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-lg">├Ç faire aujourd'hui</CardTitle>
+                <CardTitle className="text-lg">À faire aujourd'hui</CardTitle>
               </div>
               <CardDescription>
                 {data?.todos_count || 0} action{(data?.todos_count || 0) > 1 ? 's' : ''}
@@ -323,7 +323,7 @@ function TodayContent() {
                         item.type === 'validation' ? 'secondary' : 'outline'
                       } className="text-[10px]">
                         {item.type === 'followup' ? 'Relance' :
-                         item.type === 'validation' ? 'Validation' : 'T├óche'}
+                         item.type === 'validation' ? 'Validation' : 'Tâche'}
                       </Badge>
                     </div>
                   </Link>
@@ -331,7 +331,7 @@ function TodayContent() {
               )}
               {(data?.todos_count || 0) > 5 && (
                 <Link href="/production" className="block text-center text-sm text-blue-600 hover:underline py-2">
-                  Voir les {data?.todos_count} actions ÔåÆ
+                  Voir les {data?.todos_count} actions
                 </Link>
               )}
             </CardContent>
@@ -345,7 +345,7 @@ function TodayContent() {
                 <CardTitle className="text-lg">Urgences</CardTitle>
               </div>
               <CardDescription>
-                Deadlines &lt; 72h & projets bloqu├®s
+                Deadlines < 72h et projets bloqués
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -409,7 +409,7 @@ function TodayContent() {
                   <p className="text-sm">Pas de deals actifs</p>
                   <Link href="/pipeline">
                     <Button variant="link" size="sm" className="mt-2">
-                      Cr├®er un deal ÔåÆ
+                      Créer un deal
                     </Button>
                   </Link>
                 </div>
@@ -428,7 +428,7 @@ function TodayContent() {
                         <p className="text-xs text-gray-500 truncate">
                           {item.client_name}
                           {item.days_waiting && item.days_waiting > 0 && (
-                            <span className="text-orange-500 ml-1">ÔÇó {item.days_waiting}j sans r├®ponse</span>
+                            <span className="text-orange-500 ml-1">• {item.days_waiting}j sans réponse</span>
                           )}
                         </p>
                       </div>
@@ -443,7 +443,7 @@ function TodayContent() {
               )}
               {(data?.business_count || 0) > 5 && (
                 <Link href="/pipeline" className="block text-center text-sm text-blue-600 hover:underline py-2">
-                  Voir le pipeline ÔåÆ
+                  Voir le pipeline
                 </Link>
               )}
             </CardContent>
