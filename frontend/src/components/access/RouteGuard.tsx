@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSubscriptionStore, Addon } from "@/store/subscriptionStore";
+import { useSubscriptionStore, Addon, Pack } from "@/store/subscriptionStore";
 import { useAuthStore } from "@/store/auth";
 import ModuleNotActivated from "./ModuleNotActivated";
 
 // Mapping from route to module info
-const MODULE_INFO: Record<string, { name: string; pack?: string; addon?: Addon; adminOnly?: boolean }> = {
+const MODULE_INFO: Record<string, { name: string; pack?: Pack; addon?: Addon; adminOnly?: boolean }> = {
   // Radar Business (addon)
   "/clients": { name: "Radar Business", addon: "radar_business" },
   "/devis": { name: "Radar Business", addon: "radar_business" },
