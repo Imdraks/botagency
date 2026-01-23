@@ -6,6 +6,7 @@ import {
   FileCheck, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, 
   Building2, User, Calendar, Clock, CreditCard, AlertTriangle, DollarSign
 } from 'lucide-react';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -357,9 +358,13 @@ export default function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
-        <div className="text-gray-500">Chargement...</div>
-      </div>
+      <ProtectedRoute>
+        <AppLayoutWithOnboarding>
+          <div className="p-6 flex items-center justify-center">
+            <div className="text-gray-500">Chargement...</div>
+          </div>
+        </AppLayoutWithOnboarding>
+      </ProtectedRoute>
     );
   }
 
@@ -374,7 +379,9 @@ export default function InvoiceDetailPage() {
     : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -906,6 +913,8 @@ export default function InvoiceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+        </div>
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
   );
 }

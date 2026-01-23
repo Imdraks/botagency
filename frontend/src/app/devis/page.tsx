@@ -43,6 +43,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 interface QuoteItem {
   id: number;
@@ -284,23 +285,25 @@ export default function QuotesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Receipt className="h-6 w-6 text-blue-600" />
-            Devis
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Créez et gérez vos devis clients
-          </p>
-        </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau Devis
-        </Button>
-      </div>
+    <ProtectedRoute>
+      <AppLayoutWithOnboarding>
+        <div className="p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Receipt className="h-6 w-6 text-blue-600" />
+                Devis
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                Créez et gérez vos devis clients
+              </p>
+            </div>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau Devis
+            </Button>
+          </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -570,6 +573,8 @@ export default function QuotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+        </div>
+      </AppLayoutWithOnboarding>
+    </ProtectedRoute>
   );
 }
