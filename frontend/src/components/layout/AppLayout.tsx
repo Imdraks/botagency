@@ -370,22 +370,22 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-5 border-b border-gray-200 dark:border-slate-700/50">
-            <Link href="/today" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-600 dark:bg-purple-600 flex items-center justify-center shadow-md shadow-purple-500/20 dark:shadow-purple-500/30">
-                <Target className="h-5 w-5 text-white" />
+          <div className="flex items-center justify-between h-14 px-4 border-b border-gray-200 dark:border-slate-700/50">
+            <Link href="/today" className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-purple-600 dark:bg-purple-600 flex items-center justify-center shadow-sm shadow-purple-500/20 dark:shadow-purple-500/30">
+                <Target className="h-4 w-4 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
                 Radar
               </span>
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 h-8 w-8"
               onClick={() => setSidebarOpen(false)}
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
 
@@ -406,7 +406,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                       <Link
                         href={item.href}
                         className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                          "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
                           isActive
                             ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
@@ -415,7 +415,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                       >
                         <item.icon
                           className={cn(
-                            "h-5 w-5 flex-shrink-0",
+                            "h-4 w-4 flex-shrink-0",
                             isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
                           )}
                         />
@@ -435,13 +435,13 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                     {/* Section header - collapsible */}
                     <button
                       onClick={() => toggleSection(section.id)}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                      className="w-full flex items-center gap-1.5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                     >
-                      <SectionIcon className="h-3.5 w-3.5" />
+                      <SectionIcon className="h-3 w-3" />
                       <span className="flex-1 text-left">{section.label}</span>
                       <ChevronDown
                         className={cn(
-                          "h-3.5 w-3.5 transition-transform duration-200",
+                          "h-3 w-3 transition-transform duration-200",
                           isExpanded ? "rotate-180" : ""
                         )}
                       />
@@ -466,16 +466,16 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                                   key={item.href}
                                   href={item.href}
                                   className={cn(
-                                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                                    "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150",
                                     isActive
-                                      ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                                      ? "bg-purple-600 dark:bg-purple-600 text-white shadow-sm shadow-purple-500/20"
                                       : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
                                   )}
                                   onClick={() => setSidebarOpen(false)}
                                 >
                                   <item.icon
                                     className={cn(
-                                      "h-4.5 w-4.5 flex-shrink-0",
+                                      "h-4 w-4 flex-shrink-0",
                                       isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
                                     )}
                                   />
@@ -510,7 +510,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                          "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150",
                           isActive
                             ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
@@ -519,7 +519,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                       >
                         <item.icon
                           className={cn(
-                            "h-4 w-4 flex-shrink-0",
+                            "h-3.5 w-3.5 flex-shrink-0",
                             isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
                           )}
                         />
@@ -535,7 +535,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                           key={item.href}
                           href={item.href}
                           className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                            "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150",
                             isActive
                               ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
                               : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
@@ -544,7 +544,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                         >
                           <item.icon
                             className={cn(
-                              "h-4 w-4 flex-shrink-0",
+                              "h-3.5 w-3.5 flex-shrink-0",
                               isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
                             )}
                           />
