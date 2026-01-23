@@ -429,6 +429,103 @@ async def toggle_addon(
     return await get_current_subscription(workspace.id, db, current_user)
 
 
+# ============================================================================
+# SUPER ADMIN ENDPOINTS - Manage any workspace
+# ============================================================================
+
+class AdminUpdateSubscriptionRequest(BaseModel):
+    plan: Optional[str] = None
+    enabled_packs: Optional[List[str]] = None
+    addons: Optional[List[str]] = None
+    max_seats: Optional[int] = None
+
+
+@router.get("/admin/workspace/{workspace_id}", response_model=WorkspaceSubscription)
+async def admin_get_workspace_subscription(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin_user)
+):
+    """
+    🔑 [ADMIN] Get workspace subscription details
+    """
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace non trouvé")
+    
+    # Count seats
+    members_count = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id
+    ).count()
+    
+    plan = Plan(workspace.plan) if workspace.plan else Plan.STANDARD
+    available_features = [f.value for f in get_plan_features(plan, workspace.enabled_packs or [], workspace.addons or [])]
+    
+    return WorkspaceSubscription(
+        workspace_id=workspace.id,
+        workspace_name=workspace.name,
+        plan=workspace.plan or "standard",
+        plan_display_name=PLAN_CONFIGS[plan].display_name,
+        enabled_packs=workspace.enabled_packs or [],
+        addons=workspace.addons or [],
+        max_seats=workspace.max_seats or 10,
+        current_seats=members_count,
+        available_features=available_features,
+        plan_expires_at=workspace.plan_expires_at.isoformat() if workspace.plan_expires_at else None
+    )
+
+
+@router.patch("/admin/workspace/{workspace_id}", response_model=WorkspaceSubscription)
+async def admin_update_workspace_subscription(
+    workspace_id: int,
+    request: AdminUpdateSubscriptionRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin_user)
+):
+    """
+    🔑 [ADMIN] Update workspace subscription
+    
+    Allows super admin to modify any workspace's plan, packs, addons, seats.
+    """
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace non trouvé")
+    
+    if request.plan is not None:
+        try:
+            Plan(request.plan)
+            workspace.plan = request.plan
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Plan inconnu: {request.plan}")
+    
+    if request.enabled_packs is not None:
+        # Validate packs
+        valid_packs = [p.value for p in Pack]
+        for pack in request.enabled_packs:
+            if pack not in valid_packs:
+                raise HTTPException(status_code=400, detail=f"Pack inconnu: {pack}")
+        workspace.enabled_packs = request.enabled_packs
+    
+    if request.addons is not None:
+        valid_addons = [a.value for a in Addon]
+        for addon in request.addons:
+            if addon not in valid_addons:
+                raise HTTPException(status_code=400, detail=f"Addon inconnu: {addon}")
+        workspace.addons = request.addons
+    
+    if request.max_seats is not None:
+        if request.max_seats < 1:
+            raise HTTPException(status_code=400, detail="Le nombre de sièges doit être >= 1")
+        workspace.max_seats = request.max_seats
+    
+    db.commit()
+    db.refresh(workspace)
+    
+    logger.info(f"Admin {admin.id} updated workspace {workspace_id} subscription")
+    
+    return await admin_get_workspace_subscription(workspace_id, db, admin)
+
+
 @router.get("/pricing", response_model=Dict[str, Any])
 async def get_pricing_info():
     """

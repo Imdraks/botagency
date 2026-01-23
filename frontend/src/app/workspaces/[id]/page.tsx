@@ -14,6 +14,11 @@ import {
   Shield,
   Eye,
   User,
+  Package,
+  Zap,
+  Building2,
+  Rocket,
+  Crown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminLayout, ProtectedRoute } from "@/components/layout";
@@ -21,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +67,36 @@ interface Workspace {
   created_at: string;
 }
 
+interface WorkspaceSubscription {
+  workspace_id: number;
+  workspace_name: string;
+  plan: string;
+  plan_display_name: string;
+  enabled_packs: string[];
+  addons: string[];
+  max_seats: number;
+  current_seats: number;
+  available_features: string[];
+}
+
+const PLANS = [
+  { value: 'mini', label: 'Mini', icon: Zap, color: 'bg-blue-100 text-blue-700' },
+  { value: 'standard', label: 'Standard', icon: Building2, color: 'bg-purple-100 text-purple-700' },
+  { value: 'premium', label: 'Premium', icon: Rocket, color: 'bg-orange-100 text-orange-700' },
+];
+
+const PACKS = [
+  { value: 'core', label: 'Core', description: 'Pipeline, Projets, Dashboard' },
+  { value: 'clients', label: 'Clients', description: 'Gestion des clients' },
+  { value: 'leads', label: 'Leads', description: 'Leads & opportunités' },
+  { value: 'talents', label: 'Talents', description: 'Artistes & talents' },
+  { value: 'intelligence', label: 'Intelligence', description: 'Enrichissement IA' },
+];
+
+const ADDONS = [
+  { value: 'radar_business', label: 'Radar Business', description: 'Veille concurrentielle' },
+];
+
 const roleLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   admin: { label: 'Admin', icon: <Shield className="h-3 w-3" />, color: 'bg-red-100 text-red-700' },
   member: { label: 'Membre', icon: <User className="h-3 w-3" />, color: 'bg-blue-100 text-blue-700' },
@@ -83,10 +119,12 @@ function WorkspaceDetailContent() {
   const workspaceId = params.id as string;
   
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [subscription, setSubscription] = useState<WorkspaceSubscription | null>(null);
   const [invites, setInvites] = useState<WorkspaceInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [savingSubscription, setSavingSubscription] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newEmail, setNewEmail] = useState('');
@@ -105,6 +143,7 @@ function WorkspaceDetailContent() {
     
     fetchWorkspace();
     fetchInvites();
+    fetchSubscription();
   }, [workspaceId]);
 
   const fetchWorkspace = async () => {
@@ -120,6 +159,70 @@ function WorkspaceDetailContent() {
     } catch (err) {
       console.error('Failed to fetch workspace', err);
     }
+  };
+
+  const fetchSubscription = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/subscription/admin/workspace/${workspaceId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscription(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch subscription', err);
+    }
+  };
+
+  const updateSubscription = async (updates: Partial<WorkspaceSubscription>) => {
+    setSavingSubscription(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/subscription/admin/workspace/${workspaceId}`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscription(data);
+        toast.success('Abonnement mis à jour');
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur');
+      }
+    } catch (err) {
+      toast.error('Erreur de mise à jour');
+    } finally {
+      setSavingSubscription(false);
+    }
+  };
+
+  const togglePack = (packValue: string) => {
+    if (!subscription) return;
+    const currentPacks = subscription.enabled_packs || [];
+    const newPacks = currentPacks.includes(packValue)
+      ? currentPacks.filter(p => p !== packValue)
+      : [...currentPacks, packValue];
+    updateSubscription({ enabled_packs: newPacks } as any);
+  };
+
+  const toggleAddon = (addonValue: string) => {
+    if (!subscription) return;
+    const currentAddons = subscription.addons || [];
+    const newAddons = currentAddons.includes(addonValue)
+      ? currentAddons.filter(a => a !== addonValue)
+      : [...currentAddons, addonValue];
+    updateSubscription({ addons: newAddons } as any);
+  };
+
+  const changePlan = (planValue: string) => {
+    updateSubscription({ plan: planValue } as any);
   };
 
   const fetchInvites = async () => {
@@ -265,6 +368,123 @@ function WorkspaceDetailContent() {
           Supprimer l'instance
         </Button>
       </div>
+
+      {/* Subscription Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Crown className="h-5 w-5 text-yellow-500" />
+            Abonnement & Options
+            {savingSubscription && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+          </CardTitle>
+          <CardDescription>
+            Gérez le plan, les packs et les add-ons de ce workspace
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Plan Selection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Plan</Label>
+            <div className="flex gap-2">
+              {PLANS.map((plan) => {
+                const Icon = plan.icon;
+                const isActive = subscription?.plan === plan.value;
+                return (
+                  <button
+                    key={plan.value}
+                    onClick={() => changePlan(plan.value)}
+                    disabled={savingSubscription}
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                      isActive 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                        : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <span className={isActive ? 'font-semibold text-blue-700' : 'text-gray-600 dark:text-gray-300'}>
+                      {plan.label}
+                    </span>
+                    {isActive && <Check className="h-4 w-4 text-blue-600" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Packs */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Packs activés</Label>
+            <div className="grid gap-3">
+              {PACKS.map((pack) => {
+                const isEnabled = subscription?.enabled_packs?.includes(pack.value);
+                return (
+                  <div
+                    key={pack.value}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Package className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium">{pack.label}</p>
+                        <p className="text-sm text-gray-500">{pack.description}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={() => togglePack(pack.value)}
+                      disabled={savingSubscription || pack.value === 'core'}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Add-ons */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Add-ons</Label>
+            <div className="grid gap-3">
+              {ADDONS.map((addon) => {
+                const isEnabled = subscription?.addons?.includes(addon.value);
+                return (
+                  <div
+                    key={addon.value}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Zap className="h-5 w-5 text-yellow-500" />
+                      <div>
+                        <p className="font-medium">{addon.label}</p>
+                        <p className="text-sm text-gray-500">{addon.description}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={() => toggleAddon(addon.value)}
+                      disabled={savingSubscription}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Seats info */}
+          {subscription && (
+            <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <Users className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  {subscription.current_seats} / {subscription.max_seats} sièges utilisés
+                </p>
+                <p className="text-sm text-blue-600">
+                  {subscription.max_seats - subscription.current_seats} sièges disponibles
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Info Card */}
       <Card>
