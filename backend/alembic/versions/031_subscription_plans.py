@@ -1,7 +1,7 @@
 """Subscription Plans & Packs System
 
-Revision ID: 025_subscription_plans
-Revises: 024_onboarding_checklist
+Revision ID: 031_subscription_plans
+Revises: 030_artist_workspace
 Create Date: 2026-01-23
 
 Creates:
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers
-revision = '025_subscription_plans'
-down_revision = '024_onboarding_checklist'
+revision = '031_subscription_plans'
+down_revision = '030_artist_workspace'
 branch_labels = None
 depends_on = None
 
