@@ -8,36 +8,54 @@ import {
   Sun, 
   Inbox, 
   DollarSign, 
-  FolderKanban, 
-  LayoutGrid,
+  FolderOpen,
+  Menu as MenuIcon,
   Plus,
   X,
   Users,
   TrendingUp,
   Calendar,
-  Settings
+  Settings,
+  Receipt,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 
+// Bottom nav - Core items only (always accessible)
 const mobileNav = [
   { name: "Today", href: '/today', icon: Sun },
   { name: 'Inbox', href: '/inbox', icon: Inbox },
   { name: 'add', href: '#', icon: Plus, isAction: true },
   { name: 'Pipeline', href: '/pipeline', icon: DollarSign },
-  { name: 'Cockpit', href: '/cockpit', icon: LayoutGrid },
+  { name: 'Projets', href: '/projects', icon: FolderOpen },
 ];
 
-const quickActions = [
-  { name: 'Nouveau projet', href: '/projects/new', icon: FolderKanban, color: 'bg-purple-500' },
-  { name: 'Nouveau client', href: '/clients/new', icon: Users, color: 'bg-blue-500' },
-  { name: 'Nouveau deal', href: '/pipeline/new', icon: TrendingUp, color: 'bg-green-500' },
-  { name: 'Calendrier', href: '/agency-calendar', icon: Calendar, color: 'bg-orange-500' },
-  { name: 'Paramètres', href: '/settings', icon: Settings, color: 'bg-gray-500' },
+// Quick actions - dynamically filtered based on subscription
+const allQuickActions = [
+  { name: 'Nouveau projet', href: '/projects/new', icon: FolderOpen, color: 'bg-purple-500', alwaysVisible: true },
+  { name: 'Nouveau deal', href: '/pipeline/new', icon: TrendingUp, color: 'bg-green-500', alwaysVisible: true },
+  { name: 'Calendrier', href: '/agency-calendar', icon: Calendar, color: 'bg-orange-500', alwaysVisible: true },
+  { name: 'Assets', href: '/assets', icon: Package, color: 'bg-indigo-500', alwaysVisible: true },
+  { name: 'Nouveau client', href: '/clients/new', icon: Users, color: 'bg-blue-500', requiresAddon: 'radar_business' as const },
+  { name: 'Nouveau devis', href: '/devis/new', icon: Receipt, color: 'bg-teal-500', requiresAddon: 'radar_business' as const },
+  { name: 'Paramètres', href: '/settings', icon: Settings, color: 'bg-gray-500', alwaysVisible: true },
 ];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const { subscription } = useSubscriptionStore();
+
+  // Filter quick actions based on subscription
+  const quickActions = allQuickActions.filter((action) => {
+    if (action.alwaysVisible) return true;
+    if (action.requiresAddon) {
+      const addons = subscription?.addons || [];
+      return addons.includes(action.requiresAddon);
+    }
+    return true;
+  });
 
   return (
     <>

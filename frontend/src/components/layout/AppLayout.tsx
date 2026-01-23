@@ -14,17 +14,13 @@ import {
   Menu,
   X,
   Calendar,
-  Kanban,
   Music,
   Search,
   GitCompare,
-  FileText,
   ChevronRight,
-  Bell,
   Activity,
   Sparkles,
   Sliders,
-  Clock,
   HeartPulse,
   TrendingUp,
   Eye,
@@ -34,125 +30,210 @@ import {
   Briefcase,
   FolderOpen,
   Palette,
-  Wrench,
   DollarSign,
   Package,
   Sun,
   Inbox,
-  Lock,
   Receipt,
   FileCheck,
+  Building2,
+  Compass,
+  Database,
+  Home,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/store/auth";
-import { useSubscriptionStore, Feature, FEATURE_ROUTES } from "@/store/subscriptionStore";
+import { useSubscriptionStore, Feature, Addon } from "@/store/subscriptionStore";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { BackgroundTasksIndicator } from "@/components/tasks/BackgroundTasksIndicator";
 import { OnboardingProvider, OnboardingTour, OnboardingTrigger, WelcomeModal } from "@/components/onboarding";
 import { MobileBottomNav } from "./MobileBottomNav";
 
-// Storage key for visited pages
-const VISITED_PAGES_KEY = "radar_visited_pages";
+// ============================================================================
+// NAVIGATION V4 - Structured by Packs
+// ============================================================================
+// - Radar Core: Always visible
+// - Radar Business: If addon enabled
+// - Radar Discovery: If talents pack enabled
+// - Radar Analytics: If intelligence pack enabled
+// - Radar Intelligence: If intelligence pack enabled
+// - Radar Data: Admin only
+// - Paramètres: Always visible
+// ============================================================================
 
-// Helper to get visited pages from localStorage
-const getVisitedPages = (): string[] => {
-  if (typeof window === "undefined") return [];
+// Storage key for section expand state
+const SECTION_EXPAND_KEY = "radar_section_expand_state";
+
+// Helper to get section expand state from localStorage
+const getSectionExpandState = (): Record<string, boolean> => {
+  if (typeof window === "undefined") return {};
   try {
-    const stored = localStorage.getItem(VISITED_PAGES_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const stored = localStorage.getItem(SECTION_EXPAND_KEY);
+    return stored ? JSON.parse(stored) : {};
   } catch {
-    return [];
+    return {};
   }
 };
 
-// Helper to mark a page as visited
-const markPageAsVisited = (href: string): void => {
+// Helper to save section expand state
+const saveSectionExpandState = (state: Record<string, boolean>): void => {
   if (typeof window === "undefined") return;
   try {
-    const visited = getVisitedPages();
-    if (!visited.includes(href)) {
-      visited.push(href);
-      localStorage.setItem(VISITED_PAGES_KEY, JSON.stringify(visited));
-    }
+    localStorage.setItem(SECTION_EXPAND_KEY, JSON.stringify(state));
   } catch {
     // Ignore storage errors
   }
 };
 
 // ============================================================================
-// NAVIGATION V3 - Daily Agency Hub
-// Today & Inbox first = daily adoption
-// Core: Pipeline, Projets, Production, Assets, Calendrier
-// Outils: groupe replié par défaut
-// Admin: visible seulement pour admins
+// NAVIGATION STRUCTURE BY PACKS
 // ============================================================================
 
-// Common navigation item type
 interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
   isNew?: boolean;
-  adminOnly?: boolean;
-  superadminOnly?: boolean;
-  feature?: Feature; // Feature required to access this page
+  feature?: Feature;
 }
 
-// Main navigation - always visible at top
-const mainNavigation: NavItem[] = [
-  { name: "Aujourd'hui", href: "/today", icon: Sun, isNew: true, feature: 'cockpit' },
-  { name: "Inbox", href: "/inbox", icon: Inbox, isNew: true, feature: 'cockpit' },
-  { name: "Pipeline", href: "/pipeline", icon: DollarSign, feature: 'pipeline' },
-  { name: "Projets", href: "/projects", icon: FolderOpen, feature: 'projects' },
-  { name: "Production", href: "/production", icon: Palette, feature: 'production' },
-  { name: "Assets", href: "/assets", icon: Package, feature: 'assets' },
-  { name: "Calendrier", href: "/agency-calendar", icon: Calendar, feature: 'calendar' },
-  // Radar Business (addon)
-  { name: "Devis", href: "/quotes", icon: Receipt, feature: 'quotes' },
-  { name: "Factures", href: "/invoices", icon: FileCheck, feature: 'invoices' },
+interface NavSection {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+  // Visibility rules
+  packRequired?: string;      // Pack that must be enabled
+  addonRequired?: Addon;      // Addon that must be enabled
+  adminOnly?: boolean;        // Only visible to admins
+  alwaysVisible?: boolean;    // Always visible (Core, Settings)
+}
+
+// Define all navigation sections
+const navigationSections: NavSection[] = [
+  // ─────────────────────────────────────────────────────────────────────────
+  // RADAR CORE - Toujours visible
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "core",
+    label: "Radar Core",
+    icon: Home,
+    alwaysVisible: true,
+    items: [
+      { name: "Aujourd'hui", href: "/today", icon: Sun, feature: "cockpit" },
+      { name: "Inbox", href: "/inbox", icon: Inbox, feature: "cockpit" },
+      { name: "Pipeline", href: "/pipeline", icon: DollarSign, feature: "pipeline" },
+      { name: "Projets", href: "/projects", icon: FolderOpen, feature: "projects" },
+      { name: "Production", href: "/production", icon: Palette, feature: "production" },
+      { name: "Assets", href: "/assets", icon: Package, feature: "assets" },
+      { name: "Calendrier", href: "/agency-calendar", icon: Calendar, feature: "calendar" },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RADAR BUSINESS - Si addon activé
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "business",
+    label: "Radar Business",
+    icon: Briefcase,
+    addonRequired: "radar_business",
+    items: [
+      { name: "Clients", href: "/clients", icon: Briefcase, feature: "clients" },
+      { name: "Devis", href: "/devis", icon: Receipt, feature: "quotes" },
+      { name: "Factures", href: "/factures", icon: FileCheck, feature: "invoices" },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RADAR DISCOVERY - Si pack talents activé (découverte artistes)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "discovery",
+    label: "Radar Discovery",
+    icon: Compass,
+    packRequired: "talents",
+    items: [
+      { name: "Découverte", href: "/discovery", icon: Search, feature: "discovery" },
+      { name: "Artistes", href: "/artist-history", icon: Music, feature: "artists" },
+      { name: "Comparaison", href: "/comparison", icon: GitCompare, feature: "comparison" },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RADAR ANALYTICS - Si pack intelligence activé
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "analytics",
+    label: "Radar Analytics",
+    icon: BarChart3,
+    packRequired: "intelligence",
+    items: [
+      { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard, feature: "cockpit" },
+      { name: "Analytics", href: "/analytics", icon: TrendingUp, feature: "analytics" },
+      { name: "Carte", href: "/map", icon: Map, feature: "map" },
+      { name: "Veille Concur.", href: "/competitive", icon: Eye, feature: "competitor_watch" },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RADAR INTELLIGENCE - Si pack intelligence activé
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "intelligence",
+    label: "Radar Intelligence",
+    icon: Sparkles,
+    packRequired: "intelligence",
+    items: [
+      { name: "Daily Picks", href: "/shortlist", icon: Sparkles, feature: "daily_picks" },
+      { name: "Scoring", href: "/scoring", icon: BarChart3, feature: "scoring" },
+      { name: "Profils", href: "/profiles", icon: Sliders, feature: "profiles" },
+      { name: "Prédictions IA", href: "/predictions", icon: Brain, feature: "ai_predictions" },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RADAR DATA - Admin only
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "data",
+    label: "Radar Data",
+    icon: Database,
+    adminOnly: true,
+    items: [
+      { name: "Sources", href: "/sources", icon: Rss, feature: "sources" },
+      { name: "Source Health", href: "/source-health", icon: HeartPulse, feature: "source_health" },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PARAMÈTRES - Toujours visible
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: "settings",
+    label: "Paramètres",
+    icon: Settings,
+    alwaysVisible: true,
+    items: [
+      { name: "Paramètres", href: "/settings", icon: Settings },
+    ],
+  },
 ];
 
-// Outils navigation (collapsible) - for daily workflows
-const toolsNavigation: NavItem[] = [
-  { name: "Cockpit", href: "/cockpit", icon: LayoutDashboard, feature: 'cockpit' },
-  { name: "Clients", href: "/clients", icon: Briefcase, feature: 'clients' },
-  { name: "Daily Picks", href: "/shortlist", icon: Sparkles, feature: 'daily_picks' },
-  { name: "Leads", href: "/leads", icon: Target, feature: 'leads' },
-  { name: "Dossiers", href: "/dossiers", icon: FileText, feature: 'dossiers' },
-  { name: "Kanban Leads", href: "/leads/kanban", icon: Kanban, feature: 'kanban_leads' },
-  { name: "Deadlines", href: "/deadlines", icon: Clock, feature: 'projects' },
-  { name: "Analytics", href: "/analytics", icon: TrendingUp, feature: 'analytics' },
-  { name: "Artistes", href: "/artist-history", icon: Music, feature: 'artists' },
-  { name: "Découverte", href: "/discovery", icon: Search, feature: 'discovery' },
-  { name: "Comparaison", href: "/comparison", icon: GitCompare, feature: 'comparison' },
-  { name: "Carte", href: "/map", icon: Map, feature: 'map' },
-  { name: "Veille Concur.", href: "/competitive", icon: Eye, feature: 'competitor_watch' },
+// Admin-only navigation items (separate from sections)
+const adminNavItems: NavItem[] = [
+  { name: "Workspace", href: "/workspaces", icon: Building2 },
+  { name: "Utilisateurs", href: "/users", icon: Users },
 ];
 
-// Admin Tools navigation (collapsible) - technical/admin only
-const adminToolsNavigation: NavItem[] = [
-  { name: "Workspaces", href: "/workspaces", icon: FolderOpen, adminOnly: true },
-  { name: "Sources", href: "/sources", icon: Rss, adminOnly: true, feature: 'sources' },
-  { name: "Source Health", href: "/source-health", icon: HeartPulse, adminOnly: true, feature: 'source_health' },
-  { name: "Profils", href: "/profiles", icon: Sliders, adminOnly: true },
-  { name: "Scoring", href: "/scoring", icon: BarChart3, adminOnly: true, feature: 'scoring' },
-  { name: "Prédictions IA", href: "/predictions", icon: Brain, adminOnly: true, feature: 'ai_predictions' },
+const superadminNavItems: NavItem[] = [
+  { name: "Logs Activité", href: "/admin/activity", icon: Activity },
 ];
-
-// Bottom navigation
-const adminNavigation: NavItem[] = [
-  { name: "Utilisateurs", href: "/users", icon: Users, adminOnly: true },
-  { name: "Logs Activité", href: "/admin/activity", icon: Activity, superadminOnly: true },
-  { name: "Paramètres", href: "/settings", icon: Settings },
-];
-
-// Combined navigation for backward compatibility
-const navigation = [...mainNavigation, ...toolsNavigation, ...adminToolsNavigation, ...adminNavigation];
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -161,15 +242,15 @@ interface AppLayoutProps {
 function AppLayoutInner({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const { subscription, fetchSubscription, hasFeature, setAdmin } = useSubscriptionStore();
+  const { subscription, fetchSubscription, setAdmin } = useSubscriptionStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [visitedPages, setVisitedPages] = useState<string[]>([]);
-  const [toolsExpanded, setToolsExpanded] = useState(false);
-  const [adminExpanded, setAdminExpanded] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    core: true, // Core always expanded by default
+  });
 
   // Load subscription on mount
   useEffect(() => {
-    const workspaceId = localStorage.getItem('current_workspace_id');
+    const workspaceId = localStorage.getItem("current_workspace_id");
     if (workspaceId) {
       fetchSubscription(parseInt(workspaceId));
     } else {
@@ -180,84 +261,93 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   // Update admin status
   useEffect(() => {
     if (user) {
-      setAdmin(user.role === 'admin' || user.is_superuser === true);
+      setAdmin(user.role === "admin" || user.is_superuser === true);
     }
   }, [user, setAdmin]);
 
-  // Load visited pages on mount
+  // Load expanded sections from localStorage
   useEffect(() => {
-    setVisitedPages(getVisitedPages());
+    const saved = getSectionExpandState();
+    if (Object.keys(saved).length > 0) {
+      setExpandedSections((prev) => ({ ...prev, ...saved }));
+    }
   }, []);
 
-  // Mark current page as visited when pathname changes
+  // Auto-expand section containing current page
   useEffect(() => {
     if (pathname) {
-      // Find matching navigation item
-      const navItem = navigation.find(
-        (item) => pathname === item.href || (item.href !== "/today" && item.href !== "/cockpit" && item.href !== "/dashboard" && pathname.startsWith(item.href))
-      );
-      if (navItem?.isNew) {
-        markPageAsVisited(navItem.href);
-        setVisitedPages((prev) => 
-          prev.includes(navItem.href) ? prev : [...prev, navItem.href]
+      for (const section of navigationSections) {
+        const isInSection = section.items.some(
+          (item) => pathname === item.href || pathname.startsWith(item.href + "/")
         );
-      }
-      
-      // Auto-expand tools if current page is in tools section
-      const isToolPage = toolsNavigation.some(
-        (item) => pathname === item.href || pathname.startsWith(item.href)
-      );
-      if (isToolPage) {
-        setToolsExpanded(true);
-      }
-      
-      // Auto-expand admin if current page is in admin tools section
-      const isAdminToolPage = adminToolsNavigation.some(
-        (item) => pathname === item.href || pathname.startsWith(item.href)
-      );
-      if (isAdminToolPage) {
-        setAdminExpanded(true);
+        if (isInSection && !expandedSections[section.id]) {
+          setExpandedSections((prev) => {
+            const newState = { ...prev, [section.id]: true };
+            saveSectionExpandState(newState);
+            return newState;
+          });
+        }
       }
     }
-  }, [pathname]);
-
-  // Check if a page should show "New" badge
-  const shouldShowNewBadge = useCallback((item: { isNew?: boolean; href: string }) => {
-    return item.isNew && !visitedPages.includes(item.href);
-  }, [visitedPages]);
-
-  // Check if a feature is available
-  const isFeatureAvailable = useCallback((item: NavItem): boolean => {
-    // No feature requirement = always available
-    if (!item.feature) return true;
-    // Use the hasFeature from subscription store
-    return hasFeature(item.feature);
-  }, [hasFeature]);
+  }, [pathname, expandedSections]);
 
   const isAdmin = user?.role === "admin";
   const isSuperuser = user?.is_superuser === true;
 
-  // Filter navigation items based on role AND feature availability
-  const filterNavItems = useCallback((items: NavItem[]) => {
-    return items.filter((item) => {
-      // Role check
-      if (item.superadminOnly && !isSuperuser) return false;
-      if (item.adminOnly && !isAdmin && !isSuperuser) return false;
-      // Feature check - show but locked, or hide completely? 
-      // For now, show all but we'll mark locked ones
-      return true;
+  // Toggle section expanded state
+  const toggleSection = useCallback((sectionId: string) => {
+    setExpandedSections((prev) => {
+      const newState = { ...prev, [sectionId]: !prev[sectionId] };
+      saveSectionExpandState(newState);
+      return newState;
     });
-  }, [isAdmin, isSuperuser]);
+  }, []);
 
-  const filteredMainNavigation = filterNavItems(mainNavigation);
-  
-  const filteredToolsNavigation = filterNavItems(toolsNavigation);
-  
-  const filteredAdminToolsNavigation = filterNavItems(adminToolsNavigation);
-  
-  const filteredAdminNavigation = filterNavItems(adminNavigation);
+  // Check if a section should be visible
+  const isSectionVisible = useCallback(
+    (section: NavSection): boolean => {
+      // Always visible sections
+      if (section.alwaysVisible) return true;
 
-  const currentPage = [...mainNavigation, ...toolsNavigation, ...adminNavigation].find(item => pathname.startsWith(item.href));
+      // Admin-only sections
+      if (section.adminOnly && !isAdmin && !isSuperuser) return false;
+
+      // Check addon requirement
+      if (section.addonRequired) {
+        const addons = subscription?.addons || [];
+        if (!addons.includes(section.addonRequired)) return false;
+      }
+
+      // Check pack requirement
+      if (section.packRequired) {
+        const packs = subscription?.enabled_packs || [];
+        if (!packs.includes(section.packRequired)) return false;
+      }
+
+      return true;
+    },
+    [subscription, isAdmin, isSuperuser]
+  );
+
+  // Get visible sections
+  const visibleSections = useMemo(() => {
+    return navigationSections.filter(isSectionVisible);
+  }, [isSectionVisible]);
+
+  // Find current page for breadcrumb
+  const currentPage = useMemo(() => {
+    for (const section of navigationSections) {
+      const item = section.items.find(
+        (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+      );
+      if (item) return item;
+    }
+    // Check admin items
+    const adminItem = [...adminNavItems, ...superadminNavItems].find(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+    );
+    return adminItem || null;
+  }, [pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-slate-900">
@@ -300,191 +390,170 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <ScrollArea className="flex-1 py-4">
+          <ScrollArea className="flex-1 py-3">
             <nav className="px-3 space-y-1">
-              {/* Main Navigation - 7 items */}
-              {filteredMainNavigation.map((item: NavItem) => {
-                const isActive = pathname === item.href || 
-                  (item.href !== "/today" && pathname.startsWith(item.href));
-                const isLocked = item.feature && !isFeatureAvailable(item);
+              {visibleSections.map((section) => {
+                const isExpanded = expandedSections[section.id] ?? false;
+                const SectionIcon = section.icon;
+
+                // Single item sections (like Paramètres) - no collapsible
+                if (section.items.length === 1 && section.id === "settings") {
+                  const item = section.items[0];
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  return (
+                    <div key={section.id}>
+                      <div className="my-2 border-t border-gray-200 dark:border-slate-700/50" />
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                          isActive
+                            ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
+                        )}
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-5 w-5 flex-shrink-0",
+                            isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
+                          )}
+                        />
+                        <span className="flex-1">{item.name}</span>
+                      </Link>
+                    </div>
+                  );
+                }
+
                 return (
-                  <Link
-                    key={item.name}
-                    href={isLocked ? "#" : item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                      isLocked
-                        ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60"
-                        : isActive
-                        ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
+                  <div key={section.id} className="space-y-0.5">
+                    {/* Section divider for non-Core sections */}
+                    {section.id !== "core" && (
+                      <div className="mt-3 mb-1.5 pt-2 border-t border-gray-100 dark:border-slate-800" />
                     )}
-                    onClick={(e) => {
-                      if (isLocked) {
-                        e.preventDefault();
-                        return;
-                      }
-                      setSidebarOpen(false);
-                    }}
-                  >
-                    <item.icon className={cn(
-                      "h-5 w-5 flex-shrink-0",
-                      isLocked ? "text-gray-400" : isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
-                    )} />
-                    <span className="flex-1">{item.name}</span>
-                    {isLocked && (
-                      <Lock className="h-4 w-4 text-gray-400" />
-                    )}
-                    {!isLocked && shouldShowNewBadge(item) && !isActive && (
-                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 rounded-full">
-                        New
-                      </span>
-                    )}
-                  </Link>
+
+                    {/* Section header - collapsible */}
+                    <button
+                      onClick={() => toggleSection(section.id)}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                    >
+                      <SectionIcon className="h-3.5 w-3.5" />
+                      <span className="flex-1 text-left">{section.label}</span>
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform duration-200",
+                          isExpanded ? "rotate-180" : ""
+                        )}
+                      />
+                    </button>
+
+                    {/* Section items */}
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.15, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="space-y-0.5 pb-1">
+                            {section.items.map((item) => {
+                              const isActive =
+                                pathname === item.href || pathname.startsWith(item.href + "/");
+                              return (
+                                <Link
+                                  key={item.href}
+                                  href={item.href}
+                                  className={cn(
+                                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                                    isActive
+                                      ? "bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
+                                  )}
+                                  onClick={() => setSidebarOpen(false)}
+                                >
+                                  <item.icon
+                                    className={cn(
+                                      "h-4.5 w-4.5 flex-shrink-0",
+                                      isActive ? "text-white" : "text-gray-400 dark:text-gray-500"
+                                    )}
+                                  />
+                                  <span className="flex-1">{item.name}</span>
+                                  {item.isNew && !isActive && (
+                                    <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 rounded-full">
+                                      New
+                                    </span>
+                                  )}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 );
               })}
-              
-              {/* Divider */}
-              <div className="my-3 border-t border-gray-200 dark:border-slate-700/50" />
-              
-              {/* Tools Section - Collapsible - Only for non-admin users */}
-              {!isAdmin && (
+
+              {/* Admin Navigation Items */}
+              {(isAdmin || isSuperuser) && (
                 <>
-                  <button
-                    onClick={() => setToolsExpanded(!toolsExpanded)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-150"
-                  >
-                    <Wrench className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
-                    <span className="flex-1 text-left">Outils</span>
-                    <ChevronDown className={cn(
-                      "h-4 w-4 text-gray-400 transition-transform duration-200",
-                      toolsExpanded ? "rotate-180" : ""
-                    )} />
-                  </button>
-                  
-                  {toolsExpanded && (
-                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-slate-700/50 pl-3">
-                      {filteredToolsNavigation.map((item: NavItem) => {
-                        const isActive = pathname === item.href || pathname.startsWith(item.href);
-                        const isLocked = item.feature && !isFeatureAvailable(item);
-                        return (
-                          <Link
-                            key={item.name}
-                            href={isLocked ? "#" : item.href}
+                  <div className="my-2 pt-2 border-t border-gray-200 dark:border-slate-700/50" />
+                  <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    Administration
+                  </div>
+                  {adminNavItems.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                          isActive
+                            ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
+                        )}
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-4 w-4 flex-shrink-0",
+                            isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
+                          )}
+                        />
+                        <span className="flex-1">{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                  {isSuperuser &&
+                    superadminNavItems.map((item) => {
+                      const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                            isActive
+                              ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white"
+                          )}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <item.icon
                             className={cn(
-                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                              isLocked
-                                ? "text-gray-400 dark:text-slate-500 cursor-not-allowed opacity-60"
-                                : isActive
-                                ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
-                                : "text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-700 dark:hover:text-slate-200"
-                            )}
-                            onClick={(e) => {
-                              if (isLocked) {
-                                e.preventDefault();
-                                return;
-                              }
-                              setSidebarOpen(false);
-                            }}
-                          >
-                            <item.icon className={cn(
                               "h-4 w-4 flex-shrink-0",
-                              isLocked ? "text-gray-400" : isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
-                            )} />
-                            <span className="flex-1">{item.name}</span>
-                            {isLocked && (
-                              <Lock className="h-3 w-3 text-gray-400" />
+                              isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
                             )}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
+                          />
+                          <span className="flex-1">{item.name}</span>
+                        </Link>
+                      );
+                    })}
                 </>
               )}
-              
-              {/* Admin Tools Section - Collapsible (visible only for admins) */}
-              {filteredAdminToolsNavigation.length > 0 && (
-                <>
-                  <button
-                    onClick={() => setAdminExpanded(!adminExpanded)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-150"
-                  >
-                    <Settings className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
-                    <span className="flex-1 text-left">Admin</span>
-                    <ChevronDown className={cn(
-                      "h-4 w-4 text-gray-400 transition-transform duration-200",
-                      adminExpanded ? "rotate-180" : ""
-                    )} />
-                  </button>
-                  
-                  {adminExpanded && (
-                    <div className="ml-3 space-y-1 border-l-2 border-gray-100 dark:border-slate-700/50 pl-3">
-                      {filteredAdminToolsNavigation.map((item: NavItem) => {
-                        const isActive = pathname === item.href || pathname.startsWith(item.href);
-                        const isLocked = item.feature && !isFeatureAvailable(item);
-                        return (
-                          <Link
-                            key={item.name}
-                            href={isLocked ? "#" : item.href}
-                            className={cn(
-                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                              isLocked
-                                ? "text-gray-400 dark:text-slate-500 cursor-not-allowed opacity-60"
-                                : isActive
-                                ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
-                                : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-800/50 hover:text-gray-700 dark:hover:text-gray-300"
-                            )}
-                            onClick={(e) => {
-                              if (isLocked) {
-                                e.preventDefault();
-                                return;
-                              }
-                              setSidebarOpen(false);
-                            }}
-                          >
-                            <item.icon className={cn(
-                              "h-4 w-4 flex-shrink-0",
-                              isLocked ? "text-gray-400" : isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
-                            )} />
-                            <span className="flex-1">{item.name}</span>
-                            {isLocked && (
-                              <Lock className="h-3 w-3 text-gray-400" />
-                            )}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {/* Divider */}
-              <div className="my-3 border-t border-gray-200 dark:border-slate-700/50" />
-              
-              {/* Bottom Navigation - Paramètres + Admin items */}
-              {filteredAdminNavigation.map((item: NavItem) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                      isActive
-                        ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white"
-                        : "text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
-                    )}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <item.icon className={cn(
-                      "h-5 w-5 flex-shrink-0",
-                      isActive ? "text-gray-700 dark:text-slate-300" : "text-gray-400 dark:text-slate-500"
-                    )} />
-                    <span className="flex-1">{item.name}</span>
-                  </Link>
-                );
-              })}
             </nav>
           </ScrollArea>
 
@@ -502,9 +571,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                   {user?.full_name || user?.email}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                  {user?.role}
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role}</p>
               </div>
             </div>
             <Button
@@ -534,7 +601,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
               </span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <BackgroundTasksIndicator />
             <NotificationCenter />
@@ -553,7 +620,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            
+
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 bg-gradient-to-r from-purple-600 to-pink-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xs">R</span>
@@ -563,7 +630,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
               </span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
             <NotificationCenter />
             <ThemeToggle />
@@ -585,10 +652,10 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           </AnimatePresence>
         </main>
       </div>
-      
+
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
-      
+
       {/* Onboarding Tour */}
       <OnboardingTour />
       <WelcomeModal />
