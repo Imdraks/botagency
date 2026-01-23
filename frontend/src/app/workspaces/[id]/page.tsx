@@ -19,6 +19,7 @@ import {
   Building2,
   Rocket,
   Crown,
+  Save,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminLayout, ProtectedRoute } from "@/components/layout";
@@ -27,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useSubscriptionStore } from "@/store/subscriptionStore";
 import {
   Dialog,
   DialogContent,
@@ -117,9 +119,13 @@ function WorkspaceDetailContent() {
   const params = useParams();
   const router = useRouter();
   const workspaceId = params.id as string;
+  const { fetchSubscription: refreshGlobalSubscription } = useSubscriptionStore();
   
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [subscription, setSubscription] = useState<WorkspaceSubscription | null>(null);
+  // Local edit state for subscription changes
+  const [editPlan, setEditPlan] = useState<string | null>(null);
+  const [editAddons, setEditAddons] = useState<string[] | null>(null);
   const [invites, setInvites] = useState<WorkspaceInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -170,12 +176,90 @@ function WorkspaceDetailContent() {
       if (res.ok) {
         const data = await res.json();
         setSubscription(data);
+        // Reset local edit states
+        setEditPlan(null);
+        setEditAddons(null);
       }
     } catch (err) {
       console.error('Failed to fetch subscription', err);
     }
   };
 
+  // Check if there are unsaved changes
+  const hasChanges = () => {
+    if (!subscription) return false;
+    if (editPlan !== null && editPlan !== subscription.plan) return true;
+    if (editAddons !== null && JSON.stringify(editAddons) !== JSON.stringify(subscription.addons)) return true;
+    return false;
+  };
+
+  // Get current values (local edit or saved)
+  const currentPlan = editPlan ?? subscription?.plan ?? 'standard';
+  const currentAddons = editAddons ?? subscription?.addons ?? [];
+
+  const saveSubscriptionChanges = async () => {
+    if (!hasChanges()) return;
+    
+    setSavingSubscription(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const updates: any = {};
+      
+      if (editPlan !== null) {
+        updates.plan = editPlan;
+      }
+      if (editAddons !== null) {
+        updates.addons = editAddons;
+      }
+      
+      const res = await fetch(`/api/v1/subscription/admin/workspace/${workspaceId}`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscription(data);
+        // Reset local edit states
+        setEditPlan(null);
+        setEditAddons(null);
+        // Refresh global subscription store so navigation updates
+        refreshGlobalSubscription(parseInt(workspaceId));
+        toast.success('Abonnement mis à jour avec succès !');
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur');
+      }
+    } catch (err) {
+      toast.error('Erreur de mise à jour');
+    } finally {
+      setSavingSubscription(false);
+    }
+  };
+
+  const toggleAddonLocal = (addonValue: string) => {
+    const addons = editAddons ?? subscription?.addons ?? [];
+    const newAddons = addons.includes(addonValue)
+      ? addons.filter(a => a !== addonValue)
+      : [...addons, addonValue];
+    setEditAddons(newAddons);
+  };
+
+  const changePlanLocal = (planValue: string) => {
+    setEditPlan(planValue);
+    // When changing plan, also update addons if Premium (auto-include radar_business)
+    if (planValue === 'premium') {
+      const addons = editAddons ?? subscription?.addons ?? [];
+      if (!addons.includes('radar_business')) {
+        setEditAddons([...addons, 'radar_business']);
+      }
+    }
+  };
+
+  // Legacy functions for backward compatibility (now unused)
   const updateSubscription = async (updates: Partial<WorkspaceSubscription>) => {
     setSavingSubscription(true);
     try {
@@ -191,6 +275,7 @@ function WorkspaceDetailContent() {
       if (res.ok) {
         const data = await res.json();
         setSubscription(data);
+        refreshGlobalSubscription(parseInt(workspaceId));
         toast.success('Abonnement mis à jour');
       } else {
         const error = await res.json();
@@ -388,11 +473,11 @@ function WorkspaceDetailContent() {
             <div className="flex gap-2">
               {PLANS.map((plan) => {
                 const Icon = plan.icon;
-                const isActive = subscription?.plan === plan.value;
+                const isActive = currentPlan === plan.value;
                 return (
                   <button
                     key={plan.value}
-                    onClick={() => changePlan(plan.value)}
+                    onClick={() => changePlanLocal(plan.value)}
                     disabled={savingSubscription}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${
                       isActive 
@@ -458,8 +543,8 @@ function WorkspaceDetailContent() {
             <Label className="text-sm font-medium">Add-ons</Label>
             <div className="grid gap-3">
               {ADDONS.map((addon) => {
-                const isEnabled = subscription?.addons?.includes(addon.value);
-                const includedInPremium = subscription?.plan === 'premium';
+                const isEnabled = currentAddons.includes(addon.value);
+                const includedInPremium = currentPlan === 'premium';
                 return (
                   <div
                     key={addon.value}
@@ -482,15 +567,11 @@ function WorkspaceDetailContent() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isEnabled ? (
-                        <Check className="h-5 w-5 text-yellow-600" />
-                      ) : (
-                        <Switch
-                          checked={false}
-                          onCheckedChange={() => toggleAddon(addon.value)}
-                          disabled={savingSubscription}
-                        />
-                      )}
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => toggleAddonLocal(addon.value)}
+                        disabled={savingSubscription}
+                      />
                     </div>
                   </div>
                 );
@@ -510,6 +591,29 @@ function WorkspaceDetailContent() {
                   {subscription.max_seats - subscription.current_seats} sièges disponibles
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Save Button */}
+          {hasChanges() && (
+            <div className="flex justify-end pt-4 border-t">
+              <Button 
+                onClick={saveSubscriptionChanges}
+                disabled={savingSubscription}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {savingSubscription ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Enregistrer les modifications
+                  </>
+                )}
+              </Button>
             </div>
           )}
         </CardContent>
