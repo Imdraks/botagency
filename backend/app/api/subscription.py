@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_current_user, get_current_admin
+from app.api.deps import get_db, get_current_user, get_current_admin_user
 from app.db.models.workspace import Workspace, WorkspaceMember
 from app.db.models.user import User
 from app.core.subscription import (
