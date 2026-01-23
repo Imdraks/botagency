@@ -47,7 +47,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/store/auth";
-import { useSubscriptionStore, Feature, Addon } from "@/store/subscriptionStore";
+import { useSubscriptionStore, Feature, Addon, Pack } from "@/store/subscriptionStore";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { BackgroundTasksIndicator } from "@/components/tasks/BackgroundTasksIndicator";
@@ -108,7 +108,7 @@ interface NavSection {
   icon: LucideIcon;
   items: NavItem[];
   // Visibility rules
-  packRequired?: string;      // Pack that must be enabled
+  packRequired?: Pack;        // Pack that must be enabled
   addonRequired?: Addon;      // Addon that must be enabled
   adminOnly?: boolean;        // Only visible to admins
   alwaysVisible?: boolean;    // Always visible (Core, Settings)
