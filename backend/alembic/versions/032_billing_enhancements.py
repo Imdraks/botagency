@@ -18,6 +18,7 @@ depends_on = None
 
 def upgrade() -> None:
     # =========== WORKSPACE: Emitter/Billing info ===========
+    op.add_column('workspaces', sa.Column('devis_template_doc_id', sa.String(255), nullable=True))
     op.add_column('workspaces', sa.Column('facture_template_doc_id', sa.String(255), nullable=True))
     op.add_column('workspaces', sa.Column('legal_name', sa.String(255), nullable=True))
     op.add_column('workspaces', sa.Column('legal_address', sa.String(500), nullable=True))
@@ -82,3 +83,4 @@ def downgrade() -> None:
     op.drop_column('workspaces', 'legal_address')
     op.drop_column('workspaces', 'legal_name')
     op.drop_column('workspaces', 'facture_template_doc_id')
+    op.drop_column('workspaces', 'devis_template_doc_id')

@@ -1217,3 +1217,321 @@ async def cancel_invoice(
     
     db.commit()
     return {"message": "Facture annulée", "status": invoice.status.value}
+
+
+# ============ Document Generation (Google Drive) ============
+
+@router.post("/quotes/{quote_id}/generate-doc")
+async def generate_quote_document(
+    quote_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """
+    Generate a Google Doc for a quote and store it in the client's Drive folder.
+    Structure: Radar / Clients / [ClientName] / Devis / Devis DEV-2026-0001 - ClientName.gdoc
+    """
+    from app.services.google_workspace import get_google_workspace_service, GoogleAPIError
+    
+    # Get quote with client
+    quote = db.query(Quote).options(
+        joinedload(Quote.billing_client),
+        joinedload(Quote.items)
+    ).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    # Get workspace for template and emitter info
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace non trouvé")
+    
+    # Check template exists
+    if not workspace.devis_template_doc_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Aucun template de devis configuré. Configurez le template dans les paramètres émetteur."
+        )
+    
+    # Check workspace has Drive folder
+    if not workspace.drive_folder_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun dossier Drive configuré pour ce workspace."
+        )
+    
+    # Get client name
+    if quote.billing_client:
+        client_name = quote.billing_client.company_name or f"{quote.billing_client.first_name} {quote.billing_client.last_name}"
+    else:
+        client_name = "Client Inconnu"
+    
+    # Build replacements dictionary
+    replacements = build_quote_replacements(quote, workspace, client_name)
+    
+    try:
+        # Get Google Workspace service for user
+        gws = await get_google_workspace_service(current_user.id, db)
+        
+        # Generate document
+        doc_result = await gws.generate_quote_document(
+            template_id=workspace.devis_template_doc_id,
+            quote_reference=quote.reference,
+            client_name=client_name,
+            root_folder_id=workspace.drive_folder_id,
+            replacements=replacements
+        )
+        
+        # Update quote with Drive info
+        quote.drive_doc_id = doc_result["id"]
+        quote.drive_web_view_link = doc_result["url"]
+        quote.drive_folder_id = doc_result["folder_id"]
+        
+        add_audit_log(quote, "document_generated", current_user.id, {
+            "doc_id": doc_result["id"],
+            "url": doc_result["url"]
+        })
+        
+        db.commit()
+        
+        return {
+            "message": "Document généré avec succès",
+            "doc_id": doc_result["id"],
+            "url": doc_result["url"],
+            "folder_id": doc_result["folder_id"]
+        }
+        
+    except GoogleAPIError as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération: {str(e)}")
+
+
+@router.post("/invoices/{invoice_id}/generate-doc")
+async def generate_invoice_document(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """
+    Generate a Google Doc for an invoice and store it in the client's Drive folder.
+    Structure: Radar / Clients / [ClientName] / Factures / Facture FAC-2026-0001 - ClientName.gdoc
+    """
+    from app.services.google_workspace import get_google_workspace_service, GoogleAPIError
+    
+    # Get invoice with client
+    invoice = db.query(Invoice).options(
+        joinedload(Invoice.billing_client),
+        joinedload(Invoice.items)
+    ).filter(
+        Invoice.id == invoice_id,
+        Invoice.workspace_id == workspace_id
+    ).first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+    
+    # Get workspace for template and emitter info
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace non trouvé")
+    
+    # Check template exists
+    if not workspace.facture_template_doc_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Aucun template de facture configuré. Configurez le template dans les paramètres émetteur."
+        )
+    
+    # Check workspace has Drive folder
+    if not workspace.drive_folder_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun dossier Drive configuré pour ce workspace."
+        )
+    
+    # Get client name
+    if invoice.billing_client:
+        client_name = invoice.billing_client.company_name or f"{invoice.billing_client.first_name} {invoice.billing_client.last_name}"
+    else:
+        client_name = "Client Inconnu"
+    
+    # Build replacements dictionary
+    replacements = build_invoice_replacements(invoice, workspace, client_name)
+    
+    try:
+        # Get Google Workspace service for user
+        gws = await get_google_workspace_service(current_user.id, db)
+        
+        # Generate document
+        doc_result = await gws.generate_invoice_document(
+            template_id=workspace.facture_template_doc_id,
+            invoice_reference=invoice.reference,
+            client_name=client_name,
+            root_folder_id=workspace.drive_folder_id,
+            replacements=replacements
+        )
+        
+        # Update invoice with Drive info
+        invoice.drive_doc_id = doc_result["id"]
+        invoice.drive_web_view_link = doc_result["url"]
+        invoice.drive_folder_id = doc_result["folder_id"]
+        
+        add_audit_log(invoice, "document_generated", current_user.id, {
+            "doc_id": doc_result["id"],
+            "url": doc_result["url"]
+        })
+        
+        db.commit()
+        
+        return {
+            "message": "Document généré avec succès",
+            "doc_id": doc_result["id"],
+            "url": doc_result["url"],
+            "folder_id": doc_result["folder_id"]
+        }
+        
+    except GoogleAPIError as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération: {str(e)}")
+
+
+def build_quote_replacements(quote: Quote, workspace: Workspace, client_name: str) -> dict:
+    """Build placeholder replacements for quote template"""
+    client = quote.billing_client
+    
+    # Format items table
+    items_lines = []
+    for item in quote.items:
+        items_lines.append(
+            f"{item.description}\t{item.quantity}\t{item.unit_price:.2f} €\t{item.line_total:.2f} €"
+        )
+    items_text = "\n".join(items_lines)
+    
+    # Format client address
+    client_address = ""
+    if client:
+        parts = [client.address, f"{client.postal_code} {client.city}", client.country]
+        client_address = "\n".join([p for p in parts if p])
+    
+    # Format emitter address
+    emitter_address = ""
+    if workspace.legal_address:
+        parts = [
+            workspace.legal_address,
+            f"{workspace.legal_postal_code or ''} {workspace.legal_city or ''}".strip(),
+            workspace.legal_country or "France"
+        ]
+        emitter_address = "\n".join([p for p in parts if p])
+    
+    return {
+        # Emitter info
+        "{{EMITTER_NAME}}": workspace.legal_name or workspace.name or "",
+        "{{EMITTER_ADDRESS}}": emitter_address,
+        "{{EMITTER_PHONE}}": workspace.legal_phone or "",
+        "{{EMITTER_EMAIL}}": workspace.legal_email or workspace.billing_email or "",
+        "{{EMITTER_SIRET}}": workspace.siret or "",
+        "{{EMITTER_VAT}}": workspace.vat_number or "",
+        
+        # Client info
+        "{{CLIENT_NAME}}": client_name,
+        "{{CLIENT_COMPANY}}": client.company_name if client else "",
+        "{{CLIENT_ADDRESS}}": client_address,
+        "{{CLIENT_EMAIL}}": client.email if client else "",
+        "{{CLIENT_PHONE}}": client.phone if client else "",
+        "{{CLIENT_VAT}}": client.vat_number if client else "",
+        
+        # Quote info
+        "{{QUOTE_REFERENCE}}": quote.reference,
+        "{{QUOTE_TITLE}}": quote.title or "",
+        "{{ISSUE_DATE}}": quote.issue_date.strftime("%d/%m/%Y") if quote.issue_date else "",
+        "{{VALIDITY_DATE}}": quote.valid_until.strftime("%d/%m/%Y") if quote.valid_until else "",
+        "{{NOTES}}": quote.notes or "",
+        "{{TERMS}}": quote.terms or "",
+        
+        # Items table (simplified - template should have actual table)
+        "{{ITEMS_TABLE}}": items_text,
+        
+        # Totals
+        "{{SUBTOTAL}}": f"{quote.subtotal:.2f} €",
+        "{{DISCOUNT_PERCENT}}": f"{quote.discount_percent:.0f} %",
+        "{{DISCOUNT_AMOUNT}}": f"{quote.discount_amount:.2f} €",
+        "{{TAX_RATE}}": f"{quote.tax_rate:.0f} %",
+        "{{TAX_AMOUNT}}": f"{quote.tax_amount:.2f} €",
+        "{{TOTAL}}": f"{quote.total:.2f} €",
+    }
+
+
+def build_invoice_replacements(invoice: Invoice, workspace: Workspace, client_name: str) -> dict:
+    """Build placeholder replacements for invoice template"""
+    client = invoice.billing_client
+    
+    # Format items table
+    items_lines = []
+    for item in invoice.items:
+        items_lines.append(
+            f"{item.description}\t{item.quantity}\t{item.unit_price:.2f} €\t{item.line_total:.2f} €"
+        )
+    items_text = "\n".join(items_lines)
+    
+    # Format client address
+    client_address = ""
+    if client:
+        parts = [client.address, f"{client.postal_code} {client.city}", client.country]
+        client_address = "\n".join([p for p in parts if p])
+    
+    # Format emitter address
+    emitter_address = ""
+    if workspace.legal_address:
+        parts = [
+            workspace.legal_address,
+            f"{workspace.legal_postal_code or ''} {workspace.legal_city or ''}".strip(),
+            workspace.legal_country or "France"
+        ]
+        emitter_address = "\n".join([p for p in parts if p])
+    
+    return {
+        # Emitter info
+        "{{EMITTER_NAME}}": workspace.legal_name or workspace.name or "",
+        "{{EMITTER_ADDRESS}}": emitter_address,
+        "{{EMITTER_PHONE}}": workspace.legal_phone or "",
+        "{{EMITTER_EMAIL}}": workspace.legal_email or workspace.billing_email or "",
+        "{{EMITTER_SIRET}}": workspace.siret or "",
+        "{{EMITTER_VAT}}": workspace.vat_number or "",
+        
+        # Client info
+        "{{CLIENT_NAME}}": client_name,
+        "{{CLIENT_COMPANY}}": client.company_name if client else "",
+        "{{CLIENT_ADDRESS}}": client_address,
+        "{{CLIENT_EMAIL}}": client.email if client else "",
+        "{{CLIENT_PHONE}}": client.phone if client else "",
+        "{{CLIENT_VAT}}": client.vat_number if client else "",
+        
+        # Invoice info
+        "{{INVOICE_REFERENCE}}": invoice.reference,
+        "{{INVOICE_TITLE}}": invoice.title or "",
+        "{{ISSUE_DATE}}": invoice.issue_date.strftime("%d/%m/%Y") if invoice.issue_date else "",
+        "{{DUE_DATE}}": invoice.due_date.strftime("%d/%m/%Y") if invoice.due_date else "",
+        "{{NOTES}}": invoice.notes or "",
+        "{{PAYMENT_TERMS}}": invoice.payment_terms or "",
+        
+        # Items table
+        "{{ITEMS_TABLE}}": items_text,
+        
+        # Totals
+        "{{SUBTOTAL}}": f"{invoice.subtotal:.2f} €",
+        "{{DISCOUNT_PERCENT}}": f"{invoice.discount_percent:.0f} %",
+        "{{DISCOUNT_AMOUNT}}": f"{invoice.discount_amount:.2f} €",
+        "{{TAX_RATE}}": f"{invoice.tax_rate:.0f} %",
+        "{{TAX_AMOUNT}}": f"{invoice.tax_amount:.2f} €",
+        "{{TOTAL}}": f"{invoice.total:.2f} €",
+        "{{AMOUNT_PAID}}": f"{invoice.amount_paid:.2f} €",
+        "{{AMOUNT_DUE}}": f"{(invoice.total - invoice.amount_paid):.2f} €",
+    }
