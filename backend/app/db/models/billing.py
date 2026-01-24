@@ -123,6 +123,19 @@ class Quote(Base):
     # Created invoice (if converted)
     invoice_id = Column(Integer, ForeignKey('invoices.id'), nullable=True)
     
+    # Google Drive integration
+    drive_doc_id = Column(String(255), nullable=True)  # Google Doc ID
+    drive_pdf_id = Column(String(255), nullable=True)  # PDF export ID
+    drive_web_view_link = Column(String(500), nullable=True)  # View link
+    drive_folder_id = Column(String(255), nullable=True)  # Parent folder
+    
+    # Audit log (JSON array of events)
+    audit_log = Column(JSON, default=list)  # [{"event": "created", "at": "...", "by": user_id}, ...]
+    
+    # Sent tracking
+    sent_at = Column(DateTime, nullable=True)
+    sent_to_email = Column(String(255), nullable=True)
+    
     # Metadata
     created_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -203,6 +216,19 @@ class Invoice(Base):
     # Discount
     discount_percent = Column(Numeric(5, 2), default=0)
     discount_amount = Column(Numeric(12, 2), default=0)
+    
+    # Google Drive integration
+    drive_doc_id = Column(String(255), nullable=True)
+    drive_pdf_id = Column(String(255), nullable=True)
+    drive_web_view_link = Column(String(500), nullable=True)
+    drive_folder_id = Column(String(255), nullable=True)
+    
+    # Audit log
+    audit_log = Column(JSON, default=list)
+    
+    # Sent tracking
+    sent_at = Column(DateTime, nullable=True)
+    sent_to_email = Column(String(255), nullable=True)
     
     # Terms and conditions
     terms = Column(Text, nullable=True)

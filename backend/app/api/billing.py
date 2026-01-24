@@ -10,12 +10,14 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
+from pydantic import BaseModel
 
 from app.api.deps import get_db, get_current_user, get_current_workspace_id
 from app.db.models.user import User
+from app.db.models.workspace import Workspace
 from app.db.models.billing import (
     BillingClient, Quote, QuoteItem, Invoice, InvoiceItem,
-    QuoteStatus, InvoiceStatus
+    QuoteStatus, InvoiceStatus, PaymentMethod
 )
 from app.schemas.billing import (
     ClientCreate, ClientUpdate, ClientResponse,
@@ -26,6 +28,46 @@ from app.schemas.billing import (
 )
 
 router = APIRouter()
+
+
+# ============ Emitter Info Schema ============
+
+class EmitterInfo(BaseModel):
+    """Workspace billing/emitter info for documents"""
+    legal_name: Optional[str] = None
+    legal_address: Optional[str] = None
+    legal_city: Optional[str] = None
+    legal_postal_code: Optional[str] = None
+    legal_country: Optional[str] = "France"
+    legal_phone: Optional[str] = None
+    legal_email: Optional[str] = None
+    siret: Optional[str] = None
+    vat_number: Optional[str] = None
+    logo_drive_file_id: Optional[str] = None
+    payment_info: Optional[dict] = None
+    # Template IDs
+    devis_template_doc_id: Optional[str] = None
+    facture_template_doc_id: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class EmitterInfoUpdate(BaseModel):
+    """Update emitter info"""
+    legal_name: Optional[str] = None
+    legal_address: Optional[str] = None
+    legal_city: Optional[str] = None
+    legal_postal_code: Optional[str] = None
+    legal_country: Optional[str] = None
+    legal_phone: Optional[str] = None
+    legal_email: Optional[str] = None
+    siret: Optional[str] = None
+    vat_number: Optional[str] = None
+    logo_drive_file_id: Optional[str] = None
+    payment_info: Optional[dict] = None
+    devis_template_doc_id: Optional[str] = None
+    facture_template_doc_id: Optional[str] = None
 
 
 # ============ Helper Functions ============
@@ -101,6 +143,74 @@ def calculate_invoice_totals(invoice: Invoice):
     invoice.discount_amount = discount_amount
     invoice.tax_amount = tax_amount
     invoice.total = total
+
+
+# ============ Emitter (Workspace Billing Info) Endpoints ============
+
+@router.get("/emitter", response_model=EmitterInfo)
+async def get_emitter_info(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Get workspace emitter/billing info for documents"""
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace non trouvé")
+    
+    return EmitterInfo(
+        legal_name=workspace.legal_name or workspace.name,
+        legal_address=workspace.legal_address,
+        legal_city=workspace.legal_city,
+        legal_postal_code=workspace.legal_postal_code,
+        legal_country=workspace.legal_country or "France",
+        legal_phone=workspace.legal_phone,
+        legal_email=workspace.legal_email or workspace.billing_email,
+        siret=workspace.siret,
+        vat_number=workspace.vat_number,
+        logo_drive_file_id=workspace.logo_drive_file_id,
+        payment_info=workspace.payment_info,
+        devis_template_doc_id=workspace.devis_template_doc_id,
+        facture_template_doc_id=workspace.facture_template_doc_id,
+    )
+
+
+@router.patch("/emitter", response_model=EmitterInfo)
+async def update_emitter_info(
+    emitter_in: EmitterInfoUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Update workspace emitter/billing info (Admin only)"""
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace non trouvé")
+    
+    # TODO: Check if user is admin
+    
+    update_data = emitter_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(workspace, field, value)
+    
+    db.commit()
+    db.refresh(workspace)
+    
+    return EmitterInfo(
+        legal_name=workspace.legal_name or workspace.name,
+        legal_address=workspace.legal_address,
+        legal_city=workspace.legal_city,
+        legal_postal_code=workspace.legal_postal_code,
+        legal_country=workspace.legal_country or "France",
+        legal_phone=workspace.legal_phone,
+        legal_email=workspace.legal_email or workspace.billing_email,
+        siret=workspace.siret,
+        vat_number=workspace.vat_number,
+        logo_drive_file_id=workspace.logo_drive_file_id,
+        payment_info=workspace.payment_info,
+        devis_template_doc_id=workspace.devis_template_doc_id,
+        facture_template_doc_id=workspace.facture_template_doc_id,
+    )
 
 
 # ============ Client Endpoints ============
@@ -905,3 +1015,205 @@ async def get_billing_dashboard(
         total_paid=Decimal(str(total_paid)),
         total_pending=Decimal(str(total_pending))
     )
+
+
+# ============ Quote Status Management ============
+
+def add_audit_log(obj, event: str, user_id: int, details: dict = None):
+    """Add an audit log entry to a quote or invoice"""
+    if obj.audit_log is None:
+        obj.audit_log = []
+    
+    entry = {
+        "event": event,
+        "at": datetime.utcnow().isoformat(),
+        "by": user_id
+    }
+    if details:
+        entry["details"] = details
+    
+    obj.audit_log = obj.audit_log + [entry]
+
+
+@router.post("/quotes/{quote_id}/send")
+async def send_quote(
+    quote_id: int,
+    email: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Mark quote as sent"""
+    quote = db.query(Quote).options(
+        joinedload(Quote.billing_client)
+    ).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    if quote.status not in [QuoteStatus.DRAFT, QuoteStatus.SENT]:
+        raise HTTPException(status_code=400, detail="Ce devis ne peut pas être envoyé")
+    
+    quote.status = QuoteStatus.SENT
+    quote.sent_at = datetime.utcnow()
+    quote.sent_to_email = email or (quote.billing_client.email if quote.billing_client else None)
+    
+    add_audit_log(quote, "sent", current_user.id, {"email": quote.sent_to_email})
+    
+    db.commit()
+    return {"message": "Devis marqué comme envoyé", "status": quote.status.value}
+
+
+@router.post("/quotes/{quote_id}/accept")
+async def accept_quote(
+    quote_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Mark quote as accepted"""
+    quote = db.query(Quote).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    if quote.status not in [QuoteStatus.SENT, QuoteStatus.DRAFT]:
+        raise HTTPException(status_code=400, detail="Seuls les devis envoyés peuvent être acceptés")
+    
+    quote.status = QuoteStatus.ACCEPTED
+    add_audit_log(quote, "accepted", current_user.id)
+    
+    db.commit()
+    return {"message": "Devis accepté", "status": quote.status.value}
+
+
+@router.post("/quotes/{quote_id}/reject")
+async def reject_quote(
+    quote_id: int,
+    reason: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Mark quote as rejected"""
+    quote = db.query(Quote).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    if quote.status not in [QuoteStatus.SENT, QuoteStatus.DRAFT]:
+        raise HTTPException(status_code=400, detail="Ce devis ne peut pas être refusé")
+    
+    quote.status = QuoteStatus.REJECTED
+    add_audit_log(quote, "rejected", current_user.id, {"reason": reason} if reason else None)
+    
+    db.commit()
+    return {"message": "Devis refusé", "status": quote.status.value}
+
+
+# ============ Invoice Status Management ============
+
+@router.post("/invoices/{invoice_id}/send")
+async def send_invoice(
+    invoice_id: int,
+    email: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Mark invoice as sent"""
+    invoice = db.query(Invoice).options(
+        joinedload(Invoice.billing_client)
+    ).filter(
+        Invoice.id == invoice_id,
+        Invoice.workspace_id == workspace_id
+    ).first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+    
+    if invoice.status not in [InvoiceStatus.DRAFT, InvoiceStatus.SENT]:
+        raise HTTPException(status_code=400, detail="Cette facture ne peut pas être envoyée")
+    
+    invoice.status = InvoiceStatus.SENT
+    invoice.sent_at = datetime.utcnow()
+    invoice.sent_to_email = email or (invoice.billing_client.email if invoice.billing_client else None)
+    
+    add_audit_log(invoice, "sent", current_user.id, {"email": invoice.sent_to_email})
+    
+    db.commit()
+    return {"message": "Facture marquée comme envoyée", "status": invoice.status.value}
+
+
+@router.post("/invoices/{invoice_id}/mark-paid")
+async def mark_invoice_paid(
+    invoice_id: int,
+    payment_method: Optional[PaymentMethod] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Mark invoice as fully paid"""
+    invoice = db.query(Invoice).filter(
+        Invoice.id == invoice_id,
+        Invoice.workspace_id == workspace_id
+    ).first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+    
+    if invoice.status == InvoiceStatus.PAID:
+        raise HTTPException(status_code=400, detail="Facture déjà payée")
+    
+    if invoice.status == InvoiceStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Facture annulée")
+    
+    invoice.status = InvoiceStatus.PAID
+    invoice.amount_paid = invoice.total
+    invoice.paid_date = date.today()
+    if payment_method:
+        invoice.payment_method = payment_method
+    
+    add_audit_log(invoice, "paid", current_user.id, {
+        "amount": str(invoice.total),
+        "method": payment_method.value if payment_method else None
+    })
+    
+    db.commit()
+    return {"message": "Facture marquée comme payée", "status": invoice.status.value}
+
+
+@router.post("/invoices/{invoice_id}/cancel")
+async def cancel_invoice(
+    invoice_id: int,
+    reason: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Cancel an invoice"""
+    invoice = db.query(Invoice).filter(
+        Invoice.id == invoice_id,
+        Invoice.workspace_id == workspace_id
+    ).first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+    
+    if invoice.status == InvoiceStatus.PAID:
+        raise HTTPException(status_code=400, detail="Impossible d'annuler une facture payée")
+    
+    invoice.status = InvoiceStatus.CANCELLED
+    add_audit_log(invoice, "cancelled", current_user.id, {"reason": reason} if reason else None)
+    
+    db.commit()
+    return {"message": "Facture annulée", "status": invoice.status.value}

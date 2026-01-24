@@ -133,6 +133,16 @@ class QuoteResponse(QuoteBase):
     discount_amount: Decimal
     total: Decimal
     invoice_id: Optional[int]
+    # Drive integration
+    drive_doc_id: Optional[str] = None
+    drive_pdf_id: Optional[str] = None
+    drive_web_view_link: Optional[str] = None
+    drive_folder_id: Optional[str] = None
+    # Audit
+    audit_log: Optional[List[dict]] = []
+    sent_at: Optional[datetime] = None
+    sent_to_email: Optional[str] = None
+    # Metadata
     created_by_id: Optional[int]
     created_at: datetime
     updated_at: datetime
@@ -235,6 +245,16 @@ class InvoiceResponse(InvoiceBase):
     amount_paid: Decimal
     payment_method: Optional[PaymentMethod]
     paid_date: Optional[date]
+    # Drive integration
+    drive_doc_id: Optional[str] = None
+    drive_pdf_id: Optional[str] = None
+    drive_web_view_link: Optional[str] = None
+    drive_folder_id: Optional[str] = None
+    # Audit
+    audit_log: Optional[List[dict]] = []
+    sent_at: Optional[datetime] = None
+    sent_to_email: Optional[str] = None
+    # Metadata
     created_by_id: Optional[int]
     created_at: datetime
     updated_at: datetime

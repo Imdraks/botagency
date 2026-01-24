@@ -72,9 +72,27 @@ class Workspace(Base):
     brief_template_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
     report_template_sheet_id: Mapped[Optional[str]] = mapped_column(String(255))
     devis_template_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
+    facture_template_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
     
     # Google Calendar
     calendar_id: Mapped[Optional[str]] = mapped_column(String(255))
+    
+    # =========== BILLING EMITTER INFO (Radar Business) ===========
+    # Company/Legal info for quotes and invoices
+    legal_name: Mapped[Optional[str]] = mapped_column(String(255))  # Nom société
+    legal_address: Mapped[Optional[str]] = mapped_column(String(500))  # Adresse complète
+    legal_city: Mapped[Optional[str]] = mapped_column(String(100))
+    legal_postal_code: Mapped[Optional[str]] = mapped_column(String(20))
+    legal_country: Mapped[Optional[str]] = mapped_column(String(100), default="France")
+    legal_phone: Mapped[Optional[str]] = mapped_column(String(50))
+    legal_email: Mapped[Optional[str]] = mapped_column(String(255))
+    siret: Mapped[Optional[str]] = mapped_column(String(20))
+    vat_number: Mapped[Optional[str]] = mapped_column(String(30))
+    logo_drive_file_id: Mapped[Optional[str]] = mapped_column(String(255))
+    
+    # Payment info (IBAN, BIC, payment instructions)
+    payment_info: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    # Example: {"iban": "FR76...", "bic": "BNPAFRPP", "bank_name": "BNP Paribas", "instructions": "..."}
     
     # Settings (JSON for extensibility)
     settings: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
