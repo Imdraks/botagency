@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
-  FileCheck, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, 
-  Building2, User, Calendar, Clock, CreditCard, AlertTriangle, DollarSign
+  FileCheck, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, X,
+  Building2, User, Calendar, Clock, CreditCard, AlertTriangle, DollarSign, Pencil
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
@@ -117,6 +117,8 @@ export default function InvoiceDetailPage() {
   const [editing, setEditing] = useState(false);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showEditItemDialog, setShowEditItemDialog] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
   
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -128,6 +130,31 @@ export default function InvoiceDetailPage() {
     discount_percent: '0',
     terms: '',
     notes: '',
+  });
+
+  // Original form values (cached when entering edit mode)
+  const [originalForm, setOriginalForm] = useState({
+    title: '',
+    description: '',
+    client_id: '',
+    due_date: '',
+    tax_rate: '20',
+    discount_percent: '0',
+    terms: '',
+    notes: '',
+  });
+
+  // Local items management (for temporary edits before saving)
+  const [localItems, setLocalItems] = useState<InvoiceItem[]>([]);
+  const [originalItems, setOriginalItems] = useState<InvoiceItem[]>([]);
+  const [nextTempId, setNextTempId] = useState(-1); // IDs négatifs pour les nouveaux items
+
+  // Edit item form
+  const [editItem, setEditItem] = useState({
+    description: '',
+    quantity: '1',
+    unit: 'unité',
+    unit_price: '',
   });
 
   // New item form
@@ -163,6 +190,9 @@ export default function InvoiceDetailPage() {
           terms: data.terms || '',
           notes: data.notes || '',
         });
+        // Initialiser les items locaux
+        setLocalItems(data.items || []);
+        setOriginalItems(data.items || []);
       } else {
         toast.error('Facture non trouvée');
         router.push('/factures');
@@ -198,6 +228,8 @@ export default function InvoiceDetailPage() {
     setSaving(true);
     try {
       const token = localStorage.getItem('access_token');
+      
+      // 1. Sauvegarder les infos de la facture
       const res = await fetch(`/api/v1/billing/invoices/${invoiceId}`, {
         method: 'PATCH',
         headers: {
@@ -216,14 +248,81 @@ export default function InvoiceDetailPage() {
         }),
       });
       
-      if (res.ok) {
-        toast.success('Facture mise à jour');
-        setEditing(false);
-        fetchInvoice();
-      } else {
+      if (!res.ok) {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
+        setSaving(false);
+        return;
       }
+      
+      // 2. Synchroniser les items
+      // Items à supprimer (dans originalItems mais pas dans localItems)
+      const itemsToDelete = originalItems.filter(
+        orig => !localItems.find(local => local.id === orig.id)
+      );
+      
+      // Items à ajouter (ID négatif = nouveau)
+      const itemsToAdd = localItems.filter(item => item.id < 0);
+      
+      // Items à modifier (ID positif et différent de l'original)
+      const itemsToUpdate = localItems.filter(item => {
+        if (item.id < 0) return false;
+        const orig = originalItems.find(o => o.id === item.id);
+        if (!orig) return false;
+        return (
+          orig.description !== item.description ||
+          orig.quantity !== item.quantity ||
+          orig.unit !== item.unit ||
+          orig.unit_price !== item.unit_price
+        );
+      });
+      
+      // Supprimer les items
+      for (const item of itemsToDelete) {
+        await fetch(`/api/v1/billing/invoices/${invoiceId}/items/${item.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+      }
+      
+      // Ajouter les nouveaux items
+      for (const item of itemsToAdd) {
+        await fetch(`/api/v1/billing/invoices/${invoiceId}/items`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            position: item.position,
+          }),
+        });
+      }
+      
+      // Modifier les items existants
+      for (const item of itemsToUpdate) {
+        await fetch(`/api/v1/billing/invoices/${invoiceId}/items/${item.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unit_price,
+          }),
+        });
+      }
+      
+      toast.success('Facture mise à jour');
+      setEditing(false);
+      fetchInvoice();
     } catch (err) {
       toast.error('Erreur de connexion');
     } finally {
@@ -231,63 +330,71 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const addItem = async () => {
+  const addItem = () => {
     if (!newItem.description || !newItem.unit_price) {
       toast.error('Description et prix requis');
       return;
     }
     
-    try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/v1/billing/invoices/${invoiceId}/items`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description: newItem.description,
-          quantity: parseFloat(newItem.quantity),
-          unit: newItem.unit,
-          unit_price: parseFloat(newItem.unit_price),
-          position: invoice?.items.length || 0,
-        }),
-      });
-      
-      if (res.ok) {
-        toast.success('Ligne ajoutée');
-        setShowAddItemDialog(false);
-        setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });
-        fetchInvoice();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erreur');
-      }
-    } catch (err) {
-      toast.error('Erreur de connexion');
-    }
+    // Ajouter localement avec un ID temporaire négatif
+    const tempItem: InvoiceItem = {
+      id: nextTempId,
+      position: localItems.length,
+      description: newItem.description,
+      quantity: parseFloat(newItem.quantity),
+      unit: newItem.unit,
+      unit_price: parseFloat(newItem.unit_price),
+      line_total: parseFloat(newItem.quantity) * parseFloat(newItem.unit_price),
+    };
+    
+    setLocalItems([...localItems, tempItem]);
+    setNextTempId(nextTempId - 1);
+    setShowAddItemDialog(false);
+    setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });
+    toast.success('Ligne ajoutée (non enregistrée)');
   };
 
-  const deleteItem = async (itemId: number) => {
-    if (!confirm('Supprimer cette ligne ?')) return;
-    
-    try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/v1/billing/invoices/${invoiceId}/items/${itemId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      
-      if (res.ok) {
-        toast.success('Ligne supprimée');
-        fetchInvoice();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erreur');
-      }
-    } catch (err) {
-      toast.error('Erreur de connexion');
+  const deleteItem = (itemId: number) => {
+    // Supprimer localement
+    setLocalItems(localItems.filter(item => item.id !== itemId));
+    toast.success('Ligne supprimée (non enregistrée)');
+  };
+
+  const openEditItemDialog = (item: InvoiceItem) => {
+    setEditingItemId(item.id);
+    setEditItem({
+      description: item.description,
+      quantity: String(item.quantity),
+      unit: item.unit,
+      unit_price: String(item.unit_price),
+    });
+    setShowEditItemDialog(true);
+  };
+
+  const updateItem = () => {
+    if (!editingItemId || !editItem.description || !editItem.unit_price) {
+      toast.error('Description et prix requis');
+      return;
     }
+    
+    // Modifier localement
+    setLocalItems(localItems.map(item => {
+      if (item.id === editingItemId) {
+        return {
+          ...item,
+          description: editItem.description,
+          quantity: parseFloat(editItem.quantity),
+          unit: editItem.unit,
+          unit_price: parseFloat(editItem.unit_price),
+          line_total: parseFloat(editItem.quantity) * parseFloat(editItem.unit_price),
+        };
+      }
+      return item;
+    }));
+    
+    setShowEditItemDialog(false);
+    setEditingItemId(null);
+    toast.success('Ligne modifiée (non enregistrée)');
   };
 
   const updateStatus = async (status: string) => {
@@ -379,6 +486,7 @@ export default function InvoiceDetailPage() {
     : 0;
 
   return (
+    <>
     <ProtectedRoute>
       <AppLayoutWithOnboarding>
         <div className="p-6 space-y-6">
@@ -421,9 +529,16 @@ export default function InvoiceDetailPage() {
             </Button>
           )}
           {isEditable && (
-            <Button variant="outline" onClick={() => setEditing(!editing)}>
+            <Button variant="outline" onClick={() => {
+              if (!editing) {
+                // Sauvegarder l'état original quand on entre en mode édition
+                setOriginalForm({ ...editForm });
+                setOriginalItems([...localItems]);
+              }
+              setEditing(!editing);
+            }}>
               <Edit2 className="h-4 w-4 mr-2" />
-              {editing ? 'Annuler' : 'Modifier'}
+              {editing ? 'Quitter' : 'Modifier'}
             </Button>
           )}
         </div>
@@ -516,12 +631,6 @@ export default function InvoiceDetailPage() {
                     onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Button onClick={saveInvoice} disabled={saving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Enregistrement...' : 'Enregistrer'}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           ) : (
@@ -562,7 +671,7 @@ export default function InvoiceDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Lignes de la facture</CardTitle>
-                {isEditable && invoice.status === 'DRAFT' && (
+                {editing && (
                   <Button size="sm" onClick={() => setShowAddItemDialog(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Ajouter une ligne
@@ -579,80 +688,105 @@ export default function InvoiceDetailPage() {
                     <TableHead>Unité</TableHead>
                     <TableHead className="text-right">Prix unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    {isEditable && invoice.status === 'DRAFT' && <TableHead className="w-[50px]"></TableHead>}
+                    {editing && <TableHead className="w-[100px]"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoice.items.length === 0 ? (
+                  {localItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isEditable ? 6 : 5} className="text-center py-8 text-gray-500">
-                        Aucune ligne
+                      <TableCell colSpan={editing ? 6 : 5} className="text-center py-8 text-gray-500">
+                        Aucune ligne. Ajoutez des prestations à la facture.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    invoice.items.map((item) => (
+                    localItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell>{item.unit}</TableCell>
                         <TableCell className="text-right">{formatCurrency(Number(item.unit_price))}</TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(Number(item.line_total))}</TableCell>
-                        {isEditable && invoice.status === 'DRAFT' && (
+                        {editing && (
                           <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => deleteItem(item.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => openEditItemDialog(item)}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => deleteItem(item.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
                     ))
                   )}
                 </TableBody>
-                {invoice.items.length > 0 && (
+                {localItems.length > 0 && (
                   <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={isEditable && invoice.status === 'DRAFT' ? 4 : 3} className="text-right font-medium">
-                        Sous-total HT
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(Number(invoice.subtotal))}
-                      </TableCell>
-                      {isEditable && invoice.status === 'DRAFT' && <TableCell />}
-                    </TableRow>
-                    {Number(invoice.discount_amount) > 0 && (
-                      <TableRow>
-                        <TableCell colSpan={isEditable && invoice.status === 'DRAFT' ? 4 : 3} className="text-right text-red-600">
-                          Remise ({invoice.discount_percent}%)
-                        </TableCell>
-                        <TableCell className="text-right text-red-600">
-                          -{formatCurrency(Number(invoice.discount_amount))}
-                        </TableCell>
-                        {isEditable && invoice.status === 'DRAFT' && <TableCell />}
-                      </TableRow>
-                    )}
-                    <TableRow>
-                      <TableCell colSpan={isEditable && invoice.status === 'DRAFT' ? 4 : 3} className="text-right">
-                        TVA ({invoice.tax_rate}%)
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(Number(invoice.tax_amount))}
-                      </TableCell>
-                      {isEditable && invoice.status === 'DRAFT' && <TableCell />}
-                    </TableRow>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800">
-                      <TableCell colSpan={isEditable && invoice.status === 'DRAFT' ? 4 : 3} className="text-right font-bold text-lg">
-                        Total TTC
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-lg">
-                        {formatCurrency(Number(invoice.total))}
-                      </TableCell>
-                      {isEditable && invoice.status === 'DRAFT' && <TableCell />}
-                    </TableRow>
+                    {(() => {
+                      // Calculer les totaux locaux
+                      const localSubtotal = localItems.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0);
+                      const taxRate = editing ? (parseFloat(editForm.tax_rate) || 0) : (invoice.tax_rate || 0);
+                      const discountPercent = editing ? (parseFloat(editForm.discount_percent) || 0) : (invoice.discount_percent || 0);
+                      const discountAmount = localSubtotal * (discountPercent / 100);
+                      const taxableAmount = localSubtotal - discountAmount;
+                      const taxAmount = taxableAmount * (taxRate / 100);
+                      const total = taxableAmount + taxAmount;
+                      
+                      return (
+                        <>
+                          <TableRow>
+                            <TableCell colSpan={editing ? 4 : 3} className="text-right font-medium">
+                              Sous-total HT
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(localSubtotal)}
+                            </TableCell>
+                            {editing && <TableCell />}
+                          </TableRow>
+                          {discountAmount > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={editing ? 4 : 3} className="text-right text-red-600">
+                                Remise ({discountPercent}%)
+                              </TableCell>
+                              <TableCell className="text-right text-red-600">
+                                -{formatCurrency(discountAmount)}
+                              </TableCell>
+                              {editing && <TableCell />}
+                            </TableRow>
+                          )}
+                          <TableRow>
+                            <TableCell colSpan={editing ? 4 : 3} className="text-right">
+                              TVA ({taxRate}%)
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(taxAmount)}
+                            </TableCell>
+                            {editing && <TableCell />}
+                          </TableRow>
+                          <TableRow className="bg-gray-50 dark:bg-gray-800">
+                            <TableCell colSpan={editing ? 4 : 3} className="text-right font-bold text-lg">
+                              Total TTC
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-lg">
+                              {formatCurrency(total)}
+                            </TableCell>
+                            {editing && <TableCell />}
+                          </TableRow>
+                        </>
+                      );
+                    })()}
                   </TableFooter>
                 )}
               </Table>
@@ -913,8 +1047,148 @@ export default function InvoiceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={showEditItemDialog} onOpenChange={setShowEditItemDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier la ligne</DialogTitle>
+            <DialogDescription>
+              Modifiez les détails de cette ligne
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                placeholder="Description de la prestation..."
+                value={editItem.description}
+                onChange={(e) => setEditItem({ ...editItem, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Quantité</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editItem.quantity}
+                  onChange={(e) => setEditItem({ ...editItem, quantity: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Unité</Label>
+                <Select 
+                  value={editItem.unit} 
+                  onValueChange={(v) => setEditItem({ ...editItem, unit: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unité">Unité</SelectItem>
+                    <SelectItem value="heure">Heure</SelectItem>
+                    <SelectItem value="jour">Jour</SelectItem>
+                    <SelectItem value="forfait">Forfait</SelectItem>
+                    <SelectItem value="mois">Mois</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prix unitaire HT *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={editItem.unit_price}
+                  onChange={(e) => setEditItem({ ...editItem, unit_price: e.target.value })}
+                />
+              </div>
+            </div>
+            {editItem.quantity && editItem.unit_price && (
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>Total ligne HT</span>
+                  <span className="font-medium">
+                    {formatCurrency(parseFloat(editItem.quantity) * parseFloat(editItem.unit_price))}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditItemDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={updateItem}>
+              <Save className="h-4 w-4 mr-2" />
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
         </div>
       </AppLayoutWithOnboarding>
     </ProtectedRoute>
+    
+    {/* Popup de sauvegarde flottant - complètement en dehors de tout layout */}
+    {(() => {
+      // Détecter si les items ont changé
+      const itemsChanged = () => {
+        if (localItems.length !== originalItems.length) return true;
+        for (const local of localItems) {
+          const orig = originalItems.find(o => o.id === local.id);
+          if (!orig) return true;
+          if (
+            orig.description !== local.description ||
+            orig.quantity !== local.quantity ||
+            orig.unit !== local.unit ||
+            orig.unit_price !== local.unit_price
+          ) return true;
+        }
+        return false;
+      };
+      
+      // Détecter si des modifications ont été faites
+      const hasChanges = editing && (
+        editForm.title !== originalForm.title ||
+        editForm.description !== originalForm.description ||
+        editForm.client_id !== originalForm.client_id ||
+        editForm.due_date !== originalForm.due_date ||
+        editForm.tax_rate !== originalForm.tax_rate ||
+        editForm.discount_percent !== originalForm.discount_percent ||
+        editForm.terms !== originalForm.terms ||
+        editForm.notes !== originalForm.notes ||
+        itemsChanged()
+      );
+      
+      if (!hasChanges) return null;
+      
+      return (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999]" style={{ position: 'fixed' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl px-5 py-3 flex items-center gap-3" style={{ border: '2px solid #E5E7EB' }}>
+            <button
+              onClick={() => {
+                setEditForm({ ...originalForm });
+                setLocalItems([...originalItems]);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+            >
+              <X className="h-4 w-4" />
+              Annuler
+            </button>
+            <button
+              onClick={saveInvoice}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        </div>
+      );
+    })()}
+    </>
   );
 }
