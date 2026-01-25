@@ -734,7 +734,19 @@ export default function QuoteDetailPage() {
           {/* Items Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Lignes du devis</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Lignes du devis</CardTitle>
+                {editing && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => setShowAddItemDialog(true)}
+                    className="bg-emerald-500 hover:bg-emerald-600"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter une ligne
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -842,37 +854,42 @@ export default function QuoteDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {quote.client?.company_name ? (
-                  <Building2 className="h-5 w-5" />
-                ) : (
-                  <User className="h-5 w-5" />
-                )}
+                <User className="h-5 w-5" />
                 Client
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {quote.client ? (
-                <div className="space-y-2">
-                  <p className="font-medium">{quote.client.company_name || quote.client.name}</p>
-                  {quote.client.company_name && (
-                    <p className="text-sm text-gray-500">{quote.client.name}</p>
-                  )}
-                  {quote.client.email && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{quote.client.email}</p>
-                  )}
-                  {quote.client.phone && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{quote.client.phone}</p>
-                  )}
-                  {quote.client.address_line1 && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400 pt-2 border-t">
-                      <p>{quote.client.address_line1}</p>
-                      <p>{quote.client.postal_code} {quote.client.city}</p>
+              {(() => {
+                // En mode édition, utiliser le client de editForm, sinon celui du quote
+                const selectedClientId = editing ? editForm.client_id : quote.client_id?.toString();
+                const displayClient = selectedClientId 
+                  ? clients.find(c => c.id.toString() === selectedClientId) || quote.client
+                  : quote.client;
+                
+                if (displayClient) {
+                  return (
+                    <div className="space-y-2">
+                      <p className="font-medium">{displayClient.company_name || displayClient.name}</p>
+                      {displayClient.company_name && (
+                        <p className="text-sm text-gray-500">{displayClient.name}</p>
+                      )}
+                      {displayClient.email && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{displayClient.email}</p>
+                      )}
+                      {displayClient.phone && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{displayClient.phone}</p>
+                      )}
+                      {displayClient.address_line1 && (
+                        <div className="text-sm text-gray-600 dark:text-gray-400 pt-2 border-t">
+                          <p>{displayClient.address_line1}</p>
+                          <p>{displayClient.postal_code} {displayClient.city}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-500">Aucun client sélectionné</p>
-              )}
+                  );
+                }
+                return <p className="text-gray-500">Aucun client sélectionné</p>;
+              })()}
             </CardContent>
           </Card>
 
@@ -1118,29 +1135,49 @@ export default function QuoteDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Barre de confirmation fixe en bas - style prototype */}
-      {editing && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setEditing(false)}
-              className="h-12 px-6 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
-            >
-              <X className="h-5 w-5 mr-2" />
-              Annuler
-            </Button>
-            <Button
-              onClick={saveQuote}
-              disabled={saving}
-              className="h-12 px-6 rounded-xl bg-emerald-400 hover:bg-emerald-500 text-white font-medium shadow-lg shadow-emerald-400/30"
-            >
-              <Save className="h-5 w-5 mr-2" />
-              {saving ? 'Enregistrement...' : 'Enregistrer'}
-            </Button>
+      {/* Barre de confirmation fixe en bas - apparaît uniquement si modifications détectées */}
+      {(() => {
+        // Détecter si des modifications ont été faites
+        const hasChanges = editing && quote && (
+          editForm.title !== (quote.title || '') ||
+          editForm.description !== (quote.description || '') ||
+          editForm.client_id !== (quote.client_id ? String(quote.client_id) : '') ||
+          editForm.validity_date !== (quote.validity_date || '') ||
+          editForm.tax_rate !== String(quote.tax_rate || 20) ||
+          editForm.discount_percent !== String(quote.discount_percent || 0) ||
+          editForm.terms !== (quote.terms || '') ||
+          editForm.notes !== (quote.notes || '')
+        );
+        
+        return (
+          <div 
+            className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
+              hasChanges 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-8 pointer-events-none'
+            }`}
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <Button
+                variant="outline"
+                onClick={() => setEditing(false)}
+                className="h-12 px-6 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+              >
+                <X className="h-5 w-5 mr-2" />
+                Annuler
+              </Button>
+              <Button
+                onClick={saveQuote}
+                disabled={saving}
+                className="h-12 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:scale-105"
+              >
+                <Save className="h-5 w-5 mr-2" />
+                {saving ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
         </div>
       </AppLayoutWithOnboarding>
     </ProtectedRoute>
