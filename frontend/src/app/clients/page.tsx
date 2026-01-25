@@ -603,16 +603,16 @@ function ClientsContent() {
                           id={`contact-name-${index}`}
                           value={contact.name}
                           onChange={(e) => updateContact(index, "name", e.target.value)}
-                          placeholder="Jean Dupont"
+                          placeholder="Dupont"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`contact-role-${index}`}>Rôle</Label>
+                        <Label htmlFor={`contact-role-${index}`}>Prénom</Label>
                         <Input
                           id={`contact-role-${index}`}
                           value={contact.role || ""}
                           onChange={(e) => updateContact(index, "role", e.target.value)}
-                          placeholder="Directeur Marketing"
+                          placeholder="Jean"
                         />
                       </div>
                     </div>
