@@ -739,6 +739,48 @@ export default function QuoteDetailPage() {
                     placeholder="Notes (non visibles par le client)"
                   />
                 </div>
+                
+                {/* Boutons Annuler/Enregistrer */}
+                {(() => {
+                  const hasChanges = (
+                    editForm.title !== originalForm.title ||
+                    editForm.description !== originalForm.description ||
+                    editForm.client_id !== originalForm.client_id ||
+                    editForm.validity_date !== originalForm.validity_date ||
+                    editForm.tax_rate !== originalForm.tax_rate ||
+                    editForm.discount_percent !== originalForm.discount_percent ||
+                    editForm.terms !== originalForm.terms ||
+                    editForm.notes !== originalForm.notes ||
+                    itemsChanged()
+                  );
+                  
+                  if (!hasChanges) return null;
+                  
+                  return (
+                    <div className="flex justify-center pt-4">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 border border-gray-200 dark:border-gray-700">
+                        <button
+                          onClick={() => {
+                            setEditForm({ ...originalForm });
+                            setLocalItems([...originalItems]);
+                          }}
+                          className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                        >
+                          <X className="h-4 w-4" />
+                          Annuler
+                        </button>
+                        <button
+                          onClick={saveQuote}
+                          disabled={saving}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                        >
+                          <Save className="h-4 w-4" />
+                          {saving ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           ) : (
@@ -1227,46 +1269,7 @@ export default function QuoteDetailPage() {
           return false;
         };
         
-        // Détecter si des modifications ont été faites
-        const hasChanges = editing && (
-          editForm.title !== originalForm.title ||
-          editForm.description !== originalForm.description ||
-          editForm.client_id !== originalForm.client_id ||
-          editForm.validity_date !== originalForm.validity_date ||
-          editForm.tax_rate !== originalForm.tax_rate ||
-          editForm.discount_percent !== originalForm.discount_percent ||
-          editForm.terms !== originalForm.terms ||
-          editForm.notes !== originalForm.notes ||
-          itemsChanged()
-        );
-        
-        if (!hasChanges) return null;
-        
-        return (
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999]">
-            {/* Popup card discret en bas */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4 border border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => {
-                  setEditForm({ ...originalForm });
-                  setLocalItems([...originalItems]);
-                }}
-                className="flex items-center gap-2 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-              >
-                <X className="h-4 w-4" />
-                Annuler
-              </button>
-              <button
-                onClick={saveQuote}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        );
+        return null;
       })()}
     </ProtectedRoute>
   );
