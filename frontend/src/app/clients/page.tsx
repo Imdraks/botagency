@@ -50,6 +50,15 @@ interface Client {
   id: number;
   name: string;
   contacts: ClientContact[];
+  // Address fields
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  // Legal info
+  siret?: string | null;
+  vat_number?: string | null;
   notes?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -86,6 +95,15 @@ function ClientsContent() {
   const [formContacts, setFormContacts] = useState<ClientContact[]>([
     { name: "", email: "", phone: "", role: "" }
   ]);
+  // Address fields
+  const [formAddressLine1, setFormAddressLine1] = useState("");
+  const [formAddressLine2, setFormAddressLine2] = useState("");
+  const [formCity, setFormCity] = useState("");
+  const [formPostalCode, setFormPostalCode] = useState("");
+  const [formCountry, setFormCountry] = useState("France");
+  // Legal info
+  const [formSiret, setFormSiret] = useState("");
+  const [formVatNumber, setFormVatNumber] = useState("");
 
   // Fetch clients
   const { data: clients = [], isLoading } = useQuery<Client[]>({
@@ -101,7 +119,18 @@ function ClientsContent() {
 
   // Create client mutation
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; contacts: ClientContact[]; notes: string | null }) => {
+    mutationFn: async (data: { 
+      name: string; 
+      contacts: ClientContact[]; 
+      address_line1?: string | null;
+      address_line2?: string | null;
+      city?: string | null;
+      postal_code?: string | null;
+      country?: string | null;
+      siret?: string | null;
+      vat_number?: string | null;
+      notes: string | null;
+    }) => {
       const res = await fetch(`/api/v1/agency/clients`, {
         method: "POST",
         headers: {
@@ -122,7 +151,21 @@ function ClientsContent() {
 
   // Update client mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: { name: string; contacts: ClientContact[]; notes: string | null } }) => {
+    mutationFn: async ({ id, data }: { 
+      id: number; 
+      data: { 
+        name: string; 
+        contacts: ClientContact[]; 
+        address_line1?: string | null;
+        address_line2?: string | null;
+        city?: string | null;
+        postal_code?: string | null;
+        country?: string | null;
+        siret?: string | null;
+        vat_number?: string | null;
+        notes: string | null;
+      } 
+    }) => {
       const res = await fetch(`/api/v1/agency/clients/${id}`, {
         method: "PUT",
         headers: {
@@ -159,6 +202,13 @@ function ClientsContent() {
     setFormName("");
     setFormNotes("");
     setFormContacts([{ name: "", email: "", phone: "", role: "" }]);
+    setFormAddressLine1("");
+    setFormAddressLine2("");
+    setFormCity("");
+    setFormPostalCode("");
+    setFormCountry("France");
+    setFormSiret("");
+    setFormVatNumber("");
   };
 
   const openEditDialog = (client: Client) => {
@@ -166,6 +216,13 @@ function ClientsContent() {
     setFormName(client.name);
     setFormNotes(client.notes || "");
     setFormContacts(client.contacts?.length ? client.contacts : [{ name: "", email: "", phone: "", role: "" }]);
+    setFormAddressLine1(client.address_line1 || "");
+    setFormAddressLine2(client.address_line2 || "");
+    setFormCity(client.city || "");
+    setFormPostalCode(client.postal_code || "");
+    setFormCountry(client.country || "France");
+    setFormSiret(client.siret || "");
+    setFormVatNumber(client.vat_number || "");
   };
 
   const handleSubmit = () => {
@@ -175,6 +232,13 @@ function ClientsContent() {
     const data = {
       name: formName,
       contacts: filteredContacts,
+      address_line1: formAddressLine1 || null,
+      address_line2: formAddressLine2 || null,
+      city: formCity || null,
+      postal_code: formPostalCode || null,
+      country: formCountry || "France",
+      siret: formSiret || null,
+      vat_number: formVatNumber || null,
       notes: formNotes || null,
     };
 
@@ -590,6 +654,83 @@ function ClientsContent() {
                 placeholder="Notes sur ce client..."
                 rows={3}
               />
+            </div>
+
+            {/* Address Section */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Adresse</Label>
+              <div>
+                <Label htmlFor="address_line1">Adresse ligne 1</Label>
+                <Input
+                  id="address_line1"
+                  value={formAddressLine1}
+                  onChange={(e) => setFormAddressLine1(e.target.value)}
+                  placeholder="123 rue de la Paix"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address_line2">Adresse ligne 2</Label>
+                <Input
+                  id="address_line2"
+                  value={formAddressLine2}
+                  onChange={(e) => setFormAddressLine2(e.target.value)}
+                  placeholder="Bâtiment A, 2ème étage"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="postal_code">Code postal</Label>
+                  <Input
+                    id="postal_code"
+                    value={formPostalCode}
+                    onChange={(e) => setFormPostalCode(e.target.value)}
+                    placeholder="75001"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="city">Ville</Label>
+                  <Input
+                    id="city"
+                    value={formCity}
+                    onChange={(e) => setFormCity(e.target.value)}
+                    placeholder="Paris"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="country">Pays</Label>
+                <Input
+                  id="country"
+                  value={formCountry}
+                  onChange={(e) => setFormCountry(e.target.value)}
+                  placeholder="France"
+                />
+              </div>
+            </div>
+
+            {/* Legal Info Section */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Informations légales</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="siret">SIRET</Label>
+                  <Input
+                    id="siret"
+                    value={formSiret}
+                    onChange={(e) => setFormSiret(e.target.value)}
+                    placeholder="123 456 789 00012"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vat_number">N° TVA</Label>
+                  <Input
+                    id="vat_number"
+                    value={formVatNumber}
+                    onChange={(e) => setFormVatNumber(e.target.value)}
+                    placeholder="FR12345678901"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

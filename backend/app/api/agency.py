@@ -70,6 +70,15 @@ def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
         billing_client.contact_email = contact_email
         billing_client.contact_phone = contact_phone
         billing_client.contact_role = contact_role
+        # Address fields
+        billing_client.address_line1 = crm_client.address_line1
+        billing_client.address_line2 = crm_client.address_line2
+        billing_client.city = crm_client.city
+        billing_client.postal_code = crm_client.postal_code
+        billing_client.country = crm_client.country or "France"
+        # Legal info
+        billing_client.siret = crm_client.siret
+        billing_client.vat_number = crm_client.vat_number
         billing_client.notes = crm_client.notes
     else:
         # Create new billing client
@@ -85,6 +94,15 @@ def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
             contact_email=contact_email,
             contact_phone=contact_phone,
             contact_role=contact_role,
+            # Address fields
+            address_line1=crm_client.address_line1,
+            address_line2=crm_client.address_line2,
+            city=crm_client.city,
+            postal_code=crm_client.postal_code,
+            country=crm_client.country or "France",
+            # Legal info
+            siret=crm_client.siret,
+            vat_number=crm_client.vat_number,
             notes=crm_client.notes
         )
         db.add(billing_client)

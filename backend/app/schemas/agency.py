@@ -80,6 +80,18 @@ class ContactInfo(BaseModel):
 class ClientBase(BaseModel):
     name: str
     contacts: List[ContactInfo] = []
+    
+    # Address fields
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = "France"
+    
+    # Legal info
+    siret: Optional[str] = None
+    vat_number: Optional[str] = None
+    
     notes: Optional[str] = None
 
 
@@ -90,6 +102,18 @@ class ClientCreate(ClientBase):
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
     contacts: Optional[List[ContactInfo]] = None
+    
+    # Address fields
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    
+    # Legal info
+    siret: Optional[str] = None
+    vat_number: Optional[str] = None
+    
     notes: Optional[str] = None
 
 

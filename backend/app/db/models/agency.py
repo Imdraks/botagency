@@ -106,6 +106,18 @@ class Client(Base):
     # Contacts stockés en JSON: [{"name": "...", "email": "...", "phone": "...", "role": "..."}]
     contacts: Mapped[Optional[dict]] = mapped_column(JSON, default=list)
     
+    # ===== Champs pour facturation =====
+    # Adresse
+    address_line1: Mapped[Optional[str]] = mapped_column(String(255))
+    address_line2: Mapped[Optional[str]] = mapped_column(String(255))
+    city: Mapped[Optional[str]] = mapped_column(String(100))
+    postal_code: Mapped[Optional[str]] = mapped_column(String(20))
+    country: Mapped[Optional[str]] = mapped_column(String(100), default="France")
+    
+    # Infos légales
+    siret: Mapped[Optional[str]] = mapped_column(String(20))
+    vat_number: Mapped[Optional[str]] = mapped_column(String(30))
+    
     notes: Mapped[Optional[str]] = mapped_column(Text)
     
     # Métadonnées
