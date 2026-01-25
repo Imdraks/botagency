@@ -14,6 +14,7 @@ from app.db.models.agency import (
     DealStatus, ProjectStatus, DeliverableStatus, ApprovalStatus, TaskStatus
 )
 from app.db.models.user import User
+from app.db.models.billing import BillingClient
 from app.api.deps import get_current_user, require_workspace_member, get_user_workspace_id
 from app.schemas.agency import (
     # Client
@@ -28,6 +29,59 @@ from app.schemas.agency import (
 )
 
 router = APIRouter(prefix="/agency", tags=["agency-cockpit"])
+
+
+def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
+    """Sync CRM client to BillingClient table"""
+    # Find existing billing client linked to this CRM client
+    billing_client = db.query(BillingClient).filter(
+        BillingClient.crm_client_id == crm_client.id
+    ).first()
+    
+    # Extract first contact info
+    email = None
+    phone = None
+    if crm_client.contacts and len(crm_client.contacts) > 0:
+        first_contact = crm_client.contacts[0] if isinstance(crm_client.contacts, list) else None
+        if first_contact:
+            email = first_contact.get('email')
+            phone = first_contact.get('phone')
+    
+    if billing_client:
+        # Update existing
+        billing_client.name = crm_client.name
+        billing_client.company_name = crm_client.name
+        billing_client.email = email
+        billing_client.phone = phone
+        billing_client.notes = crm_client.notes
+    else:
+        # Create new billing client
+        billing_client = BillingClient(
+            workspace_id=workspace_id,
+            crm_client_id=crm_client.id,
+            name=crm_client.name,
+            company_name=crm_client.name,
+            email=email,
+            phone=phone,
+            notes=crm_client.notes
+        )
+        db.add(billing_client)
+    
+    return billing_client
+
+
+def delete_billing_client_for_crm(db: Session, crm_client_id: int):
+    """Delete BillingClient linked to CRM client"""
+    billing_client = db.query(BillingClient).filter(
+        BillingClient.crm_client_id == crm_client_id
+    ).first()
+    if billing_client:
+        # Only delete if no quotes/invoices
+        if not billing_client.quotes and not billing_client.invoices:
+            db.delete(billing_client)
+        else:
+            # Unlink but keep for historical data
+            billing_client.crm_client_id = None
 
 
 # ============================================================================
@@ -387,6 +441,10 @@ async def create_client(
     db.commit()
     db.refresh(client)
     
+    # Sync to BillingClient
+    sync_crm_to_billing(db, client, ws_id)
+    db.commit()
+    
     return ClientResponse(
         id=client.id,
         name=client.name,
@@ -475,6 +533,9 @@ async def update_client(
     if client_in.notes is not None:
         client.notes = client_in.notes
     
+    # Sync to BillingClient
+    sync_crm_to_billing(db, client, ws_id)
+    
     db.commit()
     db.refresh(client)
     
@@ -501,6 +562,9 @@ async def delete_client(
     ).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Delete or unlink BillingClient first
+    delete_billing_client_for_crm(db, client_id)
     
     db.delete(client)
     db.commit()

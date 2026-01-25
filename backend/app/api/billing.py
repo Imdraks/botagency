@@ -216,6 +216,52 @@ async def update_emitter_info(
     )
 
 
+# ============ Client Sync ============
+
+@router.post("/clients/sync-crm")
+async def sync_crm_clients(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Sync all CRM clients to BillingClients table"""
+    # Get all CRM clients for this workspace
+    crm_clients = db.query(CRMClient).filter(CRMClient.workspace_id == workspace_id).all()
+    
+    synced = 0
+    for crm_client in crm_clients:
+        # Check if already linked
+        existing = db.query(BillingClient).filter(
+            BillingClient.crm_client_id == crm_client.id
+        ).first()
+        
+        if not existing:
+            # Extract first contact info
+            email = None
+            phone = None
+            if crm_client.contacts and len(crm_client.contacts) > 0:
+                first_contact = crm_client.contacts[0] if isinstance(crm_client.contacts, list) else None
+                if first_contact:
+                    email = first_contact.get('email')
+                    phone = first_contact.get('phone')
+            
+            # Create billing client
+            billing_client = BillingClient(
+                workspace_id=workspace_id,
+                crm_client_id=crm_client.id,
+                name=crm_client.name,
+                company_name=crm_client.name,
+                email=email,
+                phone=phone,
+                notes=crm_client.notes
+            )
+            db.add(billing_client)
+            synced += 1
+    
+    db.commit()
+    return {"message": f"{synced} clients synchronisés", "synced": synced, "total": len(crm_clients)}
+
+
 # ============ Client Endpoints ============
 
 @router.get("/clients", response_model=List[ClientResponse])
@@ -225,61 +271,19 @@ async def list_clients(
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_current_workspace_id)
 ):
-    """List all clients for the workspace (from both BillingClient and CRM Client)"""
-    results = []
-    
-    # Get BillingClients
-    billing_query = db.query(BillingClient).filter(BillingClient.workspace_id == workspace_id)
+    """List all clients for the workspace (BillingClients, synced from CRM)"""
+    # Get BillingClients (now synced with CRM clients)
+    query = db.query(BillingClient).filter(BillingClient.workspace_id == workspace_id)
     if search:
-        billing_query = billing_query.filter(
+        query = query.filter(
             or_(
                 BillingClient.name.ilike(f"%{search}%"),
                 BillingClient.email.ilike(f"%{search}%"),
                 BillingClient.company_name.ilike(f"%{search}%")
             )
         )
-    results.extend(billing_query.all())
     
-    # Get CRM Clients and convert to ClientResponse format
-    crm_query = db.query(CRMClient).filter(CRMClient.workspace_id == workspace_id)
-    if search:
-        crm_query = crm_query.filter(CRMClient.name.ilike(f"%{search}%"))
-    
-    for crm_client in crm_query.all():
-        # Check if already exists in BillingClient (by name match)
-        exists = any(bc.name == crm_client.name or bc.company_name == crm_client.name for bc in results)
-        if not exists:
-            # Extract first contact email/phone if available
-            email = None
-            phone = None
-            if crm_client.contacts and len(crm_client.contacts) > 0:
-                first_contact = crm_client.contacts[0]
-                email = first_contact.get('email')
-                phone = first_contact.get('phone')
-            
-            # Create a fake BillingClient object for response
-            fake_client = type('obj', (object,), {
-                'id': crm_client.id + 100000,  # Offset ID to avoid collision
-                'workspace_id': crm_client.workspace_id,
-                'name': crm_client.name,
-                'company_name': crm_client.name,
-                'email': email,
-                'phone': phone,
-                'address': None,
-                'city': None,
-                'postal_code': None,
-                'country': 'France',
-                'siret': None,
-                'vat_number': None,
-                'notes': crm_client.notes,
-                'created_at': crm_client.created_at,
-                'updated_at': crm_client.updated_at,
-            })()
-            results.append(fake_client)
-    
-    # Sort by name
-    results.sort(key=lambda x: (x.company_name or x.name or '').lower())
-    return results
+    return query.order_by(BillingClient.company_name, BillingClient.name).all()
 
 
 @router.post("/clients", response_model=ClientResponse)

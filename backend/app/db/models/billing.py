@@ -50,6 +50,9 @@ class BillingClient(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workspace_id = Column(Integer, ForeignKey('workspaces.id'), nullable=False, index=True)
     
+    # Link to CRM client (for sync)
+    crm_client_id = Column(Integer, ForeignKey('clients.id'), nullable=True, index=True)
+    
     # Basic info
     name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=True)
