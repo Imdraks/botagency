@@ -142,6 +142,11 @@ export default function QuoteDetailPage() {
     notes: '',
   });
 
+  // Local items management (for temporary edits before saving)
+  const [localItems, setLocalItems] = useState<QuoteItem[]>([]);
+  const [originalItems, setOriginalItems] = useState<QuoteItem[]>([]);
+  const [nextTempId, setNextTempId] = useState(-1); // IDs négatifs pour les nouveaux items
+
   // New item form
   const [newItem, setNewItem] = useState({
     description: '',
@@ -175,6 +180,9 @@ export default function QuoteDetailPage() {
           terms: data.terms || '',
           notes: data.notes || '',
         });
+        // Initialiser les items locaux
+        setLocalItems(data.items || []);
+        setOriginalItems(data.items || []);
       } else {
         toast.error('Devis non trouvé');
         router.push('/devis');
@@ -210,6 +218,8 @@ export default function QuoteDetailPage() {
     setSaving(true);
     try {
       const token = localStorage.getItem('access_token');
+      
+      // 1. Sauvegarder les infos du devis
       const res = await fetch(`/api/v1/billing/quotes/${quoteId}`, {
         method: 'PATCH',
         headers: {
@@ -228,20 +238,87 @@ export default function QuoteDetailPage() {
         }),
       });
       
-      if (res.ok) {
-        toast.success('Devis mis à jour');
-        setEditing(false);
-        // Reset PDF car les données ont changé
-        if (pdfUrl) {
-          window.URL.revokeObjectURL(pdfUrl);
-          setPdfUrl(null);
-        }
-        setDriveLink(null);
-        fetchQuote();
-      } else {
+      if (!res.ok) {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
+        setSaving(false);
+        return;
       }
+      
+      // 2. Synchroniser les items
+      // Items à supprimer (dans originalItems mais pas dans localItems)
+      const itemsToDelete = originalItems.filter(
+        orig => !localItems.find(local => local.id === orig.id)
+      );
+      
+      // Items à ajouter (ID négatif = nouveau)
+      const itemsToAdd = localItems.filter(item => item.id < 0);
+      
+      // Items à modifier (ID positif et différent de l'original)
+      const itemsToUpdate = localItems.filter(item => {
+        if (item.id < 0) return false;
+        const orig = originalItems.find(o => o.id === item.id);
+        if (!orig) return false;
+        return (
+          orig.description !== item.description ||
+          orig.quantity !== item.quantity ||
+          orig.unit !== item.unit ||
+          orig.unit_price !== item.unit_price
+        );
+      });
+      
+      // Supprimer les items
+      for (const item of itemsToDelete) {
+        await fetch(`/api/v1/billing/quotes/${quoteId}/items/${item.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+      }
+      
+      // Ajouter les nouveaux items
+      for (const item of itemsToAdd) {
+        await fetch(`/api/v1/billing/quotes/${quoteId}/items`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            position: item.position,
+          }),
+        });
+      }
+      
+      // Modifier les items existants
+      for (const item of itemsToUpdate) {
+        await fetch(`/api/v1/billing/quotes/${quoteId}/items/${item.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unit_price,
+          }),
+        });
+      }
+      
+      toast.success('Devis mis à jour');
+      setEditing(false);
+      // Reset PDF car les données ont changé
+      if (pdfUrl) {
+        window.URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(null);
+      }
+      setDriveLink(null);
+      fetchQuote();
     } catch (err) {
       toast.error('Erreur de connexion');
     } finally {
@@ -249,73 +326,34 @@ export default function QuoteDetailPage() {
     }
   };
 
-  const addItem = async () => {
+  const addItem = () => {
     if (!newItem.description || !newItem.unit_price) {
       toast.error('Description et prix requis');
       return;
     }
     
-    try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/v1/billing/quotes/${quoteId}/items`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description: newItem.description,
-          quantity: parseFloat(newItem.quantity),
-          unit: newItem.unit,
-          unit_price: parseFloat(newItem.unit_price),
-          position: quote?.items.length || 0,
-        }),
-      });
-      
-      if (res.ok) {
-        toast.success('Ligne ajoutée');
-        setShowAddItemDialog(false);
-        setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });
-        // Reset PDF car les données ont changé
-        if (pdfUrl) {
-          window.URL.revokeObjectURL(pdfUrl);
-          setPdfUrl(null);
-        }
-        setDriveLink(null);
-        fetchQuote();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erreur');
-      }
-    } catch (err) {
-      toast.error('Erreur de connexion');
-    }
+    // Ajouter localement avec un ID temporaire négatif
+    const tempItem: QuoteItem = {
+      id: nextTempId,
+      position: localItems.length,
+      description: newItem.description,
+      quantity: parseFloat(newItem.quantity),
+      unit: newItem.unit,
+      unit_price: parseFloat(newItem.unit_price),
+      line_total: parseFloat(newItem.quantity) * parseFloat(newItem.unit_price),
+    };
+    
+    setLocalItems([...localItems, tempItem]);
+    setNextTempId(nextTempId - 1);
+    setShowAddItemDialog(false);
+    setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });
+    toast.success('Ligne ajoutée (non enregistrée)');
   };
 
-  const deleteItem = async (itemId: number) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/v1/billing/quotes/${quoteId}/items/${itemId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      
-      if (res.ok) {
-        toast.success('Ligne supprimée');
-        // Reset PDF car les données ont changé
-        if (pdfUrl) {
-          window.URL.revokeObjectURL(pdfUrl);
-          setPdfUrl(null);
-        }
-        setDriveLink(null);
-        fetchQuote();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erreur');
-      }
-    } catch (err) {
-      toast.error('Erreur de connexion');
-    }
+  const deleteItem = (itemId: number) => {
+    // Supprimer localement
+    setLocalItems(localItems.filter(item => item.id !== itemId));
+    toast.success('Ligne supprimée (non enregistrée)');
   };
 
   const openEditItemDialog = (item: QuoteItem) => {
@@ -329,46 +367,30 @@ export default function QuoteDetailPage() {
     setShowEditItemDialog(true);
   };
 
-  const updateItem = async () => {
+  const updateItem = () => {
     if (!editingItemId || !editItem.description || !editItem.unit_price) {
       toast.error('Description et prix requis');
       return;
     }
     
-    try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/v1/billing/quotes/${quoteId}/items/${editingItemId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    // Modifier localement
+    setLocalItems(localItems.map(item => {
+      if (item.id === editingItemId) {
+        return {
+          ...item,
           description: editItem.description,
           quantity: parseFloat(editItem.quantity),
           unit: editItem.unit,
           unit_price: parseFloat(editItem.unit_price),
-        }),
-      });
-      
-      if (res.ok) {
-        toast.success('Ligne mise à jour');
-        setShowEditItemDialog(false);
-        setEditingItemId(null);
-        // Reset PDF car les données ont changé
-        if (pdfUrl) {
-          window.URL.revokeObjectURL(pdfUrl);
-          setPdfUrl(null);
-        }
-        setDriveLink(null);
-        fetchQuote();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erreur');
+          line_total: parseFloat(editItem.quantity) * parseFloat(editItem.unit_price),
+        };
       }
-    } catch (err) {
-      toast.error('Erreur de connexion');
-    }
+      return item;
+    }));
+    
+    setShowEditItemDialog(false);
+    setEditingItemId(null);
+    toast.success('Ligne modifiée (non enregistrée)');
   };
 
   const updateStatus = async (status: string) => {
@@ -618,6 +640,7 @@ export default function QuoteDetailPage() {
                   if (!editing) {
                     // Sauvegarder l'état original quand on entre en mode édition
                     setOriginalForm({ ...editForm });
+                    setOriginalItems([...localItems]);
                   }
                   setEditing(!editing);
                 }}>
@@ -779,14 +802,14 @@ export default function QuoteDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {quote.items.length === 0 ? (
+                  {localItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={isEditable ? 6 : 5} className="text-center py-8 text-gray-500">
                         Aucune ligne. Ajoutez des prestations au devis.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    quote.items.map((item) => (
+                    localItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
@@ -819,46 +842,61 @@ export default function QuoteDetailPage() {
                     ))
                   )}
                 </TableBody>
-                {quote.items.length > 0 && (
+                {localItems.length > 0 && (
                   <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={isEditable ? 4 : 3} className="text-right font-medium">
-                        Sous-total HT
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(Number(quote.subtotal))}
-                      </TableCell>
-                      {isEditable && <TableCell />}
-                    </TableRow>
-                    {Number(quote.discount_amount) > 0 && (
-                      <TableRow>
-                        <TableCell colSpan={isEditable ? 4 : 3} className="text-right text-red-600">
-                          Remise ({quote.discount_percent}%)
-                        </TableCell>
-                        <TableCell className="text-right text-red-600">
-                          -{formatCurrency(Number(quote.discount_amount))}
-                        </TableCell>
-                        {isEditable && <TableCell />}
-                      </TableRow>
-                    )}
-                    <TableRow>
-                      <TableCell colSpan={isEditable ? 4 : 3} className="text-right">
-                        TVA ({quote.tax_rate}%)
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(Number(quote.tax_amount))}
-                      </TableCell>
-                      {isEditable && <TableCell />}
-                    </TableRow>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800">
-                      <TableCell colSpan={isEditable ? 4 : 3} className="text-right font-bold text-lg">
-                        Total TTC
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-lg">
-                        {formatCurrency(Number(quote.total))}
-                      </TableCell>
-                      {isEditable && <TableCell />}
-                    </TableRow>
+                    {(() => {
+                      // Calculer les totaux locaux
+                      const localSubtotal = localItems.reduce((sum, item) => sum + item.line_total, 0);
+                      const taxRate = editing ? parseFloat(editForm.tax_rate) : quote.tax_rate;
+                      const discountPercent = editing ? parseFloat(editForm.discount_percent) : quote.discount_percent;
+                      const discountAmount = localSubtotal * (discountPercent / 100);
+                      const taxableAmount = localSubtotal - discountAmount;
+                      const taxAmount = taxableAmount * (taxRate / 100);
+                      const total = taxableAmount + taxAmount;
+                      
+                      return (
+                        <>
+                          <TableRow>
+                            <TableCell colSpan={isEditable ? 4 : 3} className="text-right font-medium">
+                              Sous-total HT
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(localSubtotal)}
+                            </TableCell>
+                            {isEditable && <TableCell />}
+                          </TableRow>
+                          {discountAmount > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={isEditable ? 4 : 3} className="text-right text-red-600">
+                                Remise ({discountPercent}%)
+                              </TableCell>
+                              <TableCell className="text-right text-red-600">
+                                -{formatCurrency(discountAmount)}
+                              </TableCell>
+                              {isEditable && <TableCell />}
+                            </TableRow>
+                          )}
+                          <TableRow>
+                            <TableCell colSpan={isEditable ? 4 : 3} className="text-right">
+                              TVA ({taxRate}%)
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(taxAmount)}
+                            </TableCell>
+                            {isEditable && <TableCell />}
+                          </TableRow>
+                          <TableRow className="bg-gray-50 dark:bg-gray-800">
+                            <TableCell colSpan={isEditable ? 4 : 3} className="text-right font-bold text-lg">
+                              Total TTC
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-lg">
+                              {formatCurrency(total)}
+                            </TableCell>
+                            {isEditable && <TableCell />}
+                          </TableRow>
+                        </>
+                      );
+                    })()}
                   </TableFooter>
                 )}
               </Table>
@@ -917,25 +955,40 @@ export default function QuoteDetailPage() {
               <CardTitle>Résumé</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Sous-total HT</span>
-                <span>{formatCurrency(Number(quote.subtotal))}</span>
-              </div>
-              {Number(quote.discount_amount) > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>Remise ({quote.discount_percent}%)</span>
-                  <span>-{formatCurrency(Number(quote.discount_amount))}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-500">TVA ({quote.tax_rate}%)</span>
-                <span>{formatCurrency(Number(quote.tax_amount))}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total TTC</span>
-                <span>{formatCurrency(Number(quote.total))}</span>
-              </div>
+              {(() => {
+                // Calculer les totaux locaux pour le résumé
+                const localSubtotal = localItems.reduce((sum, item) => sum + item.line_total, 0);
+                const taxRate = editing ? parseFloat(editForm.tax_rate) : quote.tax_rate;
+                const discountPercent = editing ? parseFloat(editForm.discount_percent) : quote.discount_percent;
+                const discountAmount = localSubtotal * (discountPercent / 100);
+                const taxableAmount = localSubtotal - discountAmount;
+                const taxAmount = taxableAmount * (taxRate / 100);
+                const total = taxableAmount + taxAmount;
+                
+                return (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sous-total HT</span>
+                      <span>{formatCurrency(localSubtotal)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Remise ({discountPercent}%)</span>
+                        <span>-{formatCurrency(discountAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">TVA ({taxRate}%)</span>
+                      <span>{formatCurrency(taxAmount)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total TTC</span>
+                      <span>{formatCurrency(total)}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
 
@@ -1155,6 +1208,22 @@ export default function QuoteDetailPage() {
 
       {/* Barre de confirmation fixe en bas style Discord - apparaît si modifications détectées */}
       {(() => {
+        // Détecter si les items ont changé
+        const itemsChanged = () => {
+          if (localItems.length !== originalItems.length) return true;
+          for (const local of localItems) {
+            const orig = originalItems.find(o => o.id === local.id);
+            if (!orig) return true; // Nouvel item
+            if (
+              orig.description !== local.description ||
+              orig.quantity !== local.quantity ||
+              orig.unit !== local.unit ||
+              orig.unit_price !== local.unit_price
+            ) return true;
+          }
+          return false;
+        };
+        
         // Détecter si des modifications ont été faites par rapport à l'original
         const hasChanges = editing && (
           editForm.title !== originalForm.title ||
@@ -1164,12 +1233,14 @@ export default function QuoteDetailPage() {
           editForm.tax_rate !== originalForm.tax_rate ||
           editForm.discount_percent !== originalForm.discount_percent ||
           editForm.terms !== originalForm.terms ||
-          editForm.notes !== originalForm.notes
+          editForm.notes !== originalForm.notes ||
+          itemsChanged()
         );
         
         // Fonction pour annuler et restaurer les valeurs originales
         const handleCancel = () => {
           setEditForm({ ...originalForm });
+          setLocalItems([...originalItems]);
         };
         
         return (
