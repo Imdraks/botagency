@@ -130,6 +130,18 @@ export default function QuoteDetailPage() {
     notes: '',
   });
 
+  // Original form values (cached when entering edit mode)
+  const [originalForm, setOriginalForm] = useState({
+    title: '',
+    description: '',
+    client_id: '',
+    validity_date: '',
+    tax_rate: '20',
+    discount_percent: '0',
+    terms: '',
+    notes: '',
+  });
+
   // New item form
   const [newItem, setNewItem] = useState({
     description: '',
@@ -602,9 +614,16 @@ export default function QuoteDetailPage() {
             </Button>
           )}
           {isEditable && (
-            <Button variant="outline" onClick={() => setEditing(!editing)}>
+            <Button variant="outline" onClick={() => {
+              if (!editing) {
+                // Sauvegarder l'état original quand on entre en mode édition
+                setOriginalForm({ ...editForm });
+              }
+              setEditing(!editing);
+            }}>
               <Edit2 className="h-4 w-4 mr-2" />
-              {editing ? 'Annuler' : 'Modifier'}
+              {editing ? 'Quitter' : 'Modifier'}
+            </Button>
             </Button>
           )}
         </div>
@@ -1135,33 +1154,54 @@ export default function QuoteDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Barre de confirmation fixe en bas - apparaît en mode édition */}
-      <div 
-        className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
-          editing 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-8 pointer-events-none'
-        }`}
-      >
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setEditing(false)}
-            className="h-12 px-6 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+      {/* Barre de confirmation fixe en bas - apparaît si modifications détectées */}
+      {(() => {
+        // Détecter si des modifications ont été faites par rapport à l'original
+        const hasChanges = editing && (
+          editForm.title !== originalForm.title ||
+          editForm.description !== originalForm.description ||
+          editForm.client_id !== originalForm.client_id ||
+          editForm.validity_date !== originalForm.validity_date ||
+          editForm.tax_rate !== originalForm.tax_rate ||
+          editForm.discount_percent !== originalForm.discount_percent ||
+          editForm.terms !== originalForm.terms ||
+          editForm.notes !== originalForm.notes
+        );
+        
+        // Fonction pour annuler et restaurer les valeurs originales
+        const handleCancel = () => {
+          setEditForm({ ...originalForm });
+        };
+        
+        return (
+          <div 
+            className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
+              hasChanges 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-8 pointer-events-none'
+            }`}
           >
-            <X className="h-5 w-5 mr-2" />
-            Annuler
-          </Button>
-          <Button
-            onClick={saveQuote}
-            disabled={saving}
-            className="h-12 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:scale-105"
-          >
-            <Save className="h-5 w-5 mr-2" />
-            {saving ? 'Enregistrement...' : 'Enregistrer'}
-          </Button>
-        </div>
-      </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                className="h-12 px-6 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+              >
+                <X className="h-5 w-5 mr-2" />
+                Annuler
+              </Button>
+              <Button
+                onClick={saveQuote}
+                disabled={saving}
+                className="h-12 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:scale-105"
+              >
+                <Save className="h-5 w-5 mr-2" />
+                {saving ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
         </div>
       </AppLayoutWithOnboarding>
     </ProtectedRoute>
