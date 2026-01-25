@@ -1148,3 +1148,246 @@ def ensure_project_drive_structure_task(
     except Exception as e:
         print(f"❌ Error ensuring project Drive structure: {e}", flush=True)
         raise self.retry(exc=e, countdown=60)
+
+
+# ============================================
+# RETROACTIVE MIGRATION - ALL EXISTING USERS
+# ============================================
+
+@celery_app.task(bind=True)
+def migrate_all_users_drive_structure(self):
+    """
+    Retroactive migration: Create Drive structure for ALL existing users.
+    This task iterates through all users with Google tokens and ensures
+    their Drive structure exists based on their workspace packs.
+    
+    Should be run once after deployment to catch up existing users.
+    Can be safely re-run (idempotent).
+    """
+    from app.db.session import SessionLocal
+    from app.db.models.user import User
+    from app.db.models.workspace import WorkspaceMember
+    from app.db.models.account import Account
+    from app.core.cache import cache_get
+    
+    print("\n" + "="*60, flush=True)
+    print("🚀 RETROACTIVE MIGRATION: Drive Structure for ALL Users", flush=True)
+    print("="*60, flush=True)
+    
+    db = SessionLocal()
+    try:
+        # Get all users
+        users = db.query(User).filter(User.is_active == True).all()
+        print(f"\n📊 Found {len(users)} active users", flush=True)
+        
+        migrated = 0
+        skipped = 0
+        errors = 0
+        
+        for user in users:
+            try:
+                # Check if user has Google tokens
+                tokens = cache_get(f"google_workspace_tokens:{user.id}")
+                if not tokens:
+                    print(f"   ⏭️ User {user.email}: No Google tokens, skipping", flush=True)
+                    skipped += 1
+                    continue
+                
+                google_email = tokens.get("email", user.email)
+                
+                # Get user's workspaces
+                memberships = db.query(WorkspaceMember).filter(
+                    WorkspaceMember.user_id == user.id
+                ).all()
+                
+                if not memberships:
+                    print(f"   ⏭️ User {user.email}: No workspace membership, skipping", flush=True)
+                    skipped += 1
+                    continue
+                
+                # Queue drive structure task for each workspace
+                for member in memberships:
+                    print(f"   📁 Queueing Drive structure for user {user.email} in workspace {member.workspace_id}", flush=True)
+                    ensure_drive_structure_task.delay(
+                        user_id=user.id,
+                        workspace_id=member.workspace_id,
+                        google_account_id=google_email
+                    )
+                    migrated += 1
+                    
+            except Exception as e:
+                print(f"   ❌ Error processing user {user.email}: {e}", flush=True)
+                errors += 1
+        
+        print("\n" + "="*60, flush=True)
+        print(f"✅ MIGRATION COMPLETE", flush=True)
+        print(f"   📁 Queued: {migrated} workspace migrations", flush=True)
+        print(f"   ⏭️ Skipped: {skipped} users (no tokens or workspace)", flush=True)
+        print(f"   ❌ Errors: {errors}", flush=True)
+        print("="*60 + "\n", flush=True)
+        
+        return {
+            "success": True,
+            "migrated": migrated,
+            "skipped": skipped,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        print(f"❌ Migration failed: {e}", flush=True)
+        raise
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True)
+def migrate_user_drive_structure(self, user_id: int):
+    """
+    Migrate Drive structure for a single user.
+    Useful for manual triggering or retry.
+    
+    Args:
+        user_id: User ID to migrate
+    """
+    from app.db.session import SessionLocal
+    from app.db.models.user import User
+    from app.db.models.workspace import WorkspaceMember
+    from app.core.cache import cache_get
+    
+    print(f"\n📁 Migrating Drive structure for user {user_id}...", flush=True)
+    
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            print(f"❌ User {user_id} not found", flush=True)
+            return {"success": False, "error": "User not found"}
+        
+        # Check if user has Google tokens
+        tokens = cache_get(f"google_workspace_tokens:{user.id}")
+        if not tokens:
+            print(f"⏭️ User {user.email}: No Google tokens", flush=True)
+            return {"success": False, "error": "No Google tokens"}
+        
+        google_email = tokens.get("email", user.email)
+        
+        # Get user's workspaces
+        memberships = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == user.id
+        ).all()
+        
+        if not memberships:
+            print(f"⏭️ User {user.email}: No workspace membership", flush=True)
+            return {"success": False, "error": "No workspace membership"}
+        
+        # Queue drive structure task for each workspace
+        queued = 0
+        for member in memberships:
+            ensure_drive_structure_task.delay(
+                user_id=user.id,
+                workspace_id=member.workspace_id,
+                google_account_id=google_email
+            )
+            queued += 1
+        
+        print(f"✅ Queued {queued} workspace migrations for {user.email}", flush=True)
+        return {"success": True, "queued": queued}
+        
+    except Exception as e:
+        print(f"❌ Error: {e}", flush=True)
+        raise
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True)
+def migrate_all_projects_drive_structure(self):
+    """
+    Retroactive migration: Create Drive structure for ALL existing projects.
+    This ensures all projects have their Drive folders based on workspace packs.
+    """
+    from app.db.session import SessionLocal
+    from app.db.models.agency import Project
+    from app.db.models.workspace import Workspace, WorkspaceMember
+    from app.core.cache import cache_get
+    
+    print("\n" + "="*60, flush=True)
+    print("🚀 RETROACTIVE MIGRATION: Drive Structure for ALL Projects", flush=True)
+    print("="*60, flush=True)
+    
+    db = SessionLocal()
+    try:
+        # Get all projects
+        projects = db.query(Project).all()
+        print(f"\n📊 Found {len(projects)} projects", flush=True)
+        
+        migrated = 0
+        skipped = 0
+        errors = 0
+        
+        for project in projects:
+            try:
+                # Get workspace
+                workspace = db.query(Workspace).filter(
+                    Workspace.id == project.workspace_id
+                ).first()
+                
+                if not workspace:
+                    print(f"   ⏭️ Project '{project.name}': No workspace, skipping", flush=True)
+                    skipped += 1
+                    continue
+                
+                # Get a user with Google tokens from this workspace
+                members = db.query(WorkspaceMember).filter(
+                    WorkspaceMember.workspace_id == workspace.id
+                ).all()
+                
+                user_with_tokens = None
+                google_email = None
+                
+                for member in members:
+                    tokens = cache_get(f"google_workspace_tokens:{member.user_id}")
+                    if tokens:
+                        user_with_tokens = member.user_id
+                        google_email = tokens.get("email")
+                        break
+                
+                if not user_with_tokens:
+                    print(f"   ⏭️ Project '{project.name}': No user with Google tokens, skipping", flush=True)
+                    skipped += 1
+                    continue
+                
+                # Queue project structure task
+                print(f"   📁 Queueing Drive structure for project '{project.name}'", flush=True)
+                ensure_project_drive_structure_task.delay(
+                    user_id=user_with_tokens,
+                    workspace_id=workspace.id,
+                    google_account_id=google_email,
+                    project_id=project.id,
+                    project_name=project.name
+                )
+                migrated += 1
+                
+            except Exception as e:
+                print(f"   ❌ Error processing project '{project.name}': {e}", flush=True)
+                errors += 1
+        
+        print("\n" + "="*60, flush=True)
+        print(f"✅ PROJECT MIGRATION COMPLETE", flush=True)
+        print(f"   📁 Queued: {migrated} project migrations", flush=True)
+        print(f"   ⏭️ Skipped: {skipped} projects", flush=True)
+        print(f"   ❌ Errors: {errors}", flush=True)
+        print("="*60 + "\n", flush=True)
+        
+        return {
+            "success": True,
+            "migrated": migrated,
+            "skipped": skipped,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        print(f"❌ Migration failed: {e}", flush=True)
+        raise
+    finally:
+        db.close()

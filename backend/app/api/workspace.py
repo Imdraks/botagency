@@ -649,6 +649,120 @@ async def remove_workspace_invite(
 
 
 # ============================================================================
+# DRIVE STRUCTURE MIGRATION (Admin)
+# ============================================================================
+
+@router.post("/admin/migrate-drive-structure")
+async def migrate_all_drive_structures(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    [ADMIN ONLY] Retroactive migration: Create Drive structure for all existing users.
+    This queues background tasks to ensure Drive folders exist for all users
+    based on their workspace packs.
+    
+    Safe to run multiple times (idempotent).
+    """
+    # Check admin access
+    if current_user.role != 'admin' and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    from app.workers.tasks import migrate_all_users_drive_structure
+    
+    # Queue the migration task
+    task = migrate_all_users_drive_structure.delay()
+    
+    return {
+        "success": True,
+        "message": "Drive structure migration started for all users",
+        "task_id": task.id
+    }
+
+
+@router.post("/admin/migrate-projects-drive-structure")
+async def migrate_all_projects_drive_structures(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    [ADMIN ONLY] Retroactive migration: Create Drive structure for all existing projects.
+    This queues background tasks to ensure Drive folders exist for all projects.
+    """
+    # Check admin access
+    if current_user.role != 'admin' and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    from app.workers.tasks import migrate_all_projects_drive_structure
+    
+    # Queue the migration task
+    task = migrate_all_projects_drive_structure.delay()
+    
+    return {
+        "success": True,
+        "message": "Drive structure migration started for all projects",
+        "task_id": task.id
+    }
+
+
+@router.post("/{workspace_id}/ensure-drive-structure")
+async def ensure_workspace_drive_structure(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Manually trigger Drive structure verification/creation for a specific workspace.
+    Creates missing folders based on workspace packs.
+    """
+    # Check workspace access
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.user_id == current_user.id
+    ).first()
+    
+    if not member and workspace.owner_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not a member of this workspace")
+    
+    # Get Google tokens
+    from app.core.cache import cache_get
+    tokens = cache_get(f"google_workspace_tokens:{current_user.id}")
+    
+    if not tokens:
+        raise HTTPException(
+            status_code=400,
+            detail="No Google tokens found. Please reconnect with Google."
+        )
+    
+    google_email = tokens.get("email", current_user.email)
+    
+    from app.workers.tasks import ensure_drive_structure_task
+    
+    # Queue the task
+    task = ensure_drive_structure_task.delay(
+        user_id=current_user.id,
+        workspace_id=workspace_id,
+        google_account_id=google_email
+    )
+    
+    return {
+        "success": True,
+        "message": f"Drive structure verification started for workspace '{workspace.name}'",
+        "task_id": task.id
+    }
+
+
+# ============================================================================
 # AUTO-ASSIGN WORKSPACE ON LOGIN
 # ============================================================================
 
