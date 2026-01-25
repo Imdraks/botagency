@@ -117,3 +117,9 @@ from .billing import (
     InvoiceStatus,
     PaymentMethod,
 )
+
+# Drive Folder Map - Google Drive structure tracking
+from .drive_folder_map import (
+    DriveFolderMap,
+    DriveFolderType,
+)

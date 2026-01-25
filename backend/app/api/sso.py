@@ -205,10 +205,23 @@ async def google_sso_callback(
             ttl=86400 * 30  # 30 days
         )
         
-        # Create Radar folder in Drive for new users or users without a folder
-        if is_new:
-            from app.workers.tasks import create_radar_folder_task
-            create_radar_folder_task.delay(user.id)
+        # Ensure Drive structure exists (called at EVERY login for idempotence)
+        # This creates/verifies the folder structure based on workspace packs
+        from app.workers.tasks import ensure_drive_structure_task
+        from app.db.models.workspace import WorkspaceMember
+        
+        # Get user's workspace(s)
+        workspace_members = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == user.id
+        ).all()
+        
+        for member in workspace_members:
+            # Queue drive structure task for each workspace
+            ensure_drive_structure_task.delay(
+                user_id=user.id,
+                workspace_id=member.workspace_id,
+                google_account_id=email
+            )
         
         # Create session tokens
         session_tokens = sso_service.create_session_tokens(user)

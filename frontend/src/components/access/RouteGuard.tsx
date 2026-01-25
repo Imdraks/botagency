@@ -7,10 +7,11 @@ import ModuleNotActivated from "./ModuleNotActivated";
 
 // Mapping from route to module info
 const MODULE_INFO: Record<string, { name: string; pack?: Pack; addon?: Addon; adminOnly?: boolean }> = {
-  // Radar Business (addon)
-  "/clients": { name: "Radar Business", addon: "radar_business" },
+  // Radar Business (addon) - Devis & Factures only
   "/devis": { name: "Radar Business", addon: "radar_business" },
   "/factures": { name: "Radar Business", addon: "radar_business" },
+  "/quotes": { name: "Radar Business", addon: "radar_business" },
+  "/invoices": { name: "Radar Business", addon: "radar_business" },
   
   // Radar Discovery (talents pack)
   "/discovery": { name: "Radar Discovery", pack: "talents" },

@@ -1017,3 +1017,134 @@ def create_radar_folder_task(self, user_id: int):
     except Exception as e:
         print(f"❌ Error creating Radar folder: {e}", flush=True)
         raise self.retry(exc=e, countdown=30)
+
+
+# ============================================
+# ENSURE DRIVE STRUCTURE TASK (NEW - IDEMPOTENT)
+# ============================================
+
+@celery_app.task(bind=True, max_retries=3)
+def ensure_drive_structure_task(
+    self,
+    user_id: int,
+    workspace_id: int,
+    google_account_id: str
+):
+    """
+    Ensure complete Drive folder structure exists for a workspace.
+    Called at EVERY Google SSO login for idempotence.
+    Creates/verifies folders based on workspace packs and addons.
+    
+    Args:
+        user_id: User ID for token lookup
+        workspace_id: Workspace ID  
+        google_account_id: Google email/account ID
+    """
+    import asyncio
+    from app.db.session import SessionLocal
+    from app.services.drive_structure import ensure_drive_structure
+    
+    print(f"\n🗂️ Ensuring Drive structure for workspace {workspace_id}, user {user_id}...", flush=True)
+    
+    async def run_ensure():
+        db = SessionLocal()
+        try:
+            result = await ensure_drive_structure(
+                db=db,
+                user_id=user_id,
+                workspace_id=workspace_id,
+                google_account_id=google_account_id
+            )
+            
+            print(f"   📁 Created: {len(result.created)} folders", flush=True)
+            print(f"   🔄 Restored: {len(result.restored)} folders", flush=True)
+            print(f"   ✓ Reused: {len(result.reused)} folders", flush=True)
+            
+            if result.errors:
+                print(f"   ⚠️ Errors: {len(result.errors)}", flush=True)
+                for err in result.errors:
+                    print(f"      - {err}", flush=True)
+            
+            print(f"✅ Drive structure ensured for workspace {workspace_id}", flush=True)
+            return result.to_dict()
+            
+        except Exception as e:
+            print(f"❌ Failed to ensure Drive structure: {e}", flush=True)
+            raise
+        finally:
+            db.close()
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(run_ensure())
+        loop.close()
+        return result
+    except Exception as e:
+        print(f"❌ Error ensuring Drive structure: {e}", flush=True)
+        raise self.retry(exc=e, countdown=60)
+
+
+@celery_app.task(bind=True, max_retries=3)
+def ensure_project_drive_structure_task(
+    self,
+    user_id: int,
+    workspace_id: int,
+    google_account_id: str,
+    project_id: int,
+    project_name: str
+):
+    """
+    Ensure project folder structure exists in Google Drive.
+    Called when creating or opening a project.
+    
+    Args:
+        user_id: User ID for token lookup
+        workspace_id: Workspace ID
+        google_account_id: Google email/account ID
+        project_id: Project ID in database
+        project_name: Project name for folder naming
+    """
+    import asyncio
+    from app.db.session import SessionLocal
+    from app.services.drive_structure import ensure_project_drive_structure
+    
+    print(f"\n📁 Ensuring Drive structure for project '{project_name}' (id={project_id})...", flush=True)
+    
+    async def run_ensure():
+        db = SessionLocal()
+        try:
+            result = await ensure_project_drive_structure(
+                db=db,
+                user_id=user_id,
+                workspace_id=workspace_id,
+                google_account_id=google_account_id,
+                project_id=project_id,
+                project_name=project_name
+            )
+            
+            print(f"   📁 Created: {len(result.created)} folders", flush=True)
+            print(f"   🔄 Restored: {len(result.restored)} folders", flush=True)
+            print(f"   ✓ Reused: {len(result.reused)} folders", flush=True)
+            
+            if result.errors:
+                print(f"   ⚠️ Errors: {len(result.errors)}", flush=True)
+            
+            print(f"✅ Project Drive structure ensured for '{project_name}'", flush=True)
+            return result.to_dict()
+            
+        except Exception as e:
+            print(f"❌ Failed to ensure project Drive structure: {e}", flush=True)
+            raise
+        finally:
+            db.close()
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(run_ensure())
+        loop.close()
+        return result
+    except Exception as e:
+        print(f"❌ Error ensuring project Drive structure: {e}", flush=True)
+        raise self.retry(exc=e, countdown=60)

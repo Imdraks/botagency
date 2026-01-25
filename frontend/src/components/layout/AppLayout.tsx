@@ -132,11 +132,12 @@ const navigationSections: NavSection[] = [
       { name: "Production", href: "/production", icon: Palette, feature: "production" },
       { name: "Assets", href: "/assets", icon: Package, feature: "assets" },
       { name: "Calendrier", href: "/agency-calendar", icon: Calendar, feature: "calendar" },
+      { name: "Clients", href: "/clients", icon: Briefcase, feature: "clients" },
     ],
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RADAR BUSINESS - Si addon activé
+  // RADAR BUSINESS - Si addon activé (Devis & Factures)
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: "business",
@@ -144,7 +145,6 @@ const navigationSections: NavSection[] = [
     icon: Briefcase,
     addonRequired: "radar_business",
     items: [
-      { name: "Clients", href: "/clients", icon: Briefcase, feature: "clients" },
       { name: "Devis", href: "/devis", icon: Receipt, feature: "quotes" },
       { name: "Factures", href: "/factures", icon: FileCheck, feature: "invoices" },
     ],

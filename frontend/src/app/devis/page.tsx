@@ -132,7 +132,7 @@ export default function QuotesPage() {
   const fetchClients = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const res = await fetch('/api/v1/billing/clients', {
+      const res = await fetch('/api/v1/agency/clients', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (res.ok) {
@@ -547,7 +547,7 @@ export default function QuotesPage() {
                 <SelectContent>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.company_name || client.name}
+                      {client.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

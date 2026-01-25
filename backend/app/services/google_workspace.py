@@ -333,6 +333,45 @@ class GoogleWorkspaceService:
             params=params
         )
     
+    async def get_file_metadata(
+        self,
+        file_id: str,
+        fields: str = "id,name,mimeType,trashed"
+    ) -> Dict[str, Any]:
+        """
+        Get metadata for a file or folder.
+        Raises FileNotFoundError if the file doesn't exist.
+        
+        Args:
+            file_id: Google Drive file/folder ID
+            fields: Fields to return
+            
+        Returns:
+            File metadata dict
+        """
+        try:
+            result = await self._request(
+                "GET",
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": fields}
+            )
+            return result
+        except GoogleAPIError as e:
+            if e.status_code == 404:
+                raise FileNotFoundError(f"File {file_id} not found", 404)
+            raise
+    
+    async def file_exists(self, file_id: str) -> bool:
+        """Check if a file/folder exists in Drive"""
+        try:
+            meta = await self.get_file_metadata(file_id, "id,trashed")
+            return not meta.get("trashed", False)
+        except FileNotFoundError:
+            return False
+        except Exception:
+            # On other errors, assume it exists to be safe
+            return True
+    
     # ========================================================================
     # DOCS OPERATIONS
     # ========================================================================

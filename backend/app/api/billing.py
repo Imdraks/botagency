@@ -358,7 +358,7 @@ async def list_quotes(
     
     total = query.count()
     quotes = query.options(
-        joinedload(Quote.client),
+        joinedload(Quote.billing_client),
         joinedload(Quote.items)
     ).order_by(Quote.created_at.desc()).offset((page - 1) * size).limit(size).all()
     
@@ -432,7 +432,7 @@ async def get_quote(
 ):
     """Get a specific quote"""
     quote = db.query(Quote).options(
-        joinedload(Quote.client),
+        joinedload(Quote.billing_client),
         joinedload(Quote.items)
     ).filter(
         Quote.id == quote_id,
@@ -589,7 +589,7 @@ async def convert_quote_to_invoice(
     """Convert a quote to an invoice"""
     quote = db.query(Quote).options(
         joinedload(Quote.items),
-        joinedload(Quote.client)
+        joinedload(Quote.billing_client)
     ).filter(
         Quote.id == quote_id,
         Quote.workspace_id == workspace_id
@@ -682,7 +682,7 @@ async def list_invoices(
     
     total = query.count()
     invoices = query.options(
-        joinedload(Invoice.client),
+        joinedload(Invoice.billing_client),
         joinedload(Invoice.items)
     ).order_by(Invoice.created_at.desc()).offset((page - 1) * size).limit(size).all()
     
@@ -754,7 +754,7 @@ async def get_invoice(
 ):
     """Get a specific invoice"""
     invoice = db.query(Invoice).options(
-        joinedload(Invoice.client),
+        joinedload(Invoice.billing_client),
         joinedload(Invoice.items)
     ).filter(
         Invoice.id == invoice_id,
