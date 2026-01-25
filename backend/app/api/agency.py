@@ -15,6 +15,7 @@ from app.db.models.agency import (
 )
 from app.db.models.user import User
 from app.db.models.billing import BillingClient
+from app.core.encryption import encrypt_iban, decrypt_iban, mask_iban
 from app.api.deps import get_current_user, require_workspace_member, get_user_workspace_id
 from app.schemas.agency import (
     # Client
@@ -31,7 +32,7 @@ from app.schemas.agency import (
 router = APIRouter(prefix="/agency", tags=["agency-cockpit"])
 
 
-def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
+def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int, iban: str = None, bic: str = None, bank_name: str = None):
     """Sync CRM client to BillingClient table"""
     # Find existing billing client linked to this CRM client
     billing_client = db.query(BillingClient).filter(
@@ -80,6 +81,13 @@ def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
         billing_client.siret = crm_client.siret
         billing_client.vat_number = crm_client.vat_number
         billing_client.notes = crm_client.notes
+        # Banking info (only update if provided)
+        if iban:
+            billing_client.iban_encrypted = encrypt_iban(iban)
+        if bic is not None:
+            billing_client.bic = bic
+        if bank_name is not None:
+            billing_client.bank_name = bank_name
     else:
         # Create new billing client
         billing_client = BillingClient(
@@ -103,7 +111,11 @@ def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
             # Legal info
             siret=crm_client.siret,
             vat_number=crm_client.vat_number,
-            notes=crm_client.notes
+            notes=crm_client.notes,
+            # Banking info
+            iban_encrypted=encrypt_iban(iban) if iban else None,
+            bic=bic,
+            bank_name=bank_name
         )
         db.add(billing_client)
     
@@ -475,20 +487,42 @@ async def create_client(
         workspace_id=ws_id,
         name=client_in.name,
         contacts=[c.dict() for c in client_in.contacts] if client_in.contacts else [],
+        address_line1=client_in.address_line1,
+        address_line2=client_in.address_line2,
+        city=client_in.city,
+        postal_code=client_in.postal_code,
+        country=client_in.country or "France",
+        siret=client_in.siret,
+        vat_number=client_in.vat_number,
         notes=client_in.notes
     )
     db.add(client)
     db.commit()
     db.refresh(client)
     
-    # Sync to BillingClient
-    sync_crm_to_billing(db, client, ws_id)
+    # Sync to BillingClient (with banking info)
+    billing_client = sync_crm_to_billing(
+        db, client, ws_id,
+        iban=client_in.iban,
+        bic=client_in.bic,
+        bank_name=client_in.bank_name
+    )
     db.commit()
     
     return ClientResponse(
         id=client.id,
         name=client.name,
         contacts=client_in.contacts,
+        address_line1=client.address_line1,
+        address_line2=client.address_line2,
+        city=client.city,
+        postal_code=client.postal_code,
+        country=client.country,
+        siret=client.siret,
+        vat_number=client.vat_number,
+        bic=billing_client.bic if billing_client else None,
+        bank_name=billing_client.bank_name if billing_client else None,
+        iban_masked=mask_iban(decrypt_iban(billing_client.iban_encrypted)) if billing_client and billing_client.iban_encrypted else None,
         notes=client.notes,
         created_at=client.created_at,
         updated_at=client.updated_at
@@ -516,6 +550,11 @@ async def get_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    # Get linked billing client for banking info
+    billing_client = db.query(BillingClient).filter(
+        BillingClient.crm_client_id == client.id
+    ).first()
+    
     active_deals = db.query(func.count(Deal.id)).filter(
         Deal.client_id == client.id,
         Deal.status.notin_([DealStatus.WON, DealStatus.LOST])
@@ -535,6 +574,16 @@ async def get_client(
         id=client.id,
         name=client.name,
         contacts=client.contacts or [],
+        address_line1=client.address_line1,
+        address_line2=client.address_line2,
+        city=client.city,
+        postal_code=client.postal_code,
+        country=client.country,
+        siret=client.siret,
+        vat_number=client.vat_number,
+        bic=billing_client.bic if billing_client else None,
+        bank_name=billing_client.bank_name if billing_client else None,
+        iban_masked=mask_iban(decrypt_iban(billing_client.iban_encrypted)) if billing_client and billing_client.iban_encrypted else None,
         notes=client.notes,
         created_at=client.created_at,
         updated_at=client.updated_at,
@@ -570,11 +619,30 @@ async def update_client(
         client.name = client_in.name
     if client_in.contacts is not None:
         client.contacts = [c.dict() for c in client_in.contacts]
+    if client_in.address_line1 is not None:
+        client.address_line1 = client_in.address_line1
+    if client_in.address_line2 is not None:
+        client.address_line2 = client_in.address_line2
+    if client_in.city is not None:
+        client.city = client_in.city
+    if client_in.postal_code is not None:
+        client.postal_code = client_in.postal_code
+    if client_in.country is not None:
+        client.country = client_in.country
+    if client_in.siret is not None:
+        client.siret = client_in.siret
+    if client_in.vat_number is not None:
+        client.vat_number = client_in.vat_number
     if client_in.notes is not None:
         client.notes = client_in.notes
     
-    # Sync to BillingClient
-    sync_crm_to_billing(db, client, ws_id)
+    # Sync to BillingClient (with banking info if provided)
+    sync_crm_to_billing(
+        db, client, ws_id,
+        iban=client_in.iban,
+        bic=client_in.bic,
+        bank_name=client_in.bank_name
+    )
     
     db.commit()
     db.refresh(client)

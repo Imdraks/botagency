@@ -16,6 +16,8 @@ import {
   Euro,
   User,
   Briefcase,
+  CreditCard,
+  Landmark,
 } from "lucide-react";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +61,11 @@ interface Client {
   // Legal info
   siret?: string | null;
   vat_number?: string | null;
+  // Banking info
+  iban?: string | null;
+  iban_masked?: string | null;
+  bic?: string | null;
+  bank_name?: string | null;
   notes?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -104,6 +111,10 @@ function ClientsContent() {
   // Legal info
   const [formSiret, setFormSiret] = useState("");
   const [formVatNumber, setFormVatNumber] = useState("");
+  // Banking info
+  const [formIban, setFormIban] = useState("");
+  const [formBic, setFormBic] = useState("");
+  const [formBankName, setFormBankName] = useState("");
 
   // Fetch clients
   const { data: clients = [], isLoading } = useQuery<Client[]>({
@@ -209,6 +220,9 @@ function ClientsContent() {
     setFormCountry("France");
     setFormSiret("");
     setFormVatNumber("");
+    setFormIban("");
+    setFormBic("");
+    setFormBankName("");
   };
 
   const openEditDialog = (client: Client) => {
@@ -223,6 +237,9 @@ function ClientsContent() {
     setFormCountry(client.country || "France");
     setFormSiret(client.siret || "");
     setFormVatNumber(client.vat_number || "");
+    setFormIban(""); // IBAN is not pre-filled for security
+    setFormBic(client.bic || "");
+    setFormBankName(client.bank_name || "");
   };
 
   const handleSubmit = () => {
@@ -239,6 +256,9 @@ function ClientsContent() {
       country: formCountry || "France",
       siret: formSiret || null,
       vat_number: formVatNumber || null,
+      iban: formIban || null,
+      bic: formBic || null,
+      bank_name: formBankName || null,
       notes: formNotes || null,
     };
 
@@ -728,6 +748,52 @@ function ClientsContent() {
                     value={formVatNumber}
                     onChange={(e) => setFormVatNumber(e.target.value)}
                     placeholder="FR12345678901"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Banking Info Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Landmark className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-semibold">Informations bancaires</Label>
+              </div>
+              <div>
+                <Label htmlFor="iban">IBAN</Label>
+                <Input
+                  id="iban"
+                  value={formIban}
+                  onChange={(e) => setFormIban(e.target.value.toUpperCase())}
+                  placeholder="FR76 1234 5678 9012 3456 7890 123"
+                />
+                {editingClient?.iban_masked && !formIban && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <CreditCard className="h-3 w-3 inline mr-1" />
+                    IBAN actuel : {editingClient.iban_masked}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  L'IBAN est stocké de manière chiffrée et sécurisée
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="bic">BIC / SWIFT</Label>
+                  <Input
+                    id="bic"
+                    value={formBic}
+                    onChange={(e) => setFormBic(e.target.value.toUpperCase())}
+                    placeholder="BNPAFRPP"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bank_name">Nom de la banque</Label>
+                  <Input
+                    id="bank_name"
+                    value={formBankName}
+                    onChange={(e) => setFormBankName(e.target.value)}
+                    placeholder="BNP Paribas"
                   />
                 </div>
               </div>

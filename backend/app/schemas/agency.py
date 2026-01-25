@@ -92,6 +92,11 @@ class ClientBase(BaseModel):
     siret: Optional[str] = None
     vat_number: Optional[str] = None
     
+    # Banking info (IBAN is encrypted when stored)
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    bank_name: Optional[str] = None
+    
     notes: Optional[str] = None
 
 
@@ -114,6 +119,11 @@ class ClientUpdate(BaseModel):
     siret: Optional[str] = None
     vat_number: Optional[str] = None
     
+    # Banking info (IBAN is encrypted when stored)
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    bank_name: Optional[str] = None
+    
     notes: Optional[str] = None
 
 
@@ -121,6 +131,9 @@ class ClientResponse(ClientBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    # Banking info (masked for display)
+    iban_masked: Optional[str] = None
     
     # Computed fields for dashboard
     active_deals_count: int = 0
