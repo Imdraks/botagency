@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Receipt, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, X,
-  Building2, User, Calendar, Clock, FileText, ArrowRight, Printer, Download, Eye
+  Building2, User, Calendar, Clock, FileText, ArrowRight, Printer, Download, Eye, Pencil
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
@@ -107,6 +107,14 @@ export default function QuoteDetailPage() {
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [showEditItemDialog, setShowEditItemDialog] = useState(false);
+  const [editItem, setEditItem] = useState({
+    description: '',
+    quantity: '1',
+    unit: 'unité',
+    unit_price: '',
+  });
   
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -274,6 +282,58 @@ export default function QuoteDetailPage() {
       
       if (res.ok) {
         toast.success('Ligne supprimée');
+        // Reset PDF car les données ont changé
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
+        fetchQuote();
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur');
+      }
+    } catch (err) {
+      toast.error('Erreur de connexion');
+    }
+  };
+
+  const openEditItemDialog = (item: QuoteItem) => {
+    setEditingItemId(item.id);
+    setEditItem({
+      description: item.description,
+      quantity: String(item.quantity),
+      unit: item.unit,
+      unit_price: String(item.unit_price),
+    });
+    setShowEditItemDialog(true);
+  };
+
+  const updateItem = async () => {
+    if (!editingItemId || !editItem.description || !editItem.unit_price) {
+      toast.error('Description et prix requis');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/billing/quotes/${quoteId}/items/${editingItemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: editItem.description,
+          quantity: parseFloat(editItem.quantity),
+          unit: editItem.unit,
+          unit_price: parseFloat(editItem.unit_price),
+        }),
+      });
+      
+      if (res.ok) {
+        toast.success('Ligne mise à jour');
+        setShowEditItemDialog(false);
+        setEditingItemId(null);
         // Reset PDF car les données ont changé
         if (pdfUrl) {
           window.URL.revokeObjectURL(pdfUrl);
@@ -643,7 +703,7 @@ export default function QuoteDetailPage() {
                     <TableHead>Unité</TableHead>
                     <TableHead className="text-right">Prix unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    {isEditable && <TableHead className="w-[50px]"></TableHead>}
+                    {isEditable && <TableHead className="w-[100px]"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -663,14 +723,24 @@ export default function QuoteDetailPage() {
                         <TableCell className="text-right font-medium">{formatCurrency(Number(item.line_total))}</TableCell>
                         {isEditable && (
                           <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => deleteItem(item.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => openEditItemDialog(item)}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => deleteItem(item.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -928,6 +998,79 @@ export default function QuoteDetailPage() {
             <Button onClick={convertToInvoice} className="bg-purple-600 hover:bg-purple-700">
               <ArrowRight className="h-4 w-4 mr-2" />
               Créer la facture
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={showEditItemDialog} onOpenChange={setShowEditItemDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier la ligne</DialogTitle>
+            <DialogDescription>
+              Modifiez les détails de cette ligne du devis
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                placeholder="Description de la prestation"
+                value={editItem.description}
+                onChange={(e) => setEditItem({ ...editItem, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Quantité</Label>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={editItem.quantity}
+                  onChange={(e) => setEditItem({ ...editItem, quantity: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Unité</Label>
+                <Select value={editItem.unit} onValueChange={(v) => setEditItem({ ...editItem, unit: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unité">unité</SelectItem>
+                    <SelectItem value="heure">heure</SelectItem>
+                    <SelectItem value="jour">jour</SelectItem>
+                    <SelectItem value="mois">mois</SelectItem>
+                    <SelectItem value="forfait">forfait</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prix unitaire HT (€)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={editItem.unit_price}
+                  onChange={(e) => setEditItem({ ...editItem, unit_price: e.target.value })}
+                />
+              </div>
+            </div>
+            {editItem.quantity && editItem.unit_price && (
+              <div className="text-right text-sm text-gray-500">
+                Total ligne: {formatCurrency(parseFloat(editItem.quantity) * parseFloat(editItem.unit_price))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditItemDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={updateItem}>
+              <Save className="h-4 w-4 mr-2" />
+              Enregistrer
             </Button>
           </DialogFooter>
         </DialogContent>

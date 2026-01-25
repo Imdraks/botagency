@@ -556,6 +556,66 @@ async def delete_quote_item(
     return {"message": "Ligne supprimée"}
 
 
+class QuoteItemUpdate(BaseModel):
+    """Update quote item"""
+    description: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    unit_price: Optional[float] = None
+
+
+@router.patch("/quotes/{quote_id}/items/{item_id}")
+async def update_quote_item(
+    quote_id: int,
+    item_id: int,
+    item_in: QuoteItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Update an item in a quote"""
+    quote = db.query(Quote).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    if quote.status == QuoteStatus.INVOICED:
+        raise HTTPException(status_code=400, detail="Impossible de modifier un devis facturé")
+    
+    item = db.query(QuoteItem).filter(
+        QuoteItem.id == item_id,
+        QuoteItem.quote_id == quote_id
+    ).first()
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="Ligne non trouvée")
+    
+    # Update fields
+    update_data = item_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
+    
+    # Recalculate line total
+    item.line_total = item.quantity * item.unit_price
+    
+    db.flush()
+    db.refresh(quote)
+    calculate_quote_totals(quote)
+    db.commit()
+    
+    return {"message": "Ligne mise à jour", "item": {
+        "id": item.id,
+        "description": item.description,
+        "quantity": item.quantity,
+        "unit": item.unit,
+        "unit_price": float(item.unit_price),
+        "line_total": float(item.line_total)
+    }}
+
+
 @router.delete("/quotes/{quote_id}")
 async def delete_quote(
     quote_id: int,
