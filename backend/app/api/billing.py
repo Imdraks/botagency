@@ -122,7 +122,7 @@ def generate_invoice_reference(db: Session, workspace_id: int) -> str:
 
 def calculate_quote_totals(quote: Quote):
     """Calculate and update quote totals"""
-    subtotal = sum((item.line_total or Decimal('0')) for item in quote.items)
+    subtotal = sum((Decimal(str(item.line_total)) if item.line_total else Decimal('0')) for item in quote.items)
     discount_percent = Decimal(str(quote.discount_percent or 0))
     tax_rate = Decimal(str(quote.tax_rate or 0))
     
@@ -139,7 +139,7 @@ def calculate_quote_totals(quote: Quote):
 
 def calculate_invoice_totals(invoice: Invoice):
     """Calculate and update invoice totals"""
-    subtotal = sum((item.line_total or Decimal('0')) for item in invoice.items)
+    subtotal = sum((Decimal(str(item.line_total)) if item.line_total else Decimal('0')) for item in invoice.items)
     discount_percent = Decimal(str(invoice.discount_percent or 0))
     tax_rate = Decimal(str(invoice.tax_rate or 0))
     
