@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers
-revision = '036_billing_client_extended_fields'
+revision = '036'
 down_revision = '035_billing_crm_sync'
 branch_labels = None
 depends_on = None
