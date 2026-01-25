@@ -734,15 +734,7 @@ export default function QuoteDetailPage() {
           {/* Items Table */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Lignes du devis</CardTitle>
-                {isEditable && (
-                  <Button size="sm" onClick={() => setShowAddItemDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ajouter une ligne
-                  </Button>
-                )}
-              </div>
+              <CardTitle>Lignes du devis</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
