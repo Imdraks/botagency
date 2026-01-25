@@ -1243,28 +1243,25 @@ export default function QuoteDetailPage() {
         if (!hasChanges) return null;
         
         return (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            {/* Overlay sombre */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            
-            {/* Popup card */}
-            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 flex items-center gap-6">
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999]">
+            {/* Popup card discret en bas */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4 border border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => {
                   setEditForm({ ...originalForm });
                   setLocalItems([...originalItems]);
                 }}
-                className="flex items-center gap-3 px-8 py-4 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium text-lg"
+                className="flex items-center gap-2 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
                 Annuler
               </button>
               <button
                 onClick={saveQuote}
                 disabled={saving}
-                className="flex items-center gap-3 px-8 py-4 bg-emerald-400 hover:bg-emerald-500 text-white rounded-xl font-medium text-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
               >
-                <Save className="h-5 w-5" />
+                <Save className="h-4 w-4" />
                 {saving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
