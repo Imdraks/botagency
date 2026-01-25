@@ -544,111 +544,110 @@ export default function QuoteDetailPage() {
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.push('/devis')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {quote.reference}
-              </h1>
-              <Badge className={STATUS_CONFIG[quote.status].color}>
-                {STATUS_CONFIG[quote.status].label}
-              </Badge>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => router.push('/devis')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Retour
+              </Button>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {quote.reference}
+                  </h1>
+                  <Badge className={STATUS_CONFIG[quote.status].color}>
+                    {STATUS_CONFIG[quote.status].label}
+                  </Badge>
+                </div>
+                <p className="text-gray-500 dark:text-gray-400">{quote.title}</p>
+              </div>
             </div>
-            <p className="text-gray-500 dark:text-gray-400">{quote.title}</p>
+            <div className="flex items-center gap-2">
+              {quote.status === 'DRAFT' && (
+                <Button variant="outline" onClick={() => updateStatus('SENT')}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Marquer envoyé
+                </Button>
+              )}
+              {quote.status === 'SENT' && (
+                <>
+                  <Button variant="outline" onClick={() => updateStatus('ACCEPTED')} className="text-green-600">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accepté
+                  </Button>
+                  <Button variant="outline" onClick={() => updateStatus('REJECTED')} className="text-red-600">
+                    <X className="h-4 w-4 mr-2" />
+                    Refusé
+                  </Button>
+                </>
+              )}
+              {!pdfUrl ? (
+                <Button variant="outline" onClick={generatePdf} disabled={generatingPdf}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  {generatingPdf ? 'Génération...' : 'Générer PDF'}
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={viewPdf}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Voir PDF
+                  </Button>
+                  <Button variant="outline" onClick={downloadPdf}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger
+                  </Button>
+                  <Button variant="outline" onClick={saveToDrive} disabled={savingToDrive}>
+                    <Cloud className="h-4 w-4 mr-2" />
+                    {savingToDrive ? 'Sauvegarde...' : 'Sauver sur Drive'}
+                  </Button>
+                </>
+              )}
+              {driveLink && (
+                <Button variant="outline" onClick={openDriveLink}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Voir sur Drive
+                </Button>
+              )}
+              {quote.status === 'ACCEPTED' && (
+                <Button onClick={() => setShowConvertDialog(true)} className="bg-purple-600 hover:bg-purple-700">
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Convertir en facture
+                </Button>
+              )}
+              {isEditable && (
+                <Button variant="outline" onClick={() => {
+                  if (!editing) {
+                    // Sauvegarder l'état original quand on entre en mode édition
+                    setOriginalForm({ ...editForm });
+                  }
+                  setEditing(!editing);
+                }}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  {editing ? 'Quitter' : 'Modifier'}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {quote.status === 'DRAFT' && (
-            <Button variant="outline" onClick={() => updateStatus('SENT')}>
-              <Send className="h-4 w-4 mr-2" />
-              Marquer envoyé
-            </Button>
-          )}
-          {quote.status === 'SENT' && (
-            <>
-              <Button variant="outline" onClick={() => updateStatus('ACCEPTED')} className="text-green-600">
-                <Check className="h-4 w-4 mr-2" />
-                Accepté
-              </Button>
-              <Button variant="outline" onClick={() => updateStatus('REJECTED')} className="text-red-600">
-                <X className="h-4 w-4 mr-2" />
-                Refusé
-              </Button>
-            </>
-          )}
-          {!pdfUrl ? (
-            <Button variant="outline" onClick={generatePdf} disabled={generatingPdf}>
-              <FileText className="h-4 w-4 mr-2" />
-              {generatingPdf ? 'Génération...' : 'Générer PDF'}
-            </Button>
-          ) : (
-            <>
-              <Button variant="outline" onClick={viewPdf}>
-                <Eye className="h-4 w-4 mr-2" />
-                Voir PDF
-              </Button>
-              <Button variant="outline" onClick={downloadPdf}>
-                <Download className="h-4 w-4 mr-2" />
-                Télécharger
-              </Button>
-              <Button variant="outline" onClick={saveToDrive} disabled={savingToDrive}>
-                <Cloud className="h-4 w-4 mr-2" />
-                {savingToDrive ? 'Sauvegarde...' : 'Sauver sur Drive'}
-              </Button>
-            </>
-          )}
-          {driveLink && (
-            <Button variant="outline" onClick={openDriveLink}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Voir sur Drive
-            </Button>
-          )}
-          {quote.status === 'ACCEPTED' && (
-            <Button onClick={() => setShowConvertDialog(true)} className="bg-purple-600 hover:bg-purple-700">
-              <ArrowRight className="h-4 w-4 mr-2" />
-              Convertir en facture
-            </Button>
-          )}
-          {isEditable && (
-            <Button variant="outline" onClick={() => {
-              if (!editing) {
-                // Sauvegarder l'état original quand on entre en mode édition
-                setOriginalForm({ ...editForm });
-              }
-              setEditing(!editing);
-            }}>
-              <Edit2 className="h-4 w-4 mr-2" />
-              {editing ? 'Quitter' : 'Modifier'}
-            </Button>
-            </Button>
-          )}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Quote Info */}
-          {editing ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations du devis</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Titre</Label>
-                    <Input
-                      value={editForm.title}
-                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Client</Label>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Quote Info */}
+              {editing ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations du devis</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Titre</Label>
+                        <Input
+                          value={editForm.title}
+                          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Client</Label>
                     <Select 
                       value={editForm.client_id} 
                       onValueChange={(v) => setEditForm({ ...editForm, client_id: v })}
