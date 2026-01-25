@@ -303,6 +303,11 @@ export default function QuoteDetailPage() {
       
       if (res.ok) {
         toast.success('Statut mis à jour');
+        // Reset PDF car les données ont changé
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
         fetchQuote();
       } else {
         const error = await res.json();
