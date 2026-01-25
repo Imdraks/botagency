@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Receipt, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, X,
-  Building2, User, Calendar, Clock, FileText, ArrowRight, Printer, Download, Eye, Pencil
+  Building2, User, Calendar, Clock, FileText, ArrowRight, Printer, Download, Eye, Pencil, Cloud, ExternalLink
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
@@ -107,6 +107,8 @@ export default function QuoteDetailPage() {
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [savingToDrive, setSavingToDrive] = useState(false);
+  const [driveLink, setDriveLink] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [showEditItemDialog, setShowEditItemDialog] = useState(false);
   const [editItem, setEditItem] = useState({
@@ -216,11 +218,14 @@ export default function QuoteDetailPage() {
       
       if (res.ok) {
         toast.success('Devis mis à jour');
-        setEditing(false);        // Reset PDF car les donn\u00e9es ont chang\u00e9
+        setEditing(false);
+        // Reset PDF car les données ont changé
         if (pdfUrl) {
           window.URL.revokeObjectURL(pdfUrl);
           setPdfUrl(null);
-        }        fetchQuote();
+        }
+        setDriveLink(null);
+        fetchQuote();
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
@@ -258,11 +263,14 @@ export default function QuoteDetailPage() {
       if (res.ok) {
         toast.success('Ligne ajoutée');
         setShowAddItemDialog(false);
-        setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });        // Reset PDF car les donn\u00e9es ont chang\u00e9
+        setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });
+        // Reset PDF car les données ont changé
         if (pdfUrl) {
           window.URL.revokeObjectURL(pdfUrl);
           setPdfUrl(null);
-        }        fetchQuote();
+        }
+        setDriveLink(null);
+        fetchQuote();
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
@@ -287,6 +295,7 @@ export default function QuoteDetailPage() {
           window.URL.revokeObjectURL(pdfUrl);
           setPdfUrl(null);
         }
+        setDriveLink(null);
         fetchQuote();
       } else {
         const error = await res.json();
@@ -339,6 +348,7 @@ export default function QuoteDetailPage() {
           window.URL.revokeObjectURL(pdfUrl);
           setPdfUrl(null);
         }
+        setDriveLink(null);
         fetchQuote();
       } else {
         const error = await res.json();
@@ -368,6 +378,7 @@ export default function QuoteDetailPage() {
           window.URL.revokeObjectURL(pdfUrl);
           setPdfUrl(null);
         }
+        setDriveLink(null);
         fetchQuote();
       } else {
         const error = await res.json();
@@ -462,6 +473,41 @@ export default function QuoteDetailPage() {
     }
   };
 
+  const saveToDrive = async () => {
+    setSavingToDrive(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/billing/quotes/${quoteId}/pdf/drive`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setDriveLink(data.web_view_link);
+        // Reset local PDF since it's now on Drive
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
+        toast.success('PDF sauvegardé sur Google Drive');
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur de sauvegarde sur Drive');
+      }
+    } catch (err) {
+      toast.error('Erreur de connexion');
+    } finally {
+      setSavingToDrive(false);
+    }
+  };
+
+  const openDriveLink = () => {
+    if (driveLink) {
+      window.open(driveLink, '_blank');
+    }
+  };
+
   if (loading) {
     return (
       <ProtectedRoute>
@@ -537,7 +583,17 @@ export default function QuoteDetailPage() {
                 <Download className="h-4 w-4 mr-2" />
                 Télécharger
               </Button>
+              <Button variant="outline" onClick={saveToDrive} disabled={savingToDrive}>
+                <Cloud className="h-4 w-4 mr-2" />
+                {savingToDrive ? 'Sauvegarde...' : 'Sauver sur Drive'}
+              </Button>
             </>
+          )}
+          {driveLink && (
+            <Button variant="outline" onClick={openDriveLink}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Voir sur Drive
+            </Button>
           )}
           {quote.status === 'ACCEPTED' && (
             <Button onClick={() => setShowConvertDialog(true)} className="bg-purple-600 hover:bg-purple-700">

@@ -333,6 +333,101 @@ class GoogleWorkspaceService:
             params=params
         )
     
+    async def delete_file(self, file_id: str) -> bool:
+        """
+        Delete a file or folder from Google Drive.
+        
+        Args:
+            file_id: Google Drive file/folder ID
+            
+        Returns:
+            True if deleted successfully
+        """
+        try:
+            await self._request(
+                "DELETE",
+                f"https://www.googleapis.com/drive/v3/files/{file_id}"
+            )
+            return True
+        except GoogleAPIError as e:
+            if e.status_code == 404:
+                return True  # Already deleted
+            raise
+    
+    async def upload_file(
+        self,
+        file_content: bytes,
+        filename: str,
+        mime_type: str = "application/pdf",
+        parent_folder_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Upload a file to Google Drive.
+        
+        Args:
+            file_content: File bytes
+            filename: Name for the file
+            mime_type: MIME type of the file
+            parent_folder_id: Optional parent folder ID
+            
+        Returns:
+            File metadata with id and webViewLink
+        """
+        import base64
+        
+        # For multipart upload
+        metadata = {"name": filename}
+        if parent_folder_id:
+            metadata["parents"] = [parent_folder_id]
+        
+        # Use resumable upload for larger files
+        async with httpx.AsyncClient() as client:
+            access_token = await self._ensure_token()
+            
+            # Step 1: Initiate resumable upload
+            init_response = await client.post(
+                "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                json=metadata
+            )
+            
+            if init_response.status_code != 200:
+                raise GoogleAPIError(
+                    f"Failed to initiate upload: {init_response.text}",
+                    init_response.status_code
+                )
+            
+            upload_url = init_response.headers.get("Location")
+            
+            # Step 2: Upload file content
+            upload_response = await client.put(
+                upload_url,
+                headers={
+                    "Content-Type": mime_type,
+                    "Content-Length": str(len(file_content)),
+                },
+                content=file_content
+            )
+            
+            if upload_response.status_code not in [200, 201]:
+                raise GoogleAPIError(
+                    f"Failed to upload file: {upload_response.text}",
+                    upload_response.status_code
+                )
+            
+            result = upload_response.json()
+            
+            # Get full metadata with webViewLink
+            file_metadata = await self.get_file_metadata(
+                result["id"],
+                "id,name,webViewLink,mimeType"
+            )
+            
+            return file_metadata
+    
     async def get_file_metadata(
         self,
         file_id: str,

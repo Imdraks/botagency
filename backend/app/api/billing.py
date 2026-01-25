@@ -1092,6 +1092,7 @@ async def generate_quote_pdf(
     
     # Build PDF
     doc.build(elements)
+    pdf_bytes = buffer.getvalue()
     buffer.seek(0)
     
     filename = f"{quote.reference}.pdf"
@@ -1101,6 +1102,225 @@ async def generate_quote_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.post("/quotes/{quote_id}/pdf/drive")
+async def upload_quote_pdf_to_drive(
+    quote_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Generate PDF and upload to Google Drive, replacing old version if exists"""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from app.services.google_workspace import GoogleWorkspaceService
+    from app.db.models.sso import SSOAccount
+    
+    quote = db.query(Quote).options(
+        joinedload(Quote.billing_client),
+        joinedload(Quote.items)
+    ).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    # Get user's Google account
+    google_account = db.query(SSOAccount).filter(
+        SSOAccount.user_id == current_user.id,
+        SSOAccount.provider == "google"
+    ).first()
+    
+    if not google_account:
+        raise HTTPException(status_code=400, detail="Connectez votre compte Google pour sauvegarder sur Drive")
+    
+    # Get workspace
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    
+    # Generate PDF (same code as above but simplified)
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=15*mm, leftMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    styles = getSampleStyleSheet()
+    elements = []
+    
+    # Colors
+    PRIMARY_COLOR = colors.HexColor('#0EA5E9')
+    GRAY_TEXT = colors.HexColor('#6B7280')
+    DARK_TEXT = colors.HexColor('#1F2937')
+    LIGHT_BG = colors.HexColor('#F9FAFB')
+    BORDER_COLOR = colors.HexColor('#E5E7EB')
+    
+    # Calculs
+    subtotal = float(quote.subtotal or 0)
+    discount_pct = float(quote.discount_percent or 0)
+    discount_amt = float(quote.discount_amount or 0)
+    tax_rate = float(quote.tax_rate or 20)
+    tax_amt = float(quote.tax_amount or 0)
+    total = float(quote.total or 0)
+    
+    # Styles
+    company_info_style = ParagraphStyle('CompanyInfo', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT, leading=11)
+    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=28, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
+    total_label_style = ParagraphStyle('TotalLabel', parent=styles['Normal'], fontSize=9, textColor=GRAY_TEXT, alignment=TA_RIGHT)
+    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=16, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
+    ref_style = ParagraphStyle('RefStyle', parent=styles['Normal'], fontSize=10, textColor=GRAY_TEXT, alignment=TA_RIGHT)
+    address_title_style = ParagraphStyle('AddressTitle', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
+    address_style = ParagraphStyle('Address', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT, fontName='Helvetica-Bold', leading=12)
+    address_detail_style = ParagraphStyle('AddressDetail', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT, leading=12)
+    message_style = ParagraphStyle('Message', parent=styles['Normal'], fontSize=9, textColor=GRAY_TEXT, leading=12)
+    date_label_style = ParagraphStyle('DateLabel', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
+    date_value_style = ParagraphStyle('DateValue', parent=styles['Normal'], fontSize=9, fontName='Helvetica-Bold', textColor=DARK_TEXT)
+    footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=7, textColor=GRAY_TEXT, leading=9)
+    
+    # Build company info
+    company_lines = []
+    if workspace:
+        if workspace.legal_name: company_lines.append(f"<b>{workspace.legal_name}</b>")
+        if workspace.legal_address: company_lines.append(workspace.legal_address)
+        addr = f"{workspace.legal_postal_code or ''} {workspace.legal_city or ''} {workspace.legal_country or ''}".strip()
+        if addr: company_lines.append(addr)
+        if workspace.siret: company_lines.append(f"SIRET: {workspace.siret}")
+    
+    # Header
+    header_data = [[
+        Paragraph("<br/>".join(company_lines) if company_lines else "Entreprise", company_info_style),
+        [Paragraph("Montant total", total_label_style), Paragraph(f"{total:,.0f} €".replace(',', ' '), total_big_style)]
+    ]]
+    header_table = Table(header_data, colWidths=[120*mm, 55*mm])
+    header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 8*mm))
+    
+    # Title
+    title_data = [[Paragraph("Devis", section_title_style), Paragraph(f"#{quote.reference}", ref_style)]]
+    title_table = Table(title_data, colWidths=[90*mm, 85*mm])
+    title_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
+    elements.append(title_table)
+    elements.append(Spacer(1, 5*mm))
+    
+    # Client info
+    client_lines = []
+    if quote.billing_client:
+        c = quote.billing_client
+        if c.name: client_lines.append(f"<b>{c.name}</b>")
+        if c.address_line1: client_lines.append(c.address_line1)
+        if c.postal_code or c.city: client_lines.append(f"{c.postal_code or ''} {c.city or ''}")
+    
+    address_data = [[
+        [Paragraph("Adresse de livraison", address_title_style), Paragraph("<br/>".join(client_lines) if client_lines else "-", address_detail_style)],
+        [Paragraph("Devis proposé à", address_title_style), Paragraph(f"A l'attention de {quote.billing_client.name if quote.billing_client else '-'}", address_style)]
+    ]]
+    address_table = Table(address_data, colWidths=[90*mm, 85*mm])
+    address_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+    elements.append(address_table)
+    elements.append(Spacer(1, 5*mm))
+    
+    # Dates
+    issue_str = quote.issue_date.strftime('%d/%m/%Y') if quote.issue_date else '-'
+    validity_str = quote.validity_date.strftime('%d/%m/%Y') if quote.validity_date else '-'
+    dates_data = [[
+        [Paragraph("Date de devis", date_label_style), Paragraph(issue_str, date_value_style)],
+        [Paragraph("Conditions", date_label_style), Paragraph(quote.terms or "Virement", date_value_style)],
+        [Paragraph("Validité", date_label_style), Paragraph(validity_str, date_value_style)],
+    ]]
+    dates_table = Table(dates_data, colWidths=[60*mm, 60*mm, 55*mm])
+    dates_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG), ('TOPPADDING', (0, 0), (-1, -1), 4*mm), ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm)]))
+    elements.append(dates_table)
+    elements.append(Spacer(1, 5*mm))
+    
+    # Items table
+    items_header = ["N°", "Article", "Qté", "Prix HT", "TVA", "Total HT"]
+    table_data = [items_header]
+    for idx, item in enumerate(sorted(quote.items, key=lambda x: x.position), 1):
+        table_data.append([str(idx), item.description, f"{int(item.quantity)}", f"{float(item.unit_price):,.0f} €".replace(',', ' '), f"{int(tax_rate)}%", f"{float(item.line_total):,.0f} €".replace(',', ' ')])
+    
+    items_table = Table(table_data, colWidths=[12*mm, 75*mm, 18*mm, 28*mm, 18*mm, 28*mm])
+    items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'), ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (2, 1), (-1, -1), 'RIGHT'), ('LINEBELOW', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(items_table)
+    elements.append(Spacer(1, 3*mm))
+    
+    # Totals
+    totals_data = [["", "", "", "", "Total HT", f"{subtotal:,.0f} €".replace(',', ' ')], ["", "", "", "", "TVA", f"{tax_amt:,.0f} €".replace(',', ' ')], ["", "", "", "", "Total TTC", f"{total:,.2f} €".replace(',', ' ').replace('.', ',')]]
+    totals_table = Table(totals_data, colWidths=[12*mm, 75*mm, 18*mm, 28*mm, 18*mm, 28*mm])
+    totals_table.setStyle(TableStyle([('ALIGN', (-2, 0), (-1, -1), 'RIGHT'), ('FONTNAME', (-2, -1), (-1, -1), 'Helvetica-Bold')]))
+    elements.append(totals_table)
+    elements.append(Spacer(1, 5*mm))
+    
+    # Footer
+    elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
+    elements.append(Paragraph("Pour tout professionnel, en cas de retard de paiement...", footer_style))
+    
+    doc.build(elements)
+    pdf_bytes = buffer.getvalue()
+    
+    # Initialize Google service
+    try:
+        google_service = GoogleWorkspaceService(current_user.id)
+        
+        # Delete old PDF if exists
+        if quote.drive_pdf_id:
+            try:
+                await google_service.delete_file(quote.drive_pdf_id)
+            except Exception:
+                pass  # Ignore if file doesn't exist
+        
+        # Find or create Devis folder
+        folder_id = quote.drive_folder_id
+        if not folder_id:
+            # Try to find Radar folder first
+            radar_folder = await google_service.find_folder("Radar")
+            if radar_folder:
+                # Find or create Devis subfolder
+                devis_folder = await google_service.find_folder("Devis", radar_folder["id"])
+                if devis_folder:
+                    folder_id = devis_folder["id"]
+                else:
+                    devis_folder = await google_service.create_folder("Devis", radar_folder["id"])
+                    folder_id = devis_folder["id"]
+            else:
+                # Create Radar folder
+                radar_folder = await google_service.create_folder("Radar")
+                devis_folder = await google_service.create_folder("Devis", radar_folder["id"])
+                folder_id = devis_folder["id"]
+            
+            quote.drive_folder_id = folder_id
+        
+        # Upload new PDF
+        filename = f"{quote.reference}.pdf"
+        file_metadata = await google_service.upload_file(
+            file_content=pdf_bytes,
+            filename=filename,
+            mime_type="application/pdf",
+            parent_folder_id=folder_id
+        )
+        
+        # Store the new file ID
+        quote.drive_pdf_id = file_metadata.get('id')
+        quote.drive_web_view_link = file_metadata.get('webViewLink')
+        
+        db.commit()
+        
+        return {
+            "message": "PDF sauvegardé sur Google Drive",
+            "drive_file_id": quote.drive_pdf_id,
+            "web_view_link": quote.drive_web_view_link
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
 
 
 # ============ Invoice Endpoints ============
