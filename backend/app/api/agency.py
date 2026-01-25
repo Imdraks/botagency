@@ -39,20 +39,37 @@ def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
     ).first()
     
     # Extract first contact info
-    email = None
-    phone = None
+    contact_name = None
+    contact_first_name = None
+    contact_last_name = None
+    contact_email = None
+    contact_phone = None
+    contact_role = None
+    
     if crm_client.contacts and len(crm_client.contacts) > 0:
         first_contact = crm_client.contacts[0] if isinstance(crm_client.contacts, list) else None
         if first_contact:
-            email = first_contact.get('email')
-            phone = first_contact.get('phone')
+            contact_name = first_contact.get('name', '')
+            contact_email = first_contact.get('email')
+            contact_phone = first_contact.get('phone')
+            contact_role = first_contact.get('role')
+            # Try to split name into first/last
+            if contact_name:
+                name_parts = contact_name.strip().split(' ', 1)
+                contact_first_name = name_parts[0] if len(name_parts) > 0 else None
+                contact_last_name = name_parts[1] if len(name_parts) > 1 else None
     
     if billing_client:
         # Update existing
         billing_client.name = crm_client.name
         billing_client.company_name = crm_client.name
-        billing_client.email = email
-        billing_client.phone = phone
+        billing_client.email = contact_email
+        billing_client.phone = contact_phone
+        billing_client.contact_first_name = contact_first_name
+        billing_client.contact_last_name = contact_last_name
+        billing_client.contact_email = contact_email
+        billing_client.contact_phone = contact_phone
+        billing_client.contact_role = contact_role
         billing_client.notes = crm_client.notes
     else:
         # Create new billing client
@@ -61,8 +78,13 @@ def sync_crm_to_billing(db: Session, crm_client: Client, workspace_id: int):
             crm_client_id=crm_client.id,
             name=crm_client.name,
             company_name=crm_client.name,
-            email=email,
-            phone=phone,
+            email=contact_email,
+            phone=contact_phone,
+            contact_first_name=contact_first_name,
+            contact_last_name=contact_last_name,
+            contact_email=contact_email,
+            contact_phone=contact_phone,
+            contact_role=contact_role,
             notes=crm_client.notes
         )
         db.add(billing_client)
