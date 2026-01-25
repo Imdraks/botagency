@@ -1153,7 +1153,7 @@ export default function QuoteDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Barre de confirmation fixe en bas - apparaît si modifications détectées */}
+      {/* Barre de confirmation fixe en bas style Discord - apparaît si modifications détectées */}
       {(() => {
         // Détecter si des modifications ont été faites par rapport à l'original
         const hasChanges = editing && (
@@ -1174,29 +1174,37 @@ export default function QuoteDetailPage() {
         
         return (
           <div 
-            className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
+            className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out ${
               hasChanges 
                 ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-8 pointer-events-none'
+                : 'opacity-100 translate-y-full'
             }`}
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                className="h-12 px-6 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
-              >
-                <X className="h-5 w-5 mr-2" />
-                Annuler
-              </Button>
-              <Button
-                onClick={saveQuote}
-                disabled={saving}
-                className="h-12 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:scale-105"
-              >
-                <Save className="h-5 w-5 mr-2" />
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
-              </Button>
+            <div className="mx-auto max-w-4xl px-4 pb-6">
+              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg shadow-2xl p-4 flex items-center justify-between gap-4 border border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                  <span className="text-white font-medium">
+                    Attention — Tu as des modifications non enregistrées !
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={handleCancel}
+                    className="h-10 px-4 text-white hover:bg-gray-700 font-medium"
+                  >
+                    Réinitialiser
+                  </Button>
+                  <Button
+                    onClick={saveQuote}
+                    disabled={saving}
+                    className="h-10 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-md"
+                  >
+                    {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         );
