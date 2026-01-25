@@ -1206,14 +1206,17 @@ export default function QuoteDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Barre de confirmation fixe en bas style Discord - apparaît si modifications détectées */}
+        </div>
+      </AppLayoutWithOnboarding>
+      
+      {/* Popup de sauvegarde - en dehors du layout pour couvrir tout l'écran */}
       {(() => {
         // Détecter si les items ont changé
         const itemsChanged = () => {
           if (localItems.length !== originalItems.length) return true;
           for (const local of localItems) {
             const orig = originalItems.find(o => o.id === local.id);
-            if (!orig) return true; // Nouvel item
+            if (!orig) return true;
             if (
               orig.description !== local.description ||
               orig.quantity !== local.quantity ||
@@ -1224,7 +1227,7 @@ export default function QuoteDetailPage() {
           return false;
         };
         
-        // Détecter si des modifications ont été faites par rapport à l'original
+        // Détecter si des modifications ont été faites
         const hasChanges = editing && (
           editForm.title !== originalForm.title ||
           editForm.description !== originalForm.description ||
@@ -1237,27 +1240,20 @@ export default function QuoteDetailPage() {
           itemsChanged()
         );
         
-        // Fonction pour annuler et restaurer les valeurs originales
-        const handleCancel = () => {
-          setEditForm({ ...originalForm });
-          setLocalItems([...originalItems]);
-        };
+        if (!hasChanges) return null;
         
         return (
-          <div 
-            className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ease-out ${
-              hasChanges 
-                ? 'opacity-100 pointer-events-auto' 
-                : 'opacity-0 pointer-events-none'
-            }`}
-          >
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
             {/* Overlay sombre */}
-            <div className="absolute inset-0 bg-gray-900/80" />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             
             {/* Popup card */}
             <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 flex items-center gap-6">
               <button
-                onClick={handleCancel}
+                onClick={() => {
+                  setEditForm({ ...originalForm });
+                  setLocalItems([...originalItems]);
+                }}
                 className="flex items-center gap-3 px-8 py-4 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium text-lg"
               >
                 <X className="h-5 w-5" />
@@ -1275,8 +1271,6 @@ export default function QuoteDetailPage() {
           </div>
         );
       })()}
-        </div>
-      </AppLayoutWithOnboarding>
     </ProtectedRoute>
   );
 }
