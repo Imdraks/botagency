@@ -265,8 +265,6 @@ export default function QuoteDetailPage() {
   };
 
   const deleteItem = async (itemId: number) => {
-    if (!confirm('Supprimer cette ligne ?')) return;
-    
     try {
       const token = localStorage.getItem('access_token');
       const res = await fetch(`/api/v1/billing/quotes/${quoteId}/items/${itemId}`, {
@@ -275,11 +273,13 @@ export default function QuoteDetailPage() {
       });
       
       if (res.ok) {
-        toast.success('Ligne supprimée');        // Reset PDF car les donn\u00e9es ont chang\u00e9
+        toast.success('Ligne supprimée');
+        // Reset PDF car les données ont changé
         if (pdfUrl) {
           window.URL.revokeObjectURL(pdfUrl);
           setPdfUrl(null);
-        }        fetchQuote();
+        }
+        fetchQuote();
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
