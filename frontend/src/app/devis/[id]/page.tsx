@@ -542,8 +542,8 @@ export default function QuoteDetailPage() {
     <ProtectedRoute>
       <AppLayoutWithOnboarding>
         <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+          {/* Header */}
+          <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => router.push('/devis')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
