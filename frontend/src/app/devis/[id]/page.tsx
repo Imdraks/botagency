@@ -698,12 +698,6 @@ export default function QuoteDetailPage() {
                     placeholder="Notes (non visibles par le client)"
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Button onClick={saveQuote} disabled={saving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Enregistrement...' : 'Enregistrer'}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           ) : (
@@ -1131,6 +1125,30 @@ export default function QuoteDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Barre de confirmation fixe en bas - style prototype */}
+      {editing && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setEditing(false)}
+              className="h-12 px-6 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+            >
+              <X className="h-5 w-5 mr-2" />
+              Annuler
+            </Button>
+            <Button
+              onClick={saveQuote}
+              disabled={saving}
+              className="h-12 px-6 rounded-xl bg-emerald-400 hover:bg-emerald-500 text-white font-medium shadow-lg shadow-emerald-400/30"
+            >
+              <Save className="h-5 w-5 mr-2" />
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </div>
+        </div>
+      )}
         </div>
       </AppLayoutWithOnboarding>
     </ProtectedRoute>
