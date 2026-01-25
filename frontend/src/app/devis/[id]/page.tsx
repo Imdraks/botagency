@@ -208,8 +208,11 @@ export default function QuoteDetailPage() {
       
       if (res.ok) {
         toast.success('Devis mis à jour');
-        setEditing(false);
-        fetchQuote();
+        setEditing(false);        // Reset PDF car les donn\u00e9es ont chang\u00e9
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }        fetchQuote();
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
@@ -247,8 +250,11 @@ export default function QuoteDetailPage() {
       if (res.ok) {
         toast.success('Ligne ajoutée');
         setShowAddItemDialog(false);
-        setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });
-        fetchQuote();
+        setNewItem({ description: '', quantity: '1', unit: 'unité', unit_price: '' });        // Reset PDF car les donn\u00e9es ont chang\u00e9
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }        fetchQuote();
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
@@ -269,8 +275,11 @@ export default function QuoteDetailPage() {
       });
       
       if (res.ok) {
-        toast.success('Ligne supprimée');
-        fetchQuote();
+        toast.success('Ligne supprimée');        // Reset PDF car les donn\u00e9es ont chang\u00e9
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }        fetchQuote();
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur');
