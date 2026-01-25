@@ -846,9 +846,9 @@ export default function QuoteDetailPage() {
                   <TableFooter>
                     {(() => {
                       // Calculer les totaux locaux
-                      const localSubtotal = localItems.reduce((sum, item) => sum + item.line_total, 0);
-                      const taxRate = editing ? parseFloat(editForm.tax_rate) : quote.tax_rate;
-                      const discountPercent = editing ? parseFloat(editForm.discount_percent) : quote.discount_percent;
+                      const localSubtotal = localItems.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0);
+                      const taxRate = editing ? (parseFloat(editForm.tax_rate) || 0) : (quote.tax_rate || 0);
+                      const discountPercent = editing ? (parseFloat(editForm.discount_percent) || 0) : (quote.discount_percent || 0);
                       const discountAmount = localSubtotal * (discountPercent / 100);
                       const taxableAmount = localSubtotal - discountAmount;
                       const taxAmount = taxableAmount * (taxRate / 100);
@@ -957,9 +957,9 @@ export default function QuoteDetailPage() {
             <CardContent className="space-y-3">
               {(() => {
                 // Calculer les totaux locaux pour le résumé
-                const localSubtotal = localItems.reduce((sum, item) => sum + item.line_total, 0);
-                const taxRate = editing ? parseFloat(editForm.tax_rate) : quote.tax_rate;
-                const discountPercent = editing ? parseFloat(editForm.discount_percent) : quote.discount_percent;
+                const localSubtotal = localItems.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0);
+                const taxRate = editing ? (parseFloat(editForm.tax_rate) || 0) : (quote.tax_rate || 0);
+                const discountPercent = editing ? (parseFloat(editForm.discount_percent) || 0) : (quote.discount_percent || 0);
                 const discountAmount = localSubtotal * (discountPercent / 100);
                 const taxableAmount = localSubtotal - discountAmount;
                 const taxAmount = taxableAmount * (taxRate / 100);
@@ -1248,32 +1248,28 @@ export default function QuoteDetailPage() {
             className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out ${
               hasChanges 
                 ? 'opacity-100 translate-y-0' 
-                : 'opacity-100 translate-y-full'
+                : 'opacity-0 translate-y-full pointer-events-none'
             }`}
           >
-            <div className="mx-auto max-w-4xl px-4 pb-6">
-              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg shadow-2xl p-4 flex items-center justify-between gap-4 border border-gray-700">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                  <span className="text-white font-medium">
-                    Attention — Tu as des modifications non enregistrées !
-                  </span>
+            <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white py-4 px-6">
+              <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium">⚠️ Tu as des modifications non enregistrées</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
+                  <button
                     onClick={handleCancel}
-                    className="h-10 px-4 text-white hover:bg-gray-700 font-medium"
+                    className="text-white/80 hover:text-white text-sm font-medium transition-colors"
                   >
                     Réinitialiser
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     onClick={saveQuote}
                     disabled={saving}
-                    className="h-10 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-md"
+                    className="flex items-center gap-2 bg-white text-purple-600 px-4 py-2 rounded-lg font-medium text-sm hover:bg-purple-50 transition-colors disabled:opacity-50"
                   >
-                    {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
-                  </Button>
+                    {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
                 </div>
               </div>
             </div>
