@@ -833,7 +833,9 @@ async def generate_quote_pdf(
         if workspace.legal_name:
             company_lines.append(f"<b>{workspace.legal_name}</b>")
         if hasattr(workspace, 'owner') and workspace.owner:
-            company_lines.append(f"{workspace.owner.first_name or ''} {workspace.owner.last_name or ''}")
+            # User model uses full_name, not first_name/last_name
+            if workspace.owner.full_name:
+                company_lines.append(workspace.owner.full_name)
         if workspace.legal_address:
             company_lines.append(workspace.legal_address)
         addr_line = ""
