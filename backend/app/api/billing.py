@@ -122,10 +122,13 @@ def generate_invoice_reference(db: Session, workspace_id: int) -> str:
 
 def calculate_quote_totals(quote: Quote):
     """Calculate and update quote totals"""
-    subtotal = sum(item.line_total for item in quote.items)
-    discount_amount = subtotal * (quote.discount_percent / 100)
+    subtotal = sum((item.line_total or Decimal('0')) for item in quote.items)
+    discount_percent = Decimal(str(quote.discount_percent or 0))
+    tax_rate = Decimal(str(quote.tax_rate or 0))
+    
+    discount_amount = subtotal * (discount_percent / Decimal('100'))
     after_discount = subtotal - discount_amount
-    tax_amount = after_discount * (quote.tax_rate / 100)
+    tax_amount = after_discount * (tax_rate / Decimal('100'))
     total = after_discount + tax_amount
     
     quote.subtotal = subtotal
@@ -136,10 +139,13 @@ def calculate_quote_totals(quote: Quote):
 
 def calculate_invoice_totals(invoice: Invoice):
     """Calculate and update invoice totals"""
-    subtotal = sum(item.line_total for item in invoice.items)
-    discount_amount = subtotal * (invoice.discount_percent / 100)
+    subtotal = sum((item.line_total or Decimal('0')) for item in invoice.items)
+    discount_percent = Decimal(str(invoice.discount_percent or 0))
+    tax_rate = Decimal(str(invoice.tax_rate or 0))
+    
+    discount_amount = subtotal * (discount_percent / Decimal('100'))
     after_discount = subtotal - discount_amount
-    tax_amount = after_discount * (invoice.tax_rate / 100)
+    tax_amount = after_discount * (tax_rate / Decimal('100'))
     total = after_discount + tax_amount
     
     invoice.subtotal = subtotal
