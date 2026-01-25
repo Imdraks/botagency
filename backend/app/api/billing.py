@@ -1227,6 +1227,35 @@ async def generate_quote_pdf(
         ('LEFTPADDING', (0, 0), (-1, -1), 4*mm),
     ]))
     elements.append(payment_table)
+    elements.append(Spacer(1, 3*mm))
+    
+    # ========== CLIENT BANKING INFO (if available) ==========
+    if quote.billing_client and quote.billing_client.iban_encrypted:
+        client_iban_masked = mask_iban(decrypt_iban(quote.billing_client.iban_encrypted))
+        client_bank_name = quote.billing_client.bank_name or ""
+        client_bic = quote.billing_client.bic or ""
+        
+        client_bank_info = f"IBAN Client: <b>{client_iban_masked}</b>"
+        if client_bic:
+            client_bank_info += f"  |  BIC: <b>{client_bic}</b>"
+        if client_bank_name:
+            client_bank_info += f"  |  Banque: <b>{client_bank_name}</b>"
+        
+        client_bank_data = [[
+            Paragraph("<b>Coordonnées bancaires du client</b>", ParagraphStyle('ClientBankTitle', fontSize=9, fontName='Helvetica-Bold')),
+        ], [
+            Paragraph(client_bank_info, ParagraphStyle('ClientBankDetails', fontSize=8, textColor=GRAY_TEXT)),
+        ]]
+        
+        client_bank_table = Table(client_bank_data, colWidths=[175*mm])
+        client_bank_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG),
+            ('TOPPADDING', (0, 0), (-1, -1), 3*mm),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3*mm),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4*mm),
+        ]))
+        elements.append(client_bank_table)
+    
     elements.append(Spacer(1, 5*mm))
     
     # ========== NOTES ==========
@@ -1422,6 +1451,21 @@ async def upload_quote_pdf_to_drive(
     totals_table.setStyle(TableStyle([('ALIGN', (-2, 0), (-1, -1), 'RIGHT'), ('FONTNAME', (-2, -1), (-1, -1), 'Helvetica-Bold')]))
     elements.append(totals_table)
     elements.append(Spacer(1, 5*mm))
+    
+    # Client banking info (if available)
+    if quote.billing_client and quote.billing_client.iban_encrypted:
+        client_iban_masked = mask_iban(decrypt_iban(quote.billing_client.iban_encrypted))
+        client_bank_name = quote.billing_client.bank_name or ""
+        client_bic = quote.billing_client.bic or ""
+        
+        client_bank_info = f"IBAN Client: <b>{client_iban_masked}</b>"
+        if client_bic:
+            client_bank_info += f"  |  BIC: <b>{client_bic}</b>"
+        if client_bank_name:
+            client_bank_info += f"  |  Banque: <b>{client_bank_name}</b>"
+        
+        elements.append(Paragraph(client_bank_info, footer_style))
+        elements.append(Spacer(1, 3*mm))
     
     # Footer
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
