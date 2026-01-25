@@ -54,9 +54,16 @@ class BillingClient(Base):
     crm_client_id = Column(Integer, ForeignKey('clients.id'), nullable=True, index=True)
     
     # Basic info
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False)  # Nom du client ou société
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
+    
+    # Contact person (représentant)
+    contact_first_name = Column(String(100), nullable=True)
+    contact_last_name = Column(String(100), nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    contact_role = Column(String(100), nullable=True)  # Poste/fonction
     
     # Address
     address_line1 = Column(String(255), nullable=True)
@@ -69,6 +76,11 @@ class BillingClient(Base):
     company_name = Column(String(255), nullable=True)
     siret = Column(String(20), nullable=True)
     vat_number = Column(String(30), nullable=True)
+    
+    # Banking info (IBAN is encrypted for security)
+    iban_encrypted = Column(String(500), nullable=True)  # Encrypted IBAN
+    bic = Column(String(20), nullable=True)
+    bank_name = Column(String(100), nullable=True)
     
     # Notes
     notes = Column(Text, nullable=True)

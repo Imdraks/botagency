@@ -23,12 +23,13 @@ from app.db.models.billing import (
 )
 from app.db.models.agency import Client as CRMClient
 from app.schemas.billing import (
-    ClientCreate, ClientUpdate, ClientResponse,
+    ClientCreate, ClientUpdate, ClientResponse, ClientSetIBAN,
     QuoteCreate, QuoteUpdate, QuoteResponse, QuoteListResponse,
     InvoiceCreate, InvoiceUpdate, InvoiceResponse, InvoiceListResponse,
     InvoicePaymentUpdate, QuoteToInvoiceCreate, BillingDashboard,
     QuoteItemCreate, InvoiceItemCreate
 )
+from app.core.encryption import encrypt_iban, decrypt_iban, mask_iban
 
 router = APIRouter()
 
@@ -270,6 +271,37 @@ async def sync_crm_clients(
 
 # ============ Client Endpoints ============
 
+def client_to_response(client: BillingClient) -> dict:
+    """Convert BillingClient to response dict with masked IBAN"""
+    data = {
+        "id": client.id,
+        "crm_client_id": client.crm_client_id,
+        "name": client.name,
+        "email": client.email,
+        "phone": client.phone,
+        "contact_first_name": client.contact_first_name,
+        "contact_last_name": client.contact_last_name,
+        "contact_email": client.contact_email,
+        "contact_phone": client.contact_phone,
+        "contact_role": client.contact_role,
+        "address_line1": client.address_line1,
+        "address_line2": client.address_line2,
+        "city": client.city,
+        "postal_code": client.postal_code,
+        "country": client.country or "France",
+        "company_name": client.company_name,
+        "siret": client.siret,
+        "vat_number": client.vat_number,
+        "bic": client.bic,
+        "bank_name": client.bank_name,
+        "notes": client.notes,
+        "iban_masked": mask_iban(decrypt_iban(client.iban_encrypted)) if client.iban_encrypted else None,
+        "created_at": client.created_at,
+        "updated_at": client.updated_at,
+    }
+    return data
+
+
 @router.get("/clients", response_model=List[ClientResponse])
 async def list_clients(
     search: Optional[str] = None,
@@ -289,7 +321,8 @@ async def list_clients(
             )
         )
     
-    return query.order_by(BillingClient.company_name, BillingClient.name).all()
+    clients = query.order_by(BillingClient.company_name, BillingClient.name).all()
+    return [client_to_response(c) for c in clients]
 
 
 @router.post("/clients", response_model=ClientResponse)
@@ -307,7 +340,7 @@ async def create_client(
     db.add(client)
     db.commit()
     db.refresh(client)
-    return client
+    return client_to_response(client)
 
 
 @router.get("/clients/{client_id}", response_model=ClientResponse)
@@ -326,7 +359,7 @@ async def get_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client non trouvé")
     
-    return client
+    return client_to_response(client)
 
 
 @router.patch("/clients/{client_id}", response_model=ClientResponse)
@@ -352,7 +385,7 @@ async def update_client(
     
     db.commit()
     db.refresh(client)
-    return client
+    return client_to_response(client)
 
 
 @router.delete("/clients/{client_id}")
@@ -381,6 +414,55 @@ async def delete_client(
     db.delete(client)
     db.commit()
     return {"message": "Client supprimé"}
+
+
+@router.put("/clients/{client_id}/iban")
+async def set_client_iban(
+    client_id: int,
+    iban_data: ClientSetIBAN,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """
+    Set or update client IBAN (encrypted storage).
+    Only admin/owner can set IBAN for security.
+    """
+    client = db.query(BillingClient).filter(
+        BillingClient.id == client_id,
+        BillingClient.workspace_id == workspace_id
+    ).first()
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    # Encrypt and store IBAN
+    client.iban_encrypted = encrypt_iban(iban_data.iban)
+    db.commit()
+    
+    return {"message": "IBAN enregistré", "iban_masked": mask_iban(iban_data.iban)}
+
+
+@router.delete("/clients/{client_id}/iban")
+async def delete_client_iban(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Delete client IBAN."""
+    client = db.query(BillingClient).filter(
+        BillingClient.id == client_id,
+        BillingClient.workspace_id == workspace_id
+    ).first()
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    client.iban_encrypted = None
+    db.commit()
+    
+    return {"message": "IBAN supprimé"}
 
 
 # ============ Quote Endpoints ============
@@ -948,23 +1030,50 @@ async def generate_quote_pdf(
     # Build client info
     client_lines = []
     client_contact_lines = []
+    contact_name = "-"
     if quote.billing_client:
         c = quote.billing_client
-        if c.name:
+        # Company name or client name
+        if c.company_name:
+            client_lines.append(f"<b>{c.company_name}</b>")
+        elif c.name:
             client_lines.append(f"<b>{c.name}</b>")
+        
+        # Build contact name from contact fields or fallback to name
+        if c.contact_first_name or c.contact_last_name:
+            contact_parts = []
+            if c.contact_first_name:
+                contact_parts.append(c.contact_first_name)
+            if c.contact_last_name:
+                contact_parts.append(c.contact_last_name)
+            contact_name = " ".join(contact_parts)
+            if c.contact_role:
+                contact_name += f" ({c.contact_role})"
+        elif c.name:
+            contact_name = c.name
+        
+        # Address
         if c.address_line1:
             client_lines.append(c.address_line1)
+        if c.address_line2:
+            client_lines.append(c.address_line2)
         client_addr = ""
         if c.postal_code:
             client_addr += c.postal_code
         if c.city:
             client_addr += f" {c.city}"
+        if c.country and c.country != "France":
+            client_addr += f", {c.country}"
         if client_addr:
             client_lines.append(client_addr)
-        if c.phone:
-            client_contact_lines.append(f"TEL: {c.phone}")
-        if c.email:
-            client_contact_lines.append(f"EMAIL: {c.email}")
+        
+        # Contact info - prefer contact-specific, fallback to main
+        contact_phone = c.contact_phone or c.phone
+        contact_email = c.contact_email or c.email
+        if contact_phone:
+            client_contact_lines.append(f"Tél: {contact_phone}")
+        if contact_email:
+            client_contact_lines.append(f"Email: {contact_email}")
         if c.siret:
             client_contact_lines.append(f"SIRET: {c.siret}")
         if c.vat_number:
@@ -977,7 +1086,7 @@ async def generate_quote_pdf(
         ],
         [
             Paragraph("Devis proposé à", address_title_style),
-            Paragraph(f"A l'attention de {quote.billing_client.name if quote.billing_client and quote.billing_client.name else '-'}", address_style),
+            Paragraph(f"A l'attention de {contact_name}", address_style),
             Paragraph("<br/>".join(client_lines[1:]) if len(client_lines) > 1 else "", address_detail_style),
             Paragraph("<br/>".join(client_contact_lines), address_detail_style) if client_contact_lines else Paragraph("", address_detail_style),
         ]

@@ -17,14 +17,30 @@ class ClientBase(BaseModel):
     name: str = Field(..., max_length=255)
     email: Optional[str] = None
     phone: Optional[str] = None
+    
+    # Contact person
+    contact_first_name: Optional[str] = None
+    contact_last_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_role: Optional[str] = None
+    
+    # Address
     address_line1: Optional[str] = None
     address_line2: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
     country: str = "France"
+    
+    # Business info
     company_name: Optional[str] = None
     siret: Optional[str] = None
     vat_number: Optional[str] = None
+    
+    # Banking (IBAN is handled separately for security)
+    bic: Optional[str] = None
+    bank_name: Optional[str] = None
+    
     notes: Optional[str] = None
 
 
@@ -38,25 +54,48 @@ class ClientUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     email: Optional[str] = None
     phone: Optional[str] = None
+    
+    # Contact person
+    contact_first_name: Optional[str] = None
+    contact_last_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_role: Optional[str] = None
+    
+    # Address
     address_line1: Optional[str] = None
     address_line2: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
     country: Optional[str] = None
+    
+    # Business info
     company_name: Optional[str] = None
     siret: Optional[str] = None
     vat_number: Optional[str] = None
+    
+    # Banking (IBAN is handled separately for security)
+    bic: Optional[str] = None
+    bank_name: Optional[str] = None
+    
     notes: Optional[str] = None
 
 
 class ClientResponse(ClientBase):
     """Client response schema"""
     id: int
+    crm_client_id: Optional[int] = None
+    iban_masked: Optional[str] = None  # Only masked version for display
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class ClientSetIBAN(BaseModel):
+    """Schema for setting client IBAN (secure endpoint)"""
+    iban: str = Field(..., min_length=15, max_length=34)
 
 
 # ============ Quote Item Schemas ============
