@@ -561,6 +561,7 @@ export default function QuoteDetailPage() {
   const isEditable = quote.status === 'DRAFT' || quote.status === 'SENT';
 
   return (
+    <>
     <ProtectedRoute>
       <AppLayoutWithOnboarding>
         <div className="p-6 space-y-6">
@@ -1208,65 +1209,66 @@ export default function QuoteDetailPage() {
 
         </div>
       </AppLayoutWithOnboarding>
-      
-      {/* Popup de sauvegarde - en dehors du layout pour couvrir tout l'écran */}
-      {(() => {
-        // Détecter si les items ont changé
-        const itemsChanged = () => {
-          if (localItems.length !== originalItems.length) return true;
-          for (const local of localItems) {
-            const orig = originalItems.find(o => o.id === local.id);
-            if (!orig) return true;
-            if (
-              orig.description !== local.description ||
-              orig.quantity !== local.quantity ||
-              orig.unit !== local.unit ||
-              orig.unit_price !== local.unit_price
-            ) return true;
-          }
-          return false;
-        };
-        
-        // Détecter si des modifications ont été faites
-        const hasChanges = editing && (
-          editForm.title !== originalForm.title ||
-          editForm.description !== originalForm.description ||
-          editForm.client_id !== originalForm.client_id ||
-          editForm.validity_date !== originalForm.validity_date ||
-          editForm.tax_rate !== originalForm.tax_rate ||
-          editForm.discount_percent !== originalForm.discount_percent ||
-          editForm.terms !== originalForm.terms ||
-          editForm.notes !== originalForm.notes ||
-          itemsChanged()
-        );
-        
-        if (!hasChanges) return null;
-        
-        return (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999]">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl px-5 py-3 flex items-center gap-3 border border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => {
-                  setEditForm({ ...originalForm });
-                  setLocalItems([...originalItems]);
-                }}
-                className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-              >
-                <X className="h-4 w-4" />
-                Annuler
-              </button>
-              <button
-                onClick={saveQuote}
-                disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        );
-      })()}
     </ProtectedRoute>
+    
+    {/* Popup de sauvegarde flottant - complètement en dehors de tout layout */}
+    {(() => {
+      // Détecter si les items ont changé
+      const itemsChanged = () => {
+        if (localItems.length !== originalItems.length) return true;
+        for (const local of localItems) {
+          const orig = originalItems.find(o => o.id === local.id);
+          if (!orig) return true;
+          if (
+            orig.description !== local.description ||
+            orig.quantity !== local.quantity ||
+            orig.unit !== local.unit ||
+            orig.unit_price !== local.unit_price
+          ) return true;
+        }
+        return false;
+      };
+      
+      // Détecter si des modifications ont été faites
+      const hasChanges = editing && (
+        editForm.title !== originalForm.title ||
+        editForm.description !== originalForm.description ||
+        editForm.client_id !== originalForm.client_id ||
+        editForm.validity_date !== originalForm.validity_date ||
+        editForm.tax_rate !== originalForm.tax_rate ||
+        editForm.discount_percent !== originalForm.discount_percent ||
+        editForm.terms !== originalForm.terms ||
+        editForm.notes !== originalForm.notes ||
+        itemsChanged()
+      );
+      
+      if (!hasChanges) return null;
+      
+      return (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999]" style={{ position: 'fixed' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl px-5 py-3 flex items-center gap-3" style={{ border: '2px solid #E5E7EB' }}>
+            <button
+              onClick={() => {
+                setEditForm({ ...originalForm });
+                setLocalItems([...originalItems]);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+            >
+              <X className="h-4 w-4" />
+              Annuler
+            </button>
+            <button
+              onClick={saveQuote}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        </div>
+      );
+    })()}
+    </>
   );
 }
