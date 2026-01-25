@@ -8,6 +8,8 @@ from typing import Optional, List
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 from pydantic import BaseModel
@@ -650,6 +652,206 @@ async def convert_quote_to_invoice(
     db.refresh(invoice)
     
     return invoice
+
+
+@router.get("/quotes/{quote_id}/pdf")
+async def generate_quote_pdf(
+    quote_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id)
+):
+    """Generate PDF for a quote"""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm, cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    
+    quote = db.query(Quote).options(
+        joinedload(Quote.billing_client),
+        joinedload(Quote.items)
+    ).filter(
+        Quote.id == quote_id,
+        Quote.workspace_id == workspace_id
+    ).first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis non trouvé")
+    
+    # Get workspace for emitter info
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=20*mm,
+        leftMargin=20*mm,
+        topMargin=20*mm,
+        bottomMargin=20*mm
+    )
+    
+    styles = getSampleStyleSheet()
+    elements = []
+    
+    # Styles personnalisés
+    title_style = ParagraphStyle(
+        'QuoteTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=6,
+        textColor=colors.HexColor('#6366F1')
+    )
+    
+    header_style = ParagraphStyle(
+        'Header',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#666666')
+    )
+    
+    # Titre DEVIS + Référence
+    elements.append(Paragraph(f"DEVIS {quote.reference}", title_style))
+    elements.append(Spacer(1, 10*mm))
+    
+    # Infos émetteur et client côte à côte
+    emitter_info = []
+    if workspace:
+        if workspace.legal_name:
+            emitter_info.append(workspace.legal_name)
+        if workspace.legal_address:
+            emitter_info.append(workspace.legal_address)
+        if workspace.legal_postal_code and workspace.legal_city:
+            emitter_info.append(f"{workspace.legal_postal_code} {workspace.legal_city}")
+        if workspace.siret:
+            emitter_info.append(f"SIRET: {workspace.siret}")
+        if workspace.legal_email:
+            emitter_info.append(workspace.legal_email)
+    
+    client_info = []
+    if quote.billing_client:
+        c = quote.billing_client
+        if c.company_name:
+            client_info.append(f"<b>{c.company_name}</b>")
+        if c.name:
+            client_info.append(c.name)
+        if c.address_line1:
+            client_info.append(c.address_line1)
+        if c.postal_code and c.city:
+            client_info.append(f"{c.postal_code} {c.city}")
+        if c.email:
+            client_info.append(c.email)
+    
+    info_table_data = [[
+        Paragraph("<br/>".join(emitter_info) if emitter_info else "(Émetteur)", header_style),
+        Paragraph("<b>Client:</b><br/>" + "<br/>".join(client_info) if client_info else "(Client)", header_style)
+    ]]
+    
+    info_table = Table(info_table_data, colWidths=[85*mm, 85*mm])
+    info_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 10*mm))
+    
+    # Titre du devis et dates
+    elements.append(Paragraph(f"<b>{quote.title}</b>", styles['Heading2']))
+    if quote.description:
+        elements.append(Paragraph(quote.description, styles['Normal']))
+    elements.append(Spacer(1, 3*mm))
+    
+    date_info = f"Date: {quote.issue_date.strftime('%d/%m/%Y') if quote.issue_date else '-'}"
+    if quote.validity_date:
+        date_info += f" | Validité: {quote.validity_date.strftime('%d/%m/%Y')}"
+    elements.append(Paragraph(date_info, header_style))
+    elements.append(Spacer(1, 8*mm))
+    
+    # Tableau des lignes
+    table_data = [
+        ["Description", "Qté", "Unité", "Prix unit. HT", "Total HT"]
+    ]
+    
+    for item in sorted(quote.items, key=lambda x: x.position):
+        table_data.append([
+            item.description,
+            f"{item.quantity:.2f}".replace('.', ','),
+            item.unit or "unité",
+            f"{item.unit_price:,.2f} €".replace(',', ' ').replace('.', ','),
+            f"{item.line_total:,.2f} €".replace(',', ' ').replace('.', ',')
+        ])
+    
+    # Calculs
+    subtotal = float(quote.subtotal or 0)
+    discount_pct = float(quote.discount_percent or 0)
+    discount_amt = float(quote.discount_amount or 0)
+    tax_rate = float(quote.tax_rate or 20)
+    tax_amt = float(quote.tax_amount or 0)
+    total = float(quote.total or 0)
+    
+    # Ajouter les totaux
+    table_data.append(["", "", "", "Sous-total HT", f"{subtotal:,.2f} €".replace(',', ' ').replace('.', ',')])
+    if discount_pct > 0:
+        table_data.append(["", "", "", f"Remise ({discount_pct:.2f}%)", f"-{discount_amt:,.2f} €".replace(',', ' ').replace('.', ',')])
+    table_data.append(["", "", "", f"TVA ({tax_rate:.0f}%)", f"{tax_amt:,.2f} €".replace(',', ' ').replace('.', ',')])
+    table_data.append(["", "", "", "Total TTC", f"{total:,.2f} €".replace(',', ' ').replace('.', ',')])
+    
+    items_table = Table(table_data, colWidths=[80*mm, 20*mm, 20*mm, 30*mm, 30*mm])
+    items_table.setStyle(TableStyle([
+        # En-têtes
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6366F1')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        
+        # Corps
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        
+        # Grille
+        ('GRID', (0, 0), (-1, len(quote.items)), 0.5, colors.HexColor('#E5E7EB')),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#6366F1')),
+        
+        # Totaux
+        ('FONTNAME', (-2, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (-2, -1), (-1, -1), 11),
+        ('BACKGROUND', (-2, -1), (-1, -1), colors.HexColor('#F3F4F6')),
+        
+        # Padding
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(items_table)
+    elements.append(Spacer(1, 10*mm))
+    
+    # Conditions
+    if quote.terms:
+        elements.append(Paragraph("<b>Conditions:</b>", styles['Normal']))
+        elements.append(Paragraph(quote.terms, header_style))
+        elements.append(Spacer(1, 5*mm))
+    
+    if quote.notes:
+        elements.append(Paragraph("<b>Notes:</b>", styles['Normal']))
+        elements.append(Paragraph(quote.notes, header_style))
+    
+    # Générer le PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f"{quote.reference}.pdf"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ============ Invoice Endpoints ============
