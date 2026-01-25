@@ -1245,33 +1245,32 @@ export default function QuoteDetailPage() {
         
         return (
           <div 
-            className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out ${
+            className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ease-out ${
               hasChanges 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-full pointer-events-none'
+                ? 'opacity-100 pointer-events-auto' 
+                : 'opacity-0 pointer-events-none'
             }`}
           >
-            <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white py-4 px-6">
-              <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">⚠️ Tu as des modifications non enregistrées</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleCancel}
-                    className="text-white/80 hover:text-white text-sm font-medium transition-colors"
-                  >
-                    Réinitialiser
-                  </button>
-                  <button
-                    onClick={saveQuote}
-                    disabled={saving}
-                    className="flex items-center gap-2 bg-white text-purple-600 px-4 py-2 rounded-lg font-medium text-sm hover:bg-purple-50 transition-colors disabled:opacity-50"
-                  >
-                    {saving ? 'Enregistrement...' : 'Enregistrer'}
-                  </button>
-                </div>
-              </div>
+            {/* Overlay sombre */}
+            <div className="absolute inset-0 bg-gray-900/80" />
+            
+            {/* Popup card */}
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 flex items-center gap-6">
+              <button
+                onClick={handleCancel}
+                className="flex items-center gap-3 px-8 py-4 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium text-lg"
+              >
+                <X className="h-5 w-5" />
+                Annuler
+              </button>
+              <button
+                onClick={saveQuote}
+                disabled={saving}
+                className="flex items-center gap-3 px-8 py-4 bg-emerald-400 hover:bg-emerald-500 text-white rounded-xl font-medium text-lg transition-colors disabled:opacity-50"
+              >
+                <Save className="h-5 w-5" />
+                {saving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
             </div>
           </div>
         );
