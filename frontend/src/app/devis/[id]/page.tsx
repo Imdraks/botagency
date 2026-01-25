@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Receipt, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, X,
-  Building2, User, Calendar, Clock, FileText, ArrowRight, Printer, Download
+  Building2, User, Calendar, Clock, FileText, ArrowRight, Printer, Download, Eye
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,8 @@ export default function QuoteDetailPage() {
   const [editing, setEditing] = useState(false);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -341,7 +343,8 @@ export default function QuoteDetailPage() {
     return new Date(dateStr).toLocaleDateString('fr-FR');
   };
 
-  const downloadPdf = async () => {
+  const generatePdf = async () => {
+    setGeneratingPdf(true);
     try {
       const token = localStorage.getItem('access_token');
       const res = await fetch(`/api/v1/billing/quotes/${quoteId}/pdf`, {
@@ -350,21 +353,38 @@ export default function QuoteDetailPage() {
       
       if (res.ok) {
         const blob = await res.blob();
+        // Revoke old URL if exists
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+        }
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${quote?.reference || 'devis'}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('PDF généré');
+        setPdfUrl(url);
+        toast.success('PDF généré avec succès');
       } else {
         const error = await res.json();
         toast.error(error.detail || 'Erreur de génération du PDF');
       }
     } catch (err) {
       toast.error('Erreur de connexion');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const viewPdf = () => {
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank');
+    }
+  };
+
+  const downloadPdf = () => {
+    if (pdfUrl) {
+      const a = document.createElement('a');
+      a.href = pdfUrl;
+      a.download = `${quote?.reference || 'devis'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -428,10 +448,23 @@ export default function QuoteDetailPage() {
               </Button>
             </>
           )}
-          <Button variant="outline" onClick={downloadPdf}>
-            <Download className="h-4 w-4 mr-2" />
-            Générer PDF
-          </Button>
+          {!pdfUrl ? (
+            <Button variant="outline" onClick={generatePdf} disabled={generatingPdf}>
+              <FileText className="h-4 w-4 mr-2" />
+              {generatingPdf ? 'Génération...' : 'Générer PDF'}
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={viewPdf}>
+                <Eye className="h-4 w-4 mr-2" />
+                Voir PDF
+              </Button>
+              <Button variant="outline" onClick={downloadPdf}>
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger
+              </Button>
+            </>
+          )}
           {quote.status === 'ACCEPTED' && (
             <Button onClick={() => setShowConvertDialog(true)} className="bg-purple-600 hover:bg-purple-700">
               <ArrowRight className="h-4 w-4 mr-2" />
