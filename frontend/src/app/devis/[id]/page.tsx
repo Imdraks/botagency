@@ -798,13 +798,13 @@ export default function QuoteDetailPage() {
                     <TableHead>Unité</TableHead>
                     <TableHead className="text-right">Prix unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    {isEditable && <TableHead className="w-[100px]"></TableHead>}
+                    {editing && <TableHead className="w-[100px]"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {localItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isEditable ? 6 : 5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={editing ? 6 : 5} className="text-center py-8 text-gray-500">
                         Aucune ligne. Ajoutez des prestations au devis.
                       </TableCell>
                     </TableRow>
@@ -816,7 +816,7 @@ export default function QuoteDetailPage() {
                         <TableCell>{item.unit}</TableCell>
                         <TableCell className="text-right">{formatCurrency(Number(item.unit_price))}</TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(Number(item.line_total))}</TableCell>
-                        {isEditable && (
+                        {editing && (
                           <TableCell>
                             <div className="flex gap-1">
                               <Button 
@@ -857,42 +857,42 @@ export default function QuoteDetailPage() {
                       return (
                         <>
                           <TableRow>
-                            <TableCell colSpan={isEditable ? 4 : 3} className="text-right font-medium">
+                            <TableCell colSpan={editing ? 4 : 3} className="text-right font-medium">
                               Sous-total HT
                             </TableCell>
                             <TableCell className="text-right font-medium">
                               {formatCurrency(localSubtotal)}
                             </TableCell>
-                            {isEditable && <TableCell />}
+                            {editing && <TableCell />}
                           </TableRow>
                           {discountAmount > 0 && (
                             <TableRow>
-                              <TableCell colSpan={isEditable ? 4 : 3} className="text-right text-red-600">
+                              <TableCell colSpan={editing ? 4 : 3} className="text-right text-red-600">
                                 Remise ({discountPercent}%)
                               </TableCell>
                               <TableCell className="text-right text-red-600">
                                 -{formatCurrency(discountAmount)}
                               </TableCell>
-                              {isEditable && <TableCell />}
+                              {editing && <TableCell />}
                             </TableRow>
                           )}
                           <TableRow>
-                            <TableCell colSpan={isEditable ? 4 : 3} className="text-right">
+                            <TableCell colSpan={editing ? 4 : 3} className="text-right">
                               TVA ({taxRate}%)
                             </TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(taxAmount)}
                             </TableCell>
-                            {isEditable && <TableCell />}
+                            {editing && <TableCell />}
                           </TableRow>
                           <TableRow className="bg-gray-50 dark:bg-gray-800">
-                            <TableCell colSpan={isEditable ? 4 : 3} className="text-right font-bold text-lg">
+                            <TableCell colSpan={editing ? 4 : 3} className="text-right font-bold text-lg">
                               Total TTC
                             </TableCell>
                             <TableCell className="text-right font-bold text-lg">
                               {formatCurrency(total)}
                             </TableCell>
-                            {isEditable && <TableCell />}
+                            {editing && <TableCell />}
                           </TableRow>
                         </>
                       );
