@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/toaster";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import {
   DropdownMenu,
@@ -487,7 +487,6 @@ function DriversRisksComparison({ artists }: { artists: ArtistComparisonData[] }
 // ============================================================================
 
 function ComparisonV3Page() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -533,7 +532,7 @@ function ComparisonV3Page() {
       setSelectedListId(newList.id);
       setShowCreateDialog(false);
       setNewListName("");
-      toast({ title: "Shortlist créée", description: `"${newList.name}" a été créée` });
+      toast.success("Shortlist créée", { description: `"${newList.name}" a été créée` });
     },
   });
 
@@ -542,7 +541,7 @@ function ComparisonV3Page() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
       setSelectedListId(null);
-      toast({ title: "Shortlist supprimée" });
+      toast.success("Shortlist supprimée");
     },
   });
 
@@ -554,11 +553,11 @@ function ComparisonV3Page() {
       queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
       setShowAddArtistDialog(false);
       setArtistSearch("");
-      toast({ title: "Artiste ajouté" });
+      toast.success("Artiste ajouté");
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.detail || "Erreur lors de l'ajout";
-      toast({ title: "Erreur", description: msg, variant: "destructive" });
+      toast.error("Erreur", { description: msg });
     },
   });
 
@@ -568,7 +567,7 @@ function ComparisonV3Page() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comparison-list", selectedListId] });
       queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
-      toast({ title: "Artiste retiré" });
+      toast.success("Artiste retiré");
     },
   });
 

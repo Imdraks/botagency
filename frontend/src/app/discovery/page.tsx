@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/toaster";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import {
   ArtistCard,
@@ -228,7 +228,6 @@ function Pagination({
 // ============================================================================
 
 function DiscoveryV3Page() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -268,8 +267,7 @@ function DiscoveryV3Page() {
     mutationFn: ({ query, inputType }: { query: string; inputType: InputType }) =>
       searchArtist(query, inputType),
     onSuccess: (data) => {
-      toast({
-        title: "Recherche lancée",
+      toast.success("Recherche lancée", {
         description: `Job #${data.id} créé pour "${data.input_value}"`,
       });
       // Refetch queue to show new job
@@ -278,16 +276,12 @@ function DiscoveryV3Page() {
     onError: (error: any) => {
       const detail = error?.response?.data?.detail;
       if (detail?.code === "ALREADY_EXISTS") {
-        toast({
-          title: "Artiste existant",
+        toast.error("Artiste existant", {
           description: detail.message,
-          variant: "destructive",
         });
       } else {
-        toast({
-          title: "Erreur",
+        toast.error("Erreur", {
           description: "Une erreur est survenue lors de la recherche",
-          variant: "destructive",
         });
       }
     },
@@ -296,8 +290,7 @@ function DiscoveryV3Page() {
   const refreshMutation = useMutation({
     mutationFn: refreshArtist,
     onSuccess: (data) => {
-      toast({
-        title: "Rafraîchissement lancé",
+      toast.success("Rafraîchissement lancé", {
         description: `Job #${data.id} créé`,
       });
       queryClient.invalidateQueries({ queryKey: ["discovery-queue"] });
@@ -315,8 +308,7 @@ function DiscoveryV3Page() {
 
   const handleAddToComparison = (artistId: number) => {
     // TODO: Open comparison modal or add to shortlist
-    toast({
-      title: "Ajouter à une shortlist",
+    toast.info("Ajouter à une shortlist", {
       description: "Fonctionnalité à venir",
     });
   };
@@ -472,8 +464,7 @@ function DiscoveryV3Page() {
               isLoading={queueQuery.isLoading}
               onRetry={(jobId) => {
                 // TODO: Implement retry
-                toast({
-                  title: "Retry",
+                toast.info("Retry", {
                   description: `Retry job ${jobId}`,
                 });
               }}
