@@ -57,7 +57,7 @@ class AutocompleteResponse(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    input_type: str = Field(..., regex="^(NAME|VIBERATE_URL|SPOTIFY_URL)$")
+    input_type: str = Field(..., pattern="^(NAME|VIBERATE_URL|SPOTIFY_URL)$")
     input_value: str
 
 
