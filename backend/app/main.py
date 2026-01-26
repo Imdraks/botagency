@@ -95,6 +95,11 @@ from app.api.assets import router as unified_assets_router
 # ============================================================================
 from app.api.discovery import router as discovery_router
 from app.api.comparison import router as comparison_router
+
+# ============================================================================
+# ARTISTS V2 - "Google des artistes" search-first system
+# ============================================================================
+from app.api.artists import router as artists_v2_router
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -313,6 +318,11 @@ app.include_router(unified_assets_router, prefix="/api/v1", tags=["Assets"])
 # ============================================================================
 app.include_router(discovery_router, prefix="/api/v1", tags=["Discovery V3"])
 app.include_router(comparison_router, prefix="/api/v1", tags=["Comparison V3"])
+
+# ============================================================================
+# ARTISTS V2 - "Google des artistes" search-first endpoints
+# ============================================================================
+app.include_router(artists_v2_router, prefix="/api/v1/artists", tags=["Artists V2"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])
