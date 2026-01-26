@@ -1,20 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   GitCompare,
   Plus,
   Trash2,
-  Crown,
-  Shield,
-  TrendingUp,
-  DollarSign,
+  MoreHorizontal,
+  Edit,
+  RefreshCw,
+  ChevronDown,
   Star,
-  Sparkles,
-  ArrowRight,
+  Users,
+  TrendingUp,
+  Clock,
+  DollarSign,
   Check,
   X,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +27,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
+import { api } from "@/lib/api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -29,557 +51,809 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/api";
+import Image from "next/image";
 
-// Types
-interface ArtistInput {
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ComparisonList {
   id: number;
-  artist_name: string;
-  spotify_monthly_listeners: string;
-  spotify_followers: string;
-  youtube_subscribers: string;
-  instagram_followers: string;
-  tiktok_followers: string;
-  genre: string;
-  country: string;
+  name: string;
+  artist_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
-interface ComparisonResult {
-  artists: string[];
-  scores: Record<string, number>;
-  tiers: Record<string, string>;
-  trends: Record<string, string>;
-  fees: Record<string, { min: number; max: number; optimal: number }>;
-  best_value: string;
-  highest_potential: string;
-  lowest_risk: string;
+interface ArtistComparisonData {
+  id: number;
+  name: string;
+  image_url?: string;
+  score: number;
+  timing_bucket?: string;
+  timing_label?: string;
+  recommendation?: string;
+  monthly_listeners?: number;
+  followers?: number;
+  velocity?: number;
+  acceleration?: number;
+  data_quality?: string;
+  country?: string;
+  city?: string;
+  genres: string[];
+  drivers: { label: string; value?: string; impact?: number }[];
+  risks: { label: string; value?: string; impact?: number }[];
+  signals: string[];
+  patterns: string[];
+  booking_range?: { min: number; max: number; optimal: number };
+  has_spotify: boolean;
+  has_viberate: boolean;
+  last_enriched_at?: string;
 }
 
-// Helper functions
-const getTierColor = (tier: string) => {
-  const colors: Record<string, string> = {
-    superstar: "bg-gradient-to-r from-yellow-400 to-orange-500",
-    major: "bg-gradient-to-r from-purple-500 to-pink-500",
-    established: "bg-gradient-to-r from-blue-500 to-cyan-500",
-    rising: "bg-gradient-to-r from-green-400 to-emerald-500",
-    emerging: "bg-gradient-to-r from-teal-400 to-cyan-400",
-    underground: "bg-gray-500",
-  };
-  return colors[tier] || "bg-gray-500";
+interface ComparisonListDetail {
+  id: number;
+  name: string;
+  artists: ArtistComparisonData[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface ArtistSearchResult {
+  id: number;
+  name: string;
+  image_url?: string;
+  score: number;
+  monthly_listeners?: number;
+}
+
+// ============================================================================
+// API FUNCTIONS
+// ============================================================================
+
+const fetchLists = async (): Promise<ComparisonList[]> => {
+  const response = await api.get("/comparison/lists");
+  return response.data;
 };
 
-const getTrendIcon = (trend: string) => {
-  if (["explosive", "rapid", "strong"].includes(trend)) {
-    return <TrendingUp className="h-4 w-4 text-green-500" />;
-  } else if (["declining", "falling"].includes(trend)) {
-    return <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />;
+const fetchListDetail = async (listId: number): Promise<ComparisonListDetail> => {
+  const response = await api.get(`/comparison/lists/${listId}`);
+  return response.data;
+};
+
+const createList = async (name: string): Promise<ComparisonList> => {
+  const response = await api.post("/comparison/lists", { name });
+  return response.data;
+};
+
+const deleteList = async (listId: number): Promise<void> => {
+  await api.delete(`/comparison/lists/${listId}`);
+};
+
+const addArtistToList = async (listId: number, artistId: number): Promise<ComparisonList> => {
+  const response = await api.post(`/comparison/lists/${listId}/artists`, { artist_id: artistId });
+  return response.data;
+};
+
+const removeArtistFromList = async (listId: number, artistId: number): Promise<void> => {
+  await api.delete(`/comparison/lists/${listId}/artists/${artistId}`);
+};
+
+const searchArtists = async (query: string): Promise<ArtistSearchResult[]> => {
+  const response = await api.get(`/discovery/artists?search=${encodeURIComponent(query)}&limit=10`);
+  return response.data;
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+const formatNumber = (num?: number): string => {
+  if (!num) return "-";
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+  return num.toString();
+};
+
+const formatCurrency = (num: number): string => {
+  return num.toLocaleString("fr-FR") + "€";
+};
+
+const getScoreColor = (score: number): string => {
+  if (score >= 80) return "text-green-600";
+  if (score >= 60) return "text-blue-600";
+  if (score >= 40) return "text-yellow-600";
+  return "text-gray-600";
+};
+
+const getRecommendationStyle = (rec?: string): string => {
+  switch (rec) {
+    case "SIGN":
+      return "bg-green-100 text-green-800";
+    case "WATCH":
+      return "bg-blue-100 text-blue-800";
+    case "PASS":
+      return "bg-gray-100 text-gray-800";
+    default:
+      return "bg-gray-100 text-gray-800";
   }
-  return <ArrowRight className="h-4 w-4 text-yellow-500" />;
 };
 
-const getTrendLabel = (trend: string) => {
-  const labels: Record<string, string> = {
-    explosive: "🚀 Explosif",
-    rapid: "📈 Rapide",
-    strong: "💪 Fort",
-    moderate: "📊 Modéré",
-    stable: "➡️ Stable",
-    declining: "📉 Déclin",
-    falling: "⬇️ Chute",
-  };
-  return labels[trend] || trend;
+const getTimingStyle = (bucket?: string): string => {
+  switch (bucket) {
+    case "IMMINENT":
+      return "bg-red-100 text-red-800";
+    case "1_3M":
+      return "bg-orange-100 text-orange-800";
+    case "3_6M":
+      return "bg-yellow-100 text-yellow-800";
+    case "6_12M":
+      return "bg-blue-100 text-blue-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
 };
 
-const formatCurrency = (num: number) => {
-  return num.toLocaleString() + "€";
-};
+// ============================================================================
+// COMPONENTS
+// ============================================================================
 
-// Components
-function ArtistInputCard({
-  artist,
-  onUpdate,
-  onRemove,
-  canRemove,
+function ListCard({
+  list,
+  isSelected,
+  onSelect,
+  onDelete,
 }: {
-  artist: ArtistInput;
-  onUpdate: (field: keyof ArtistInput, value: string) => void;
-  onRemove: () => void;
-  canRemove: boolean;
+  list: ComparisonList;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <Card className="relative">
-      {canRemove && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 text-red-500 hover:text-red-600 hover:bg-red-50"
-          onClick={onRemove}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      )}
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Artiste {artist.id}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label>Nom *</Label>
-          <Input
-            value={artist.artist_name}
-            onChange={(e) => onUpdate("artist_name", e.target.value)}
-            placeholder="Ex: Aya Nakamura"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+    <Card
+      className={`cursor-pointer transition-all hover:shadow-md ${
+        isSelected ? "ring-2 ring-primary" : ""
+      }`}
+      onClick={onSelect}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
           <div>
-            <Label className="text-xs">Genre</Label>
-            <Select
-              value={artist.genre}
-              onValueChange={(v) => onUpdate("genre", v)}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pop">Pop</SelectItem>
-                <SelectItem value="hip-hop">Hip-Hop</SelectItem>
-                <SelectItem value="rap">Rap</SelectItem>
-                <SelectItem value="electronic">Electronic</SelectItem>
-                <SelectItem value="r&b">R&B</SelectItem>
-                <SelectItem value="rock">Rock</SelectItem>
-              </SelectContent>
-            </Select>
+            <h3 className="font-medium">{list.name}</h3>
+            <p className="text-sm text-muted-foreground">
+              {list.artist_count} artiste{list.artist_count > 1 ? "s" : ""}
+            </p>
           </div>
-          <div>
-            <Label className="text-xs">Pays</Label>
-            <Select
-              value={artist.country}
-              onValueChange={(v) => onUpdate("country", v)}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="FR">France</SelectItem>
-                <SelectItem value="BE">Belgique</SelectItem>
-                <SelectItem value="CH">Suisse</SelectItem>
-                <SelectItem value="US">USA</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div>
-          <Label className="text-xs">Auditeurs Spotify</Label>
-          <Input
-            type="number"
-            value={artist.spotify_monthly_listeners}
-            onChange={(e) => onUpdate("spotify_monthly_listeners", e.target.value)}
-            placeholder="500000"
-            className="h-9"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Followers Spotify</Label>
-            <Input
-              type="number"
-              value={artist.spotify_followers}
-              onChange={(e) => onUpdate("spotify_followers", e.target.value)}
-              placeholder="100000"
-              className="h-9"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">YouTube</Label>
-            <Input
-              type="number"
-              value={artist.youtube_subscribers}
-              onChange={(e) => onUpdate("youtube_subscribers", e.target.value)}
-              placeholder="200000"
-              className="h-9"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Instagram</Label>
-            <Input
-              type="number"
-              value={artist.instagram_followers}
-              onChange={(e) => onUpdate("instagram_followers", e.target.value)}
-              placeholder="150000"
-              className="h-9"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">TikTok</Label>
-            <Input
-              type="number"
-              value={artist.tiktok_followers}
-              onChange={(e) => onUpdate("tiktok_followers", e.target.value)}
-              placeholder="300000"
-              className="h-9"
-            />
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function ComparisonResultCard({ result }: { result: ComparisonResult }) {
-  // Find max score for relative sizing
-  const maxScore = Math.max(...Object.values(result.scores));
+function ComparisonTable({ artists }: { artists: ArtistComparisonData[] }) {
+  if (artists.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <GitCompare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium mb-2">Aucun artiste dans cette shortlist</h3>
+        <p className="text-muted-foreground">
+          Ajoutez des artistes depuis la page Discovery pour les comparer.
+        </p>
+      </div>
+    );
+  }
+
+  // Find best values for highlighting
+  const maxScore = Math.max(...artists.map((a) => a.score));
+  const maxListeners = Math.max(...artists.map((a) => a.monthly_listeners || 0));
+  const maxVelocity = Math.max(...artists.map((a) => a.velocity || 0));
+
+  // Comparison rows configuration
+  const rows = [
+    {
+      label: "Score Discovery",
+      icon: Star,
+      getValue: (a: ArtistComparisonData) => a.score,
+      format: (v: number) => v.toString(),
+      isBest: (v: number) => v === maxScore,
+      color: (v: number) => getScoreColor(v),
+    },
+    {
+      label: "Recommandation",
+      icon: Check,
+      getValue: (a: ArtistComparisonData) => a.recommendation || "-",
+      format: (v: string) => v === "SIGN" ? "🎯 À signer" : v === "WATCH" ? "👀 À suivre" : v === "PASS" ? "⏸️ Passer" : v,
+      isBest: (v: string) => v === "SIGN",
+      badgeStyle: (a: ArtistComparisonData) => getRecommendationStyle(a.recommendation),
+    },
+    {
+      label: "Timing",
+      icon: Clock,
+      getValue: (a: ArtistComparisonData) => a.timing_label || a.timing_bucket || "-",
+      format: (v: string) => v,
+      isBest: (v: string, a: ArtistComparisonData) => a.timing_bucket === "IMMINENT",
+      badgeStyle: (a: ArtistComparisonData) => getTimingStyle(a.timing_bucket),
+    },
+    {
+      label: "Auditeurs mensuels",
+      icon: Users,
+      getValue: (a: ArtistComparisonData) => a.monthly_listeners || 0,
+      format: (v: number) => formatNumber(v),
+      isBest: (v: number) => v === maxListeners && v > 0,
+    },
+    {
+      label: "Croissance",
+      icon: TrendingUp,
+      getValue: (a: ArtistComparisonData) => a.velocity || 0,
+      format: (v: number) => v > 0 ? `+${(v * 100).toFixed(0)}%/mois` : "-",
+      isBest: (v: number) => v === maxVelocity && v > 0,
+      color: (v: number) => v > 0 ? "text-green-600" : "",
+    },
+    {
+      label: "Accélération",
+      icon: TrendingUp,
+      getValue: (a: ArtistComparisonData) => a.acceleration || 0,
+      format: (v: number) => {
+        if (v === 0) return "-";
+        return v > 0 ? `+${(v * 100).toFixed(0)}%` : `${(v * 100).toFixed(0)}%`;
+      },
+      icon2: (v: number) => v > 0 ? ArrowUpRight : v < 0 ? ArrowDownRight : Minus,
+      color: (v: number) => v > 0 ? "text-green-600" : v < 0 ? "text-red-600" : "",
+    },
+    {
+      label: "Pays",
+      icon: null,
+      getValue: (a: ArtistComparisonData) => a.country || "-",
+      format: (v: string) => v,
+    },
+    {
+      label: "Genres",
+      icon: null,
+      getValue: (a: ArtistComparisonData) => a.genres?.join(", ") || "-",
+      format: (v: string) => v,
+    },
+    {
+      label: "Cachet estimé",
+      icon: DollarSign,
+      getValue: (a: ArtistComparisonData) => a.booking_range?.optimal || 0,
+      format: (v: number, a: ArtistComparisonData) => {
+        if (!a.booking_range) return "-";
+        return `${formatCurrency(a.booking_range.min)} - ${formatCurrency(a.booking_range.max)}`;
+      },
+    },
+  ];
 
   return (
-    <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4">
-      {/* Winner Badges */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
-          <CardContent className="pt-6 text-center">
-            <DollarSign className="h-10 w-10 text-green-600 mx-auto mb-2" />
-            <p className="text-sm text-green-700 dark:text-green-300">Meilleur rapport qualité/prix</p>
-            <p className="text-xl font-bold text-green-800 dark:text-green-200">{result.best_value}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-          <CardContent className="pt-6 text-center">
-            <TrendingUp className="h-10 w-10 text-purple-600 mx-auto mb-2" />
-            <p className="text-sm text-purple-700 dark:text-purple-300">Plus fort potentiel</p>
-            <p className="text-xl font-bold text-purple-800 dark:text-purple-200">{result.highest_potential}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-6 text-center">
-            <Shield className="h-10 w-10 text-blue-600 mx-auto mb-2" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">Risque le plus faible</p>
-            <p className="text-xl font-bold text-blue-800 dark:text-blue-200">{result.lowest_risk}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Comparison Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Comparaison détaillée</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4">Artiste</th>
-                  <th className="text-center py-3 px-4">Score</th>
-                  <th className="text-center py-3 px-4">Tier</th>
-                  <th className="text-center py-3 px-4">Tendance</th>
-                  <th className="text-right py-3 px-4">Cachet estimé</th>
-                  <th className="text-center py-3 px-4">Badges</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.artists.map((artist) => (
-                  <tr key={artist} className="border-b hover:bg-muted/50">
-                    <td className="py-4 px-4">
-                      <span className="font-medium">{artist}</span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-24 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                            style={{ width: `${(result.scores[artist] / maxScore) * 100}%` }}
-                          />
-                        </div>
-                        <span className="font-bold text-sm">{result.scores[artist].toFixed(0)}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <Badge className={`${getTierColor(result.tiers[artist])} text-white`}>
-                        {result.tiers[artist].toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {getTrendIcon(result.trends[artist])}
-                        <span className="text-sm">{getTrendLabel(result.trends[artist])}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="text-sm">
-                        <span className="font-medium">
-                          {formatCurrency(result.fees[artist].optimal)}
-                        </span>
-                        <span className="text-muted-foreground block text-xs">
-                          ({formatCurrency(result.fees[artist].min)} - {formatCurrency(result.fees[artist].max)})
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex justify-center gap-1">
-                        {artist === result.best_value && (
-                          <Badge variant="outline" className="text-green-600 border-green-300">
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            Value
-                          </Badge>
-                        )}
-                        {artist === result.highest_potential && (
-                          <Badge variant="outline" className="text-purple-600 border-purple-300">
-                            <Star className="h-3 w-3 mr-1" />
-                            Potentiel
-                          </Badge>
-                        )}
-                        {artist === result.lowest_risk && (
-                          <Badge variant="outline" className="text-blue-600 border-blue-300">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Safe
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Visual Score Comparison */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Scores comparés</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {result.artists
-              .sort((a, b) => result.scores[b] - result.scores[a])
-              .map((artist, index) => (
-                <div key={artist} className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">{artist}</span>
-                      <span className="font-bold">{result.scores[artist].toFixed(0)}/100</span>
-                    </div>
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ${
-                          index === 0
-                            ? "bg-gradient-to-r from-yellow-400 to-orange-500"
-                            : index === 1
-                            ? "bg-gradient-to-r from-gray-300 to-gray-400"
-                            : "bg-gradient-to-r from-orange-300 to-orange-400"
-                        }`}
-                        style={{ width: `${result.scores[artist]}%` }}
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="text-left p-3 bg-gray-50 dark:bg-gray-800 font-medium text-sm w-48">
+              Critère
+            </th>
+            {artists.map((artist) => (
+              <th key={artist.id} className="p-3 bg-gray-50 dark:bg-gray-800 text-center min-w-[200px]">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                    {artist.image_url ? (
+                      <Image
+                        src={artist.image_url}
+                        alt={artist.name}
+                        width={64}
+                        height={64}
+                        className="object-cover w-full h-full"
                       />
-                    </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Users className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
                   </div>
-                  {index === 0 && <Crown className="h-6 w-6 text-yellow-500" />}
+                  <span className="font-medium">{artist.name}</span>
                 </div>
-              ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Fee Comparison */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Comparaison des cachets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {result.artists.map((artist) => (
-              <div
-                key={artist}
-                className={`rounded-lg p-4 ${
-                  artist === result.best_value
-                    ? "bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 border-2 border-green-300 dark:border-green-700"
-                    : "bg-muted"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{artist}</span>
-                  {artist === result.best_value && (
-                    <Badge className="bg-green-500 text-white">Best Value</Badge>
-                  )}
-                </div>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(result.fees[artist].optimal)}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Range: {formatCurrency(result.fees[artist].min)} - {formatCurrency(result.fees[artist].max)}
-                </div>
-              </div>
+              </th>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={idx} className="border-t">
+              <td className="p-3 font-medium text-sm flex items-center gap-2">
+                {row.icon && <row.icon className="h-4 w-4 text-muted-foreground" />}
+                {row.label}
+              </td>
+              {artists.map((artist) => {
+                const value = row.getValue(artist);
+                const formatted = row.format(value as never, artist);
+                const isBest = row.isBest?.(value as never, artist);
+                const colorClass = row.color?.(value as never) || "";
+                const badgeStyle = row.badgeStyle?.(artist);
+
+                return (
+                  <td
+                    key={artist.id}
+                    className={`p-3 text-center ${isBest ? "bg-green-50 dark:bg-green-900/20" : ""}`}
+                  >
+                    {badgeStyle ? (
+                      <Badge className={badgeStyle}>{formatted}</Badge>
+                    ) : (
+                      <span className={`font-medium ${colorClass}`}>
+                        {formatted}
+                        {isBest && <span className="ml-1 text-green-500">✓</span>}
+                      </span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-// Main Component
-function ArtistComparisonContent() {
-  const [artists, setArtists] = useState<ArtistInput[]>([
-    {
-      id: 1,
-      artist_name: "",
-      spotify_monthly_listeners: "",
-      spotify_followers: "",
-      youtube_subscribers: "",
-      instagram_followers: "",
-      tiktok_followers: "",
-      genre: "pop",
-      country: "FR",
-    },
-    {
-      id: 2,
-      artist_name: "",
-      spotify_monthly_listeners: "",
-      spotify_followers: "",
-      youtube_subscribers: "",
-      instagram_followers: "",
-      tiktok_followers: "",
-      genre: "pop",
-      country: "FR",
-    },
-  ]);
+function DriversRisksComparison({ artists }: { artists: ArtistComparisonData[] }) {
+  return (
+    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${artists.length}, 1fr)` }}>
+      {artists.map((artist) => (
+        <Card key={artist.id}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{artist.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Drivers */}
+            <div>
+              <h4 className="text-sm font-medium text-green-600 mb-2 flex items-center gap-1">
+                <ArrowUpRight className="h-4 w-4" />
+                Points forts
+              </h4>
+              {artist.drivers.length > 0 ? (
+                <ul className="space-y-1">
+                  {artist.drivers.slice(0, 3).map((d, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <Check className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
+                      <span>{d.label}</span>
+                      {d.value && <span className="text-green-600 ml-auto">{d.value}</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun</p>
+              )}
+            </div>
 
-  const [result, setResult] = useState<ComparisonResult | null>(null);
+            {/* Risks */}
+            <div>
+              <h4 className="text-sm font-medium text-red-600 mb-2 flex items-center gap-1">
+                <ArrowDownRight className="h-4 w-4" />
+                Points de vigilance
+              </h4>
+              {artist.risks.length > 0 ? (
+                <ul className="space-y-1">
+                  {artist.risks.slice(0, 3).map((r, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <X className="h-3 w-3 text-red-500 mt-1 flex-shrink-0" />
+                      <span>{r.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun</p>
+              )}
+            </div>
 
-  const addArtist = () => {
-    if (artists.length >= 5) return;
-    setArtists([
-      ...artists,
-      {
-        id: Math.max(...artists.map((a) => a.id)) + 1,
-        artist_name: "",
-        spotify_monthly_listeners: "",
-        spotify_followers: "",
-        youtube_subscribers: "",
-        instagram_followers: "",
-        tiktok_followers: "",
-        genre: "pop",
-        country: "FR",
-      },
-    ]);
-  };
+            {/* Signals */}
+            {artist.signals.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-blue-600 mb-2">Signaux</h4>
+                <div className="flex flex-wrap gap-1">
+                  {artist.signals.map((s, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
-  const removeArtist = (id: number) => {
-    setArtists(artists.filter((a) => a.id !== id));
-  };
+// ============================================================================
+// MAIN PAGE
+// ============================================================================
 
-  const updateArtist = (id: number, field: keyof ArtistInput, value: string) => {
-    setArtists(artists.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
-  };
+function ComparisonV3Page() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const compareMutation = useMutation({
-    mutationFn: async () => {
-      const artistsData = artists
-        .filter((a) => a.artist_name.trim())
-        .map((a) => ({
-          artist_name: a.artist_name,
-          spotify_monthly_listeners: parseInt(a.spotify_monthly_listeners) || 0,
-          spotify_followers: parseInt(a.spotify_followers) || 0,
-          youtube_subscribers: parseInt(a.youtube_subscribers) || 0,
-          instagram_followers: parseInt(a.instagram_followers) || 0,
-          tiktok_followers: parseInt(a.tiktok_followers) || 0,
-          genre: a.genre,
-          country: a.country,
-        }));
+  // State
+  const [selectedListId, setSelectedListId] = useState<number | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showAddArtistDialog, setShowAddArtistDialog] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [artistSearch, setArtistSearch] = useState("");
 
-      const response = await api.post("/ai/compare", { artists: artistsData });
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setResult(data);
+  // Queries
+  const listsQuery = useQuery({
+    queryKey: ["comparison-lists"],
+    queryFn: fetchLists,
+    staleTime: 60 * 1000,
+  });
+
+  const listDetailQuery = useQuery({
+    queryKey: ["comparison-list", selectedListId],
+    queryFn: () => fetchListDetail(selectedListId!),
+    enabled: !!selectedListId,
+    staleTime: 30 * 1000,
+  });
+
+  const artistSearchQuery = useQuery({
+    queryKey: ["artist-search", artistSearch],
+    queryFn: () => searchArtists(artistSearch),
+    enabled: artistSearch.length >= 2,
+    staleTime: 10 * 1000,
+  });
+
+  // Auto-select first list
+  useEffect(() => {
+    if (listsQuery.data && listsQuery.data.length > 0 && !selectedListId) {
+      setSelectedListId(listsQuery.data[0].id);
+    }
+  }, [listsQuery.data, selectedListId]);
+
+  // Mutations
+  const createListMutation = useMutation({
+    mutationFn: createList,
+    onSuccess: (newList) => {
+      queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
+      setSelectedListId(newList.id);
+      setShowCreateDialog(false);
+      setNewListName("");
+      toast({ title: "Shortlist créée", description: `"${newList.name}" a été créée` });
     },
   });
 
-  const validArtists = artists.filter((a) => a.artist_name.trim()).length;
+  const deleteListMutation = useMutation({
+    mutationFn: deleteList,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
+      setSelectedListId(null);
+      toast({ title: "Shortlist supprimée" });
+    },
+  });
+
+  const addArtistMutation = useMutation({
+    mutationFn: ({ listId, artistId }: { listId: number; artistId: number }) =>
+      addArtistToList(listId, artistId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comparison-list", selectedListId] });
+      queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
+      setShowAddArtistDialog(false);
+      setArtistSearch("");
+      toast({ title: "Artiste ajouté" });
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.detail || "Erreur lors de l'ajout";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+    },
+  });
+
+  const removeArtistMutation = useMutation({
+    mutationFn: ({ listId, artistId }: { listId: number; artistId: number }) =>
+      removeArtistFromList(listId, artistId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comparison-list", selectedListId] });
+      queryClient.invalidateQueries({ queryKey: ["comparison-lists"] });
+      toast({ title: "Artiste retiré" });
+    },
+  });
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500">
-          <GitCompare className="h-8 w-8 text-white" />
-        </div>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-            Comparaison Artistes
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <GitCompare className="h-8 w-8 text-blue-500" />
+            Comparaison
           </h1>
-          <p className="text-muted-foreground">
-            Comparez jusqu'à 5 artistes côte à côte pour prendre la meilleure décision
+          <p className="text-muted-foreground mt-1">
+            Créez des shortlists et comparez les artistes côte à côte
           </p>
         </div>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nouvelle shortlist
+        </Button>
       </div>
 
-      {/* Artist Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {artists.map((artist) => (
-          <ArtistInputCard
-            key={artist.id}
-            artist={artist}
-            onUpdate={(field, value) => updateArtist(artist.id, field, value)}
-            onRemove={() => removeArtist(artist.id)}
-            canRemove={artists.length > 2}
-          />
-        ))}
+      {/* Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Sidebar: Lists */}
+        <div className="space-y-4">
+          <h2 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+            Mes shortlists
+          </h2>
 
-        {/* Add Artist Button */}
-        {artists.length < 5 && (
-          <Card className="border-dashed border-2 flex items-center justify-center min-h-[300px] cursor-pointer hover:border-primary transition-colors"
-            onClick={addArtist}
-          >
-            <div className="text-center text-muted-foreground">
-              <Plus className="h-10 w-10 mx-auto mb-2" />
-              <p>Ajouter un artiste</p>
-              <p className="text-xs">(max 5)</p>
+          {listsQuery.isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-20" />
+              ))}
             </div>
-          </Card>
-        )}
+          ) : listsQuery.data?.length === 0 ? (
+            <Card className="p-4 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                Aucune shortlist pour le moment
+              </p>
+              <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Créer une shortlist
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {listsQuery.data?.map((list) => (
+                <ListCard
+                  key={list.id}
+                  list={list}
+                  isSelected={list.id === selectedListId}
+                  onSelect={() => setSelectedListId(list.id)}
+                  onDelete={() => deleteListMutation.mutate(list.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Main: Comparison */}
+        <div className="lg:col-span-3 space-y-6">
+          {!selectedListId ? (
+            <Card className="p-12 text-center">
+              <GitCompare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Sélectionnez une shortlist</h3>
+              <p className="text-muted-foreground">
+                Choisissez ou créez une shortlist pour comparer des artistes
+              </p>
+            </Card>
+          ) : listDetailQuery.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : listDetailQuery.data ? (
+            <>
+              {/* List header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">{listDetailQuery.data.name}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {listDetailQuery.data.artists.length} artiste
+                    {listDetailQuery.data.artists.length !== 1 ? "s" : ""} • Max 4
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => listDetailQuery.refetch()}
+                    disabled={listDetailQuery.isRefetching}
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 mr-1 ${
+                        listDetailQuery.isRefetching ? "animate-spin" : ""
+                      }`}
+                    />
+                    Actualiser
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowAddArtistDialog(true)}
+                    disabled={listDetailQuery.data.artists.length >= 4}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter un artiste
+                  </Button>
+                </div>
+              </div>
+
+              {/* Artists chips for removal */}
+              {listDetailQuery.data.artists.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {listDetailQuery.data.artists.map((artist) => (
+                    <Badge
+                      key={artist.id}
+                      variant="secondary"
+                      className="py-1 px-3 flex items-center gap-2"
+                    >
+                      {artist.name}
+                      <button
+                        onClick={() =>
+                          removeArtistMutation.mutate({
+                            listId: selectedListId,
+                            artistId: artist.id,
+                          })
+                        }
+                        className="hover:text-red-500 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Comparison table */}
+              <Card>
+                <CardContent className="p-0">
+                  <ComparisonTable artists={listDetailQuery.data.artists} />
+                </CardContent>
+              </Card>
+
+              {/* Drivers/Risks comparison */}
+              {listDetailQuery.data.artists.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">Analyse qualitative</h3>
+                  <DriversRisksComparison artists={listDetailQuery.data.artists} />
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
       </div>
 
-      {/* Compare Button */}
-      <Button
-        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-        size="lg"
-        onClick={() => compareMutation.mutate()}
-        disabled={validArtists < 2 || compareMutation.isPending}
-      >
-        {compareMutation.isPending ? (
-          <>
-            <Sparkles className="mr-2 h-5 w-5 animate-spin" />
-            Analyse en cours...
-          </>
-        ) : (
-          <>
-            <GitCompare className="mr-2 h-5 w-5" />
-            Comparer {validArtists} artistes
-          </>
-        )}
-      </Button>
+      {/* Create List Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Créer une shortlist</DialogTitle>
+            <DialogDescription>
+              Donnez un nom à votre nouvelle shortlist de comparaison
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="list-name">Nom de la shortlist</Label>
+            <Input
+              id="list-name"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              placeholder="Ex: Candidats Festival 2025"
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => createListMutation.mutate(newListName)}
+              disabled={!newListName.trim() || createListMutation.isPending}
+            >
+              Créer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {validArtists < 2 && (
-        <p className="text-center text-sm text-muted-foreground">
-          Remplissez au moins 2 artistes pour lancer la comparaison
-        </p>
-      )}
+      {/* Add Artist Dialog */}
+      <Dialog open={showAddArtistDialog} onOpenChange={setShowAddArtistDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter un artiste</DialogTitle>
+            <DialogDescription>
+              Recherchez un artiste de votre base Discovery
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="artist-search">Rechercher</Label>
+              <Input
+                id="artist-search"
+                value={artistSearch}
+                onChange={(e) => setArtistSearch(e.target.value)}
+                placeholder="Nom de l'artiste..."
+                className="mt-2"
+              />
+            </div>
 
-      {/* Results */}
-      {result && <ComparisonResultCard result={result} />}
+            {artistSearchQuery.isLoading && (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12" />
+                ))}
+              </div>
+            )}
+
+            {artistSearchQuery.data && artistSearchQuery.data.length > 0 && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {artistSearchQuery.data.map((artist) => (
+                  <div
+                    key={artist.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    onClick={() =>
+                      addArtistMutation.mutate({
+                        listId: selectedListId!,
+                        artistId: artist.id,
+                      })
+                    }
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                      {artist.image_url ? (
+                        <Image
+                          src={artist.image_url}
+                          alt={artist.name}
+                          width={40}
+                          height={40}
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Users className="h-4 w-4 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{artist.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Score: {artist.score} • {formatNumber(artist.monthly_listeners)} auditeurs
+                      </p>
+                    </div>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {artistSearchQuery.data && artistSearchQuery.data.length === 0 && artistSearch.length >= 2 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Aucun artiste trouvé. Ajoutez-le d'abord via Discovery.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddArtistDialog(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-export default function ArtistComparisonPage() {
+// ============================================================================
+// EXPORT
+// ============================================================================
+
+export default function ComparisonPage() {
   return (
     <ProtectedRoute>
       <AppLayout>
-        <ArtistComparisonContent />
+        <ComparisonV3Page />
       </AppLayout>
     </ProtectedRoute>
   );

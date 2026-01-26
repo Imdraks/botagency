@@ -123,3 +123,24 @@ from .drive_folder_map import (
     DriveFolderMap,
     DriveFolderType,
 )
+
+# Discovery V3 - Artist discovery and enrichment
+from .discovery import (
+    DiscoveryArtist,
+    DiscoverySnapshot,
+    DiscoveryComputedMetrics,
+    DiscoveryCandidate,
+    DiscoveryComparisonList,
+    DiscoveryComparisonItem,
+    DiscoveryEnrichmentJob,
+    DataQuality,
+    TimingBucket,
+    Recommendation,
+    CandidateType,
+    SnapshotSource,
+    SnapshotStatus,
+    JobStatus,
+    JobStep,
+    InputType,
+)
+

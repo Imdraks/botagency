@@ -89,6 +89,12 @@ from app.api.billing import router as billing_router
 # UNIFIED ASSETS API - Single source of truth for all assets
 # ============================================================================
 from app.api.assets import router as unified_assets_router
+
+# ============================================================================
+# DISCOVERY V3 - Artist discovery and comparison
+# ============================================================================
+from app.api.discovery import router as discovery_router
+from app.api.comparison import router as comparison_router
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -301,6 +307,12 @@ app.include_router(billing_router, prefix="/api/v1/billing", tags=["Billing"])
 # UNIFIED ASSETS API - Single source of truth
 # ============================================================================
 app.include_router(unified_assets_router, prefix="/api/v1", tags=["Assets"])
+
+# ============================================================================
+# DISCOVERY V3 - Artist discovery feed, search, comparison
+# ============================================================================
+app.include_router(discovery_router, prefix="/api/v1", tags=["Discovery V3"])
+app.include_router(comparison_router, prefix="/api/v1", tags=["Comparison V3"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])
