@@ -1048,26 +1048,29 @@ function ArtistHistoryContent() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 text-white">
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-3 flex items-center justify-center gap-3"><Music className="h-10 w-10" />Artistes</h1>
-            <p className="text-purple-200 text-lg max-w-2xl mx-auto">Recherchez, analysez et comparez les artistes comme sur Google.<br />Nom, URL Spotify ou Viberate.</p>
+      {/* Header */}
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <Music className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Artistes</h1>
+              <p className="text-muted-foreground text-sm">Recherchez et analysez des artistes</p>
+            </div>
           </div>
           
-          <GoogleSearchBar onSearch={handleSearch} isLoading={isSearching} />
-
-          <div className="flex items-center justify-center gap-4 mt-6">
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => setBatchDialogOpen(true)}>
-              <Users className="h-4 w-4 mr-2" />Analyse Multiple
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setBatchDialogOpen(true)}>
+            <Users className="h-4 w-4 mr-2" />Analyse Multiple
+          </Button>
         </div>
+        
+        <GoogleSearchBar onSearch={handleSearch} isLoading={isSearching} />
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left: Stats + Jobs */}
           <div className="lg:col-span-1 space-y-6">

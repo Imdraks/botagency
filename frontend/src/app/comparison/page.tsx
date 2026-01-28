@@ -592,51 +592,24 @@ function ComparisonV3Page() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 p-8 text-white shadow-xl">
-        <div className="absolute inset-0 bg-grid-white/10" />
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
-                <GitCompare className="h-8 w-8" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Comparaison</h1>
-                <p className="text-white/80 text-sm">Comparez jusqu'à 4 artistes côte à côte</p>
-              </div>
-            </div>
-            
-            <Button 
-              onClick={() => setShowCreateDialog(true)}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle shortlist
-            </Button>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+            <GitCompare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
-          
-          <p className="text-white/90 max-w-xl mt-4">
-            Créez des shortlists pour comparer les artistes sur tous les critères : score, timing, croissance, cachet et bien plus.
-          </p>
-          
-          {/* Quick Stats */}
-          <div className="flex gap-6 mt-6">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-white/60" />
-              <span className="text-white/80">{listsQuery.data?.length || 0} shortlists</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-white/60" />
-              <span className="text-white/80">
-                {listsQuery.data?.reduce((acc, l) => acc + l.artist_count, 0) || 0} artistes total
-              </span>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold">Comparaison</h1>
+            <p className="text-muted-foreground text-sm">
+              {listsQuery.data?.length || 0} shortlists · {listsQuery.data?.reduce((acc, l) => acc + l.artist_count, 0) || 0} artistes
+            </p>
           </div>
         </div>
+        
+        <Button onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Nouvelle shortlist
+        </Button>
       </div>
 
       {/* Layout */}

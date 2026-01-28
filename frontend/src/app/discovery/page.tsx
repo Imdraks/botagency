@@ -393,45 +393,34 @@ function DiscoveryV3Page() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 text-white shadow-xl">
-        <div className="absolute inset-0 bg-grid-white/10" />
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+            <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Discovery</h1>
+            <p className="text-muted-foreground text-sm">Feed intelligent d'artistes analysés</p>
+          </div>
+        </div>
         
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
-              <Sparkles className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Discovery</h1>
-              <p className="text-white/80 text-sm">Feed intelligent d'artistes analysés</p>
-            </div>
-          </div>
-          
-          <p className="text-white/90 max-w-xl mb-6">
-            Découvrez les artistes prometteurs grâce à notre analyse automatique. 
-            Filtrez par potentiel, tendance et budget pour trouver les talents qui correspondent à vos critères.
-          </p>
-
-          {/* Quick Filter Chips */}
-          <div className="flex flex-wrap gap-2">
-            {QUICK_FILTERS.map((qf) => (
-              <button
-                key={qf.id}
-                onClick={() => applyQuickFilter(qf)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  activeQuickFilter === qf.id
-                    ? "bg-white text-purple-700 shadow-lg"
-                    : "bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm"
-                }`}
-              >
-                {qf.icon}
-                {qf.label}
-              </button>
-            ))}
-          </div>
+        {/* Quick Filter Chips */}
+        <div className="flex flex-wrap gap-2">
+          {QUICK_FILTERS.map((qf) => (
+            <button
+              key={qf.id}
+              onClick={() => applyQuickFilter(qf)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                activeQuickFilter === qf.id
+                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700"
+                  : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700"
+              }`}
+            >
+              {qf.icon}
+              {qf.label}
+            </button>
+          ))}
         </div>
       </div>
 
