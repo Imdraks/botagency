@@ -181,55 +181,21 @@ async def get_discovery_feed(
     """
     offset = (page - 1) * limit
     
-    # Subquery to get latest metrics per artist
-    latest_metrics_subq = db.query(
-        DiscoveryComputedMetrics.artist_id,
-        func.max(DiscoveryComputedMetrics.computed_at).label('max_computed_at')
-    ).group_by(DiscoveryComputedMetrics.artist_id).subquery()
-    
-    # Base query - join with artist and metrics
+    # Base query - join with artist only (metrics fetched in loop for latest)
     query = db.query(
         DiscoveryCandidate,
         DiscoveryArtist,
-        DiscoveryComputedMetrics,
     ).join(
         DiscoveryArtist,
         DiscoveryCandidate.artist_id == DiscoveryArtist.id
-    ).outerjoin(
-        DiscoveryComputedMetrics,
-        and_(
-            DiscoveryComputedMetrics.artist_id == DiscoveryArtist.id,
-            DiscoveryComputedMetrics.computed_at == latest_metrics_subq.c.max_computed_at
-        )
-    ).outerjoin(
-        latest_metrics_subq,
-        latest_metrics_subq.c.artist_id == DiscoveryArtist.id
     ).filter(
         DiscoveryCandidate.workspace_id == workspace_id,
         DiscoveryCandidate.candidate_type == feed_type.value,
         DiscoveryCandidate.ttl_expires_at > datetime.utcnow(),
     )
     
-    # Apply filters
-    if timing:
-        timing_list = [t.strip().upper() for t in timing.split(",")]
-        query = query.filter(DiscoveryComputedMetrics.timing_bucket.in_(timing_list))
-    
-    if score_min is not None:
-        query = query.filter(DiscoveryComputedMetrics.score >= score_min)
-    
-    if score_max is not None:
-        query = query.filter(DiscoveryComputedMetrics.score <= score_max)
-    
-    if listeners_min is not None:
-        query = query.filter(DiscoveryComputedMetrics.monthly_listeners >= listeners_min)
-    
-    if listeners_max is not None:
-        query = query.filter(DiscoveryComputedMetrics.monthly_listeners <= listeners_max)
-    
-    if recommendation:
-        rec_list = [r.strip().upper() for r in recommendation.split(",")]
-        query = query.filter(DiscoveryComputedMetrics.recommendation.in_(rec_list))
+    # Note: Filtering by metrics fields disabled for now - fetch metrics in loop
+    # TODO: Reimplement with proper subquery join for filtering
     
     # Get total count
     total = query.count()
@@ -243,7 +209,30 @@ async def get_discovery_feed(
     artists = []
     stale_threshold = datetime.utcnow() - timedelta(hours=24)
     
-    for candidate, artist, metrics in results:
+    for candidate, artist in results:
+        # Get latest metrics for this artist
+        metrics = db.query(DiscoveryComputedMetrics).filter(
+            DiscoveryComputedMetrics.artist_id == artist.id
+        ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
+        
+        # Apply filters in memory (if any were specified)
+        if timing:
+            timing_list = [t.strip().upper() for t in timing.split(",")]
+            if not metrics or metrics.timing_bucket not in timing_list:
+                continue
+        if score_min is not None and (not metrics or metrics.score < score_min):
+            continue
+        if score_max is not None and (not metrics or metrics.score > score_max):
+            continue
+        if listeners_min is not None and (not metrics or not metrics.monthly_listeners or metrics.monthly_listeners < listeners_min):
+            continue
+        if listeners_max is not None and (not metrics or not metrics.monthly_listeners or metrics.monthly_listeners > listeners_max):
+            continue
+        if recommendation:
+            rec_list = [r.strip().upper() for r in recommendation.split(",")]
+            if not metrics or metrics.recommendation not in rec_list:
+                continue
+        
         is_stale = artist.last_enriched_at and artist.last_enriched_at < stale_threshold
         
         # Get timing label
@@ -652,22 +641,7 @@ async def list_all_artists(
     """
     offset = (page - 1) * limit
     
-    # Subquery to get latest metrics per artist
-    latest_metrics_subq = db.query(
-        DiscoveryComputedMetrics.artist_id,
-        func.max(DiscoveryComputedMetrics.computed_at).label('max_computed_at')
-    ).group_by(DiscoveryComputedMetrics.artist_id).subquery()
-    
-    query = db.query(DiscoveryArtist).outerjoin(
-        latest_metrics_subq,
-        latest_metrics_subq.c.artist_id == DiscoveryArtist.id
-    ).outerjoin(
-        DiscoveryComputedMetrics,
-        and_(
-            DiscoveryComputedMetrics.artist_id == DiscoveryArtist.id,
-            DiscoveryComputedMetrics.computed_at == latest_metrics_subq.c.max_computed_at
-        )
-    ).filter(
+    query = db.query(DiscoveryArtist).filter(
         DiscoveryArtist.workspace_id == workspace_id,
         DiscoveryArtist.is_deleted == False,
     )
@@ -677,7 +651,7 @@ async def list_all_artists(
         query = query.filter(DiscoveryArtist.normalized_name.ilike(search_pattern))
     
     results = query.order_by(
-        desc(DiscoveryComputedMetrics.score)
+        DiscoveryArtist.name
     ).offset(offset).limit(limit).all()
     
     artists = []
