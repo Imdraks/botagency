@@ -96,12 +96,12 @@ class SearchRequest(BaseModel):
 
 
 class JobResponse(BaseModel):
-    id: int
+    id: str  # UUID as string
     artist_name: Optional[str] = None
     input_type: str
     input_value: str
     status: str
-    current_step: str
+    current_step: Optional[str] = None
     progress: int
     error_code: Optional[str] = None
     error_message: Optional[str] = None
@@ -324,7 +324,7 @@ async def search_artist(
     
     if running_job:
         return JobResponse(
-            id=running_job.id,
+            id=str(running_job.id),
             artist_name=running_job.artist.name if running_job.artist else None,
             input_type=running_job.input_type,
             input_value=running_job.input_value,
@@ -352,7 +352,7 @@ async def search_artist(
     run_enrichment_pipeline.delay(job.id)
     
     return JobResponse(
-        id=job.id,
+        id=str(job.id),
         input_type=job.input_type,
         input_value=job.input_value,
         status=job.status,
@@ -390,7 +390,7 @@ async def refresh_artist(
     
     if running_job:
         return JobResponse(
-            id=running_job.id,
+            id=str(running_job.id),
             artist_name=artist.name,
             input_type=running_job.input_type,
             input_value=running_job.input_value,
@@ -419,7 +419,7 @@ async def refresh_artist(
     run_enrichment_pipeline.delay(job.id)
     
     return JobResponse(
-        id=job.id,
+        id=str(job.id),
         artist_name=artist.name,
         input_type=job.input_type,
         input_value=job.input_value,
@@ -474,7 +474,7 @@ async def get_job_queue(
             completed_count += 1
         
         jobs.append(JobResponse(
-            id=job.id,
+            id=str(job.id),
             artist_name=job.artist.name if job.artist else None,
             input_type=job.input_type,
             input_value=job.input_value,
@@ -497,7 +497,7 @@ async def get_job_queue(
 
 @router.get("/job/{job_id}", response_model=JobResponse)
 async def get_job_status(
-    job_id: int,
+    job_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_user_workspace_id),
@@ -515,7 +515,7 @@ async def get_job_status(
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
     return JobResponse(
-        id=job.id,
+        id=str(job.id),
         artist_name=job.artist.name if job.artist else None,
         input_type=job.input_type,
         input_value=job.input_value,
