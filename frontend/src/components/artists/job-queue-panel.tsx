@@ -209,9 +209,10 @@ export function JobQueuePanel({
       const response = await api.get("/api/v1/artists/jobs?limit=10");
       return response.data;
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Auto-refresh faster when jobs are running
-      if (data && (data.running_count > 0 || data.pending_count > 0)) {
+      const queueData = query.state.data;
+      if (queueData && (queueData.running_count > 0 || queueData.pending_count > 0)) {
         return refetchInterval;
       }
       return 10000; // Slow refresh when idle
