@@ -201,8 +201,7 @@ async def get_comparison_list(
         # Get latest metrics
         metrics = db.query(DiscoveryComputedMetrics).filter(
             DiscoveryComputedMetrics.artist_id == artist.id,
-            DiscoveryComputedMetrics.is_latest == True,
-        ).first()
+        ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
         
         artist_data = ArtistComparisonData(
             id=artist.id,
@@ -481,8 +480,7 @@ async def compare_artists(
         
         metrics = db.query(DiscoveryComputedMetrics).filter(
             DiscoveryComputedMetrics.artist_id == artist.id,
-            DiscoveryComputedMetrics.is_latest == True,
-        ).first()
+        ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
         
         artist_data = ArtistComparisonData(
             id=artist.id,

@@ -181,6 +181,12 @@ async def get_discovery_feed(
     """
     offset = (page - 1) * limit
     
+    # Subquery to get latest metrics per artist
+    latest_metrics_subq = db.query(
+        DiscoveryComputedMetrics.artist_id,
+        func.max(DiscoveryComputedMetrics.computed_at).label('max_computed_at')
+    ).group_by(DiscoveryComputedMetrics.artist_id).subquery()
+    
     # Base query - join with artist and metrics
     query = db.query(
         DiscoveryCandidate,
@@ -193,8 +199,11 @@ async def get_discovery_feed(
         DiscoveryComputedMetrics,
         and_(
             DiscoveryComputedMetrics.artist_id == DiscoveryArtist.id,
-            DiscoveryComputedMetrics.is_latest == True
+            DiscoveryComputedMetrics.computed_at == latest_metrics_subq.c.max_computed_at
         )
+    ).outerjoin(
+        latest_metrics_subq,
+        latest_metrics_subq.c.artist_id == DiscoveryArtist.id
     ).filter(
         DiscoveryCandidate.workspace_id == workspace_id,
         DiscoveryCandidate.candidate_type == feed_type.value,
@@ -558,8 +567,7 @@ async def get_artist_detail(
     # Get latest metrics
     metrics = db.query(DiscoveryComputedMetrics).filter(
         DiscoveryComputedMetrics.artist_id == artist_id,
-        DiscoveryComputedMetrics.is_latest == True,
-    ).first()
+    ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
     
     # Check if stale
     stale_threshold = datetime.utcnow() - timedelta(hours=24)
@@ -644,11 +652,20 @@ async def list_all_artists(
     """
     offset = (page - 1) * limit
     
+    # Subquery to get latest metrics per artist
+    latest_metrics_subq = db.query(
+        DiscoveryComputedMetrics.artist_id,
+        func.max(DiscoveryComputedMetrics.computed_at).label('max_computed_at')
+    ).group_by(DiscoveryComputedMetrics.artist_id).subquery()
+    
     query = db.query(DiscoveryArtist).outerjoin(
+        latest_metrics_subq,
+        latest_metrics_subq.c.artist_id == DiscoveryArtist.id
+    ).outerjoin(
         DiscoveryComputedMetrics,
         and_(
             DiscoveryComputedMetrics.artist_id == DiscoveryArtist.id,
-            DiscoveryComputedMetrics.is_latest == True
+            DiscoveryComputedMetrics.computed_at == latest_metrics_subq.c.max_computed_at
         )
     ).filter(
         DiscoveryArtist.workspace_id == workspace_id,
@@ -670,8 +687,7 @@ async def list_all_artists(
         # Get latest metrics
         metrics = db.query(DiscoveryComputedMetrics).filter(
             DiscoveryComputedMetrics.artist_id == artist.id,
-            DiscoveryComputedMetrics.is_latest == True,
-        ).first()
+        ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
         
         is_stale = artist.last_enriched_at and artist.last_enriched_at < stale_threshold
         
