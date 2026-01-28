@@ -1,7 +1,7 @@
 """Add spotify search tables
 
-Revision ID: 010_spotify_search
-Revises: 009_entity_brief_system
+Revision ID: 039_spotify_search
+Revises: 038_discovery_v3
 Create Date: 2026-01-28
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '010_spotify_search'
-down_revision = '009_entity_brief_system'
+revision = '039_spotify_search'
+down_revision = '038_discovery_v3'
 branch_labels = None
 depends_on = None
 
