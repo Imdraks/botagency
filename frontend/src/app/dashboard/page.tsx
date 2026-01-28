@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -9,8 +8,7 @@ import {
   Calendar,
   Clock,
   ArrowRight,
-  RefreshCw,
-  Loader2,
+  Music,
 } from "lucide-react";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,25 +16,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/components/ui/toaster";
-import { dashboardApi, ingestionApi } from "@/lib/api";
+import { dashboardApi } from "@/lib/api";
 import {
   formatCurrency,
   formatRelativeDate,
   getStatusColor,
   getStatusLabel,
   getScoreColor,
-  truncate,
 } from "@/lib/utils";
 import type { Opportunity, IngestionRun, DashboardStats } from "@/lib/types";
 import { UnifiedCollectModal } from "@/components/collection";
-import { ArtistAnalysisDialog, BatchArtistAnalysisDialog } from "@/components/intelligence";
-import { EmergingArtistsWidget } from "@/components/intelligence/EmergingArtistsWidget";
 import { DashboardOnboarding } from "@/components/onboarding";
 
 function DashboardContent() {
   const queryClient = useQueryClient();
-  const { addToast } = useToast();
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["dashboard", "stats"],
@@ -53,7 +46,7 @@ function DashboardContent() {
     queryFn: () => dashboardApi.getUpcomingDeadlines(14, 5),
   });
 
-  const { data: recentIngestions, isLoading: ingestionsLoading, refetch: refetchIngestions } = useQuery<IngestionRun[]>({
+  const { data: recentIngestions, isLoading: ingestionsLoading } = useQuery<IngestionRun[]>({
     queryKey: ["dashboard", "recent-ingestions"],
     queryFn: () => dashboardApi.getRecentIngestions(5),
   });
@@ -75,11 +68,13 @@ function DashboardContent() {
             <UnifiedCollectModal />
           </div>
           
-          {/* Analyse d'artiste */}
-          <ArtistAnalysisDialog />
-          
-          {/* Analyse multiple */}
-          <BatchArtistAnalysisDialog />
+          {/* Lien vers Discovery - Artistes */}
+          <Link href="/artist-history">
+            <Button variant="outline" className="gap-2">
+              <Music className="h-4 w-4" />
+              Analyser un Artiste
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -283,10 +278,35 @@ function DashboardContent() {
         </Card>
       </div>
 
-      {/* Emerging Artists Widget */}
-      <div data-onboarding="emerging-artists">
-        <EmergingArtistsWidget />
-      </div>
+      {/* Quick Access to Discovery */}
+      <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-200/50">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Music className="h-5 w-5 text-purple-500" />
+                Radar Discovery
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Recherchez et analysez des artistes, comparez-les et découvrez de nouvelles opportunités.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/artist-history">
+                <Button variant="outline" className="border-purple-200 hover:bg-purple-100">
+                  Artistes
+                </Button>
+              </Link>
+              <Link href="/discovery">
+                <Button className="bg-purple-600 hover:bg-purple-700">
+                  Découverte
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Recent Ingestions */}
       <Card data-onboarding="ingestion-status">

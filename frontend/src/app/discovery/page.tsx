@@ -11,6 +11,16 @@ import {
   List,
   ChevronLeft,
   ChevronRight,
+  Search,
+  Zap,
+  Target,
+  DollarSign,
+  ArrowRight,
+  Music2,
+  Star,
+  Users,
+  Plus,
+  Filter,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import {
   ArtistCard,
@@ -160,20 +171,29 @@ function FeedSkeleton() {
 
 function EmptyFeed({ feedType }: { feedType: string }) {
   return (
-    <div className="text-center py-16">
-      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+    <div className="text-center py-16 px-6">
+      <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-violet-100 dark:from-purple-900/30 dark:to-violet-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
         {feedType === "RECOMMENDED" ? (
-          <Rocket className="h-8 w-8 text-gray-400" />
+          <Rocket className="h-10 w-10 text-purple-500" />
         ) : (
-          <TrendingUp className="h-8 w-8 text-gray-400" />
+          <TrendingUp className="h-10 w-10 text-violet-500" />
         )}
       </div>
-      <h3 className="text-lg font-medium mb-2">Aucun artiste trouvé</h3>
-      <p className="text-muted-foreground max-w-md mx-auto">
+      <h3 className="text-xl font-semibold mb-3">
+        {feedType === "RECOMMENDED" ? "Aucune recommandation" : "Pas d'artistes trending"}
+      </h3>
+      <p className="text-muted-foreground max-w-md mx-auto mb-6">
         {feedType === "RECOMMENDED"
-          ? "Commencez par rechercher des artistes pour les analyser et construire votre feed de recommandations."
-          : "Le feed trending se remplit automatiquement avec les artistes en forte croissance."}
+          ? "Analysez des artistes pour construire votre feed personnalisé de recommandations basées sur vos recherches."
+          : "Le feed trending se remplit automatiquement avec les artistes en forte croissance de votre historique."}
       </p>
+      <Link href="/artist-history">
+        <Button className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-md">
+          <Search className="h-4 w-4 mr-2" />
+          Analyser un artiste
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
+      </Link>
     </div>
   );
 }
@@ -224,6 +244,44 @@ function Pagination({
 }
 
 // ============================================================================
+// QUICK FILTER CHIPS
+// ============================================================================
+
+interface QuickFilter {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  filter: Partial<FeedFilters>;
+}
+
+const QUICK_FILTERS: QuickFilter[] = [
+  {
+    id: "emerging",
+    label: "Émergents",
+    icon: <Zap className="h-3.5 w-3.5" />,
+    filter: { listenersRange: [0, 50000] as [number, number] },
+  },
+  {
+    id: "rising",
+    label: "En hausse",
+    icon: <TrendingUp className="h-3.5 w-3.5" />,
+    filter: { recommendation: ["SIGN", "WATCH"] },
+  },
+  {
+    id: "budget",
+    label: "Petit budget",
+    icon: <DollarSign className="h-3.5 w-3.5" />,
+    filter: { scoreRange: [40, 70] as [number, number] },
+  },
+  {
+    id: "top-picks",
+    label: "Top Picks",
+    icon: <Star className="h-3.5 w-3.5" />,
+    filter: { scoreRange: [80, 100] as [number, number], recommendation: ["SIGN"] },
+  },
+];
+
+// ============================================================================
 // MAIN PAGE
 // ============================================================================
 
@@ -235,6 +293,7 @@ function DiscoveryV3Page() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<FeedFilters>(DEFAULT_FILTERS);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
 
   // Reset page when filters change
   useEffect(() => {
@@ -320,33 +379,59 @@ function DiscoveryV3Page() {
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
+    setActiveQuickFilter(null);
+  };
+
+  const applyQuickFilter = (quickFilter: QuickFilter) => {
+    if (activeQuickFilter === quickFilter.id) {
+      resetFilters();
+    } else {
+      setFilters({ ...DEFAULT_FILTERS, ...quickFilter.filter });
+      setActiveQuickFilter(quickFilter.id);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Sparkles className="h-8 w-8 text-purple-500" />
-            Discovery
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Découvrez les artistes prometteurs grâce à l'analyse automatique
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 text-white shadow-xl">
+        <div className="absolute inset-0 bg-grid-white/10" />
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+              <Sparkles className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Discovery</h1>
+              <p className="text-white/80 text-sm">Feed intelligent d'artistes analysés</p>
+            </div>
+          </div>
+          
+          <p className="text-white/90 max-w-xl mb-6">
+            Découvrez les artistes prometteurs grâce à notre analyse automatique. 
+            Filtrez par potentiel, tendance et budget pour trouver les talents qui correspondent à vos critères.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => feedQuery.refetch()}
-            disabled={feedQuery.isRefetching}
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-1 ${feedQuery.isRefetching ? "animate-spin" : ""}`}
-            />
-            Actualiser
-          </Button>
+
+          {/* Quick Filter Chips */}
+          <div className="flex flex-wrap gap-2">
+            {QUICK_FILTERS.map((qf) => (
+              <button
+                key={qf.id}
+                onClick={() => applyQuickFilter(qf)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activeQuickFilter === qf.id
+                    ? "bg-white text-purple-700 shadow-lg"
+                    : "bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm"
+                }`}
+              >
+                {qf.icon}
+                {qf.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -362,64 +447,117 @@ function DiscoveryV3Page() {
         {/* Main feed area */}
         <div className="lg:col-span-3 space-y-4">
           {/* Tabs + Filters */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <Tabs
-              value={feedType}
-              onValueChange={(v) => setFeedType(v as "RECOMMENDED" | "TRENDING")}
-            >
-              <TabsList>
-                <TabsTrigger value="RECOMMENDED" className="gap-2">
-                  <Rocket className="h-4 w-4" />
-                  Recommandés
-                </TabsTrigger>
-                <TabsTrigger value="TRENDING" className="gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Trending
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <Card className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <Tabs
+                value={feedType}
+                onValueChange={(v) => setFeedType(v as "RECOMMENDED" | "TRENDING")}
+              >
+                <TabsList className="bg-gray-100 dark:bg-gray-800">
+                  <TabsTrigger value="RECOMMENDED" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
+                    <Rocket className="h-4 w-4" />
+                    Recommandés
+                    {feedQuery.data && feedType === "RECOMMENDED" && (
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {feedQuery.data.total}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="TRENDING" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
+                    <TrendingUp className="h-4 w-4" />
+                    Trending
+                    {feedQuery.data && feedType === "TRENDING" && (
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {feedQuery.data.total}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-            <div className="flex items-center gap-2">
-              <FeedFiltersBar
-                filters={filters}
-                onFiltersChange={setFilters}
-                onReset={resetFilters}
-              />
+              <div className="flex items-center gap-2">
+                <FeedFiltersBar
+                  filters={filters}
+                  onFiltersChange={(f) => {
+                    setFilters(f);
+                    setActiveQuickFilter(null);
+                  }}
+                  onReset={resetFilters}
+                />
 
-              {/* View mode toggle */}
-              <div className="border rounded-lg p-1 flex items-center gap-1">
                 <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  variant="outline"
                   size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setViewMode("grid")}
+                  onClick={() => feedQuery.refetch()}
+                  disabled={feedQuery.isRefetching}
+                  className="gap-1"
                 >
-                  <LayoutGrid className="h-4 w-4" />
+                  <RefreshCw
+                    className={`h-4 w-4 ${feedQuery.isRefetching ? "animate-spin" : ""}`}
+                  />
+                  <span className="hidden sm:inline">Actualiser</span>
                 </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
+
+                {/* View mode toggle */}
+                <div className="border rounded-lg p-1 flex items-center gap-1 bg-gray-50 dark:bg-gray-800">
+                  <Button
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Active filters indicator */}
+            {activeQuickFilter && (
+              <div className="mt-3 pt-3 border-t flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Filtre actif:</span>
+                <Badge variant="secondary" className="gap-1">
+                  {QUICK_FILTERS.find(f => f.id === activeQuickFilter)?.icon}
+                  {QUICK_FILTERS.find(f => f.id === activeQuickFilter)?.label}
+                  <button
+                    onClick={resetFilters}
+                    className="ml-1 hover:text-red-500 transition-colors"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              </div>
+            )}
+          </Card>
 
           {/* Feed content */}
           {feedQuery.isLoading ? (
             <FeedSkeleton />
           ) : feedQuery.isError ? (
-            <Card className="p-8 text-center">
-              <p className="text-red-500 mb-4">Erreur lors du chargement du feed</p>
+            <Card className="p-8 text-center border-red-200 dark:border-red-800">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="h-8 w-8 text-red-500" />
+              </div>
+              <p className="text-red-600 dark:text-red-400 font-medium mb-4">
+                Erreur lors du chargement du feed
+              </p>
               <Button variant="outline" onClick={() => feedQuery.refetch()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Réessayer
               </Button>
             </Card>
           ) : !feedQuery.data || feedQuery.data.artists.length === 0 ? (
-            <EmptyFeed feedType={feedType} />
+            <Card>
+              <EmptyFeed feedType={feedType} />
+            </Card>
           ) : (
             <>
               <div
@@ -442,20 +580,22 @@ function DiscoveryV3Page() {
               </div>
 
               {/* Pagination */}
-              <Pagination
-                page={feedQuery.data.page}
-                total={feedQuery.data.total}
-                limit={feedQuery.data.limit}
-                hasMore={feedQuery.data.has_more}
-                onPageChange={setPage}
-              />
+              <Card className="p-4">
+                <Pagination
+                  page={feedQuery.data.page}
+                  total={feedQuery.data.total}
+                  limit={feedQuery.data.limit}
+                  hasMore={feedQuery.data.has_more}
+                  onPageChange={setPage}
+                />
+              </Card>
             </>
           )}
         </div>
 
         {/* Queue sidebar */}
         <div className="lg:col-span-1">
-          <div className="sticky top-4">
+          <div className="sticky top-4 space-y-4">
             <JobQueuePanel
               jobs={queueQuery.data?.jobs || []}
               runningCount={queueQuery.data?.running || 0}
@@ -469,6 +609,28 @@ function DiscoveryV3Page() {
                 });
               }}
             />
+            
+            {/* Quick Links */}
+            <Card className="p-4">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <Target className="h-4 w-4 text-purple-500" />
+                Accès rapide
+              </h4>
+              <div className="space-y-2">
+                <Link href="/artist-history" className="block">
+                  <Button variant="outline" size="sm" className="w-full justify-start gap-2">
+                    <Search className="h-4 w-4" />
+                    Historique des analyses
+                  </Button>
+                </Link>
+                <Link href="/comparison" className="block">
+                  <Button variant="outline" size="sm" className="w-full justify-start gap-2">
+                    <Users className="h-4 w-4" />
+                    Comparer des artistes
+                  </Button>
+                </Link>
+              </div>
+            </Card>
           </div>
         </div>
       </div>

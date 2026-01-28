@@ -20,6 +20,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Search,
+  ArrowRight,
+  Sparkles,
+  BarChart3,
+  Scale,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,15 +218,19 @@ function ListCard({
   return (
     <Card
       className={`cursor-pointer transition-all hover:shadow-md ${
-        isSelected ? "ring-2 ring-primary" : ""
+        isSelected ? "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20" : "hover:border-blue-200 dark:hover:border-blue-800"
       }`}
       onClick={onSelect}
     >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-medium">{list.name}</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-medium flex items-center gap-2">
+              {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+              {list.name}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              <Users className="h-3 w-3 inline mr-1" />
               {list.artist_count} artiste{list.artist_count > 1 ? "s" : ""}
             </p>
           </div>
@@ -252,12 +262,21 @@ function ListCard({
 function ComparisonTable({ artists }: { artists: ArtistComparisonData[] }) {
   if (artists.length === 0) {
     return (
-      <div className="text-center py-12">
-        <GitCompare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">Aucun artiste dans cette shortlist</h3>
-        <p className="text-muted-foreground">
-          Ajoutez des artistes depuis la page Discovery pour les comparer.
+      <div className="text-center py-16 px-6">
+        <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <Scale className="h-10 w-10 text-blue-500" />
+        </div>
+        <h3 className="text-xl font-semibold mb-3">Aucun artiste à comparer</h3>
+        <p className="text-muted-foreground max-w-md mx-auto mb-6">
+          Ajoutez des artistes depuis votre historique ou la page Discovery pour créer une comparaison détaillée.
         </p>
+        <Link href="/discovery">
+          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Découvrir des artistes
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -573,21 +592,51 @@ function ComparisonV3Page() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <GitCompare className="h-8 w-8 text-blue-500" />
-            Comparaison
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Créez des shortlists et comparez les artistes côte à côte
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 p-8 text-white shadow-xl">
+        <div className="absolute inset-0 bg-grid-white/10" />
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                <GitCompare className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Comparaison</h1>
+                <p className="text-white/80 text-sm">Comparez jusqu'à 4 artistes côte à côte</p>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle shortlist
+            </Button>
+          </div>
+          
+          <p className="text-white/90 max-w-xl mt-4">
+            Créez des shortlists pour comparer les artistes sur tous les critères : score, timing, croissance, cachet et bien plus.
           </p>
+          
+          {/* Quick Stats */}
+          <div className="flex gap-6 mt-6">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-white/60" />
+              <span className="text-white/80">{listsQuery.data?.length || 0} shortlists</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-white/60" />
+              <span className="text-white/80">
+                {listsQuery.data?.reduce((acc, l) => acc + l.artist_count, 0) || 0} artistes total
+              </span>
+            </div>
+          </div>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle shortlist
-        </Button>
       </div>
 
       {/* Layout */}
@@ -605,13 +654,16 @@ function ComparisonV3Page() {
               ))}
             </div>
           ) : listsQuery.data?.length === 0 ? (
-            <Card className="p-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                Aucune shortlist pour le moment
+            <Card className="p-6 text-center border-dashed border-2">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <GitCompare className="h-6 w-6 text-blue-500" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Créez votre première shortlist
               </p>
-              <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Button size="sm" onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-1" />
-                Créer une shortlist
+                Nouvelle shortlist
               </Button>
             </Card>
           ) : (
@@ -632,12 +684,18 @@ function ComparisonV3Page() {
         {/* Main: Comparison */}
         <div className="lg:col-span-3 space-y-6">
           {!selectedListId ? (
-            <Card className="p-12 text-center">
-              <GitCompare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Sélectionnez une shortlist</h3>
-              <p className="text-muted-foreground">
-                Choisissez ou créez une shortlist pour comparer des artistes
+            <Card className="p-16 text-center border-dashed border-2">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <GitCompare className="h-10 w-10 text-blue-500" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Sélectionnez une shortlist</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                Choisissez une shortlist existante ou créez-en une nouvelle pour commencer à comparer des artistes
               </p>
+              <Button onClick={() => setShowCreateDialog(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Créer une shortlist
+              </Button>
             </Card>
           ) : listDetailQuery.isLoading ? (
             <div className="space-y-4">
@@ -647,64 +705,75 @@ function ComparisonV3Page() {
           ) : listDetailQuery.data ? (
             <>
               {/* List header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">{listDetailQuery.data.name}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {listDetailQuery.data.artists.length} artiste
-                    {listDetailQuery.data.artists.length !== 1 ? "s" : ""} • Max 4
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => listDetailQuery.refetch()}
-                    disabled={listDetailQuery.isRefetching}
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 mr-1 ${
-                        listDetailQuery.isRefetching ? "animate-spin" : ""
-                      }`}
-                    />
-                    Actualiser
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowAddArtistDialog(true)}
-                    disabled={listDetailQuery.data.artists.length >= 4}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Ajouter un artiste
-                  </Button>
-                </div>
-              </div>
-
-              {/* Artists chips for removal */}
-              {listDetailQuery.data.artists.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {listDetailQuery.data.artists.map((artist) => (
-                    <Badge
-                      key={artist.id}
-                      variant="secondary"
-                      className="py-1 px-3 flex items-center gap-2"
+              <Card className="p-4">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <GitCompare className="h-5 w-5 text-blue-500" />
+                      {listDetailQuery.data.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {listDetailQuery.data.artists.length}/4 artistes
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => listDetailQuery.refetch()}
+                      disabled={listDetailQuery.isRefetching}
                     >
-                      {artist.name}
-                      <button
-                        onClick={() =>
-                          removeArtistMutation.mutate({
-                            listId: selectedListId,
-                            artistId: artist.id,
-                          })
-                        }
-                        className="hover:text-red-500 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+                      <RefreshCw
+                        className={`h-4 w-4 mr-1 ${
+                          listDetailQuery.isRefetching ? "animate-spin" : ""
+                        }`}
+                      />
+                      Actualiser
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAddArtistDialog(true)}
+                      disabled={listDetailQuery.data.artists.length >= 4}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Ajouter un artiste
+                    </Button>
+                  </div>
                 </div>
-              )}
+
+                {/* Artists chips for removal */}
+                {listDetailQuery.data.artists.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                    <span className="text-sm text-muted-foreground self-center mr-2">Artistes:</span>
+                    {listDetailQuery.data.artists.map((artist) => (
+                      <Badge
+                        key={artist.id}
+                        variant="secondary"
+                        className="py-1.5 px-3 flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                      >
+                        {artist.image_url && (
+                          <div className="w-5 h-5 rounded-full overflow-hidden">
+                            <Image src={artist.image_url} alt={artist.name} width={20} height={20} className="object-cover" />
+                          </div>
+                        )}
+                        {artist.name}
+                        <button
+                          onClick={() =>
+                            removeArtistMutation.mutate({
+                              listId: selectedListId,
+                              artistId: artist.id,
+                            })
+                          }
+                          className="hover:text-red-500 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </Card>
 
               {/* Comparison table */}
               <Card>
