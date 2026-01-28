@@ -319,7 +319,7 @@ async def search_artist(
     running_job = db.query(DiscoveryEnrichmentJob).filter(
         DiscoveryEnrichmentJob.workspace_id == workspace_id,
         DiscoveryEnrichmentJob.input_value == request.query,
-        DiscoveryEnrichmentJob.status.in_(["PENDING", "RUNNING"]),
+        DiscoveryEnrichmentJob.status.in_(["QUEUED", "RUNNING"]),
     ).first()
     
     if running_job:
@@ -385,7 +385,7 @@ async def refresh_artist(
     # Check for running job
     running_job = db.query(DiscoveryEnrichmentJob).filter(
         DiscoveryEnrichmentJob.artist_id == artist_id,
-        DiscoveryEnrichmentJob.status.in_(["PENDING", "RUNNING"]),
+        DiscoveryEnrichmentJob.status.in_(["QUEUED", "RUNNING"]),
     ).first()
     
     if running_job:
@@ -453,7 +453,7 @@ async def get_job_queue(
     ).filter(
         DiscoveryEnrichmentJob.workspace_id == workspace_id,
         or_(
-            DiscoveryEnrichmentJob.status.in_(["PENDING", "RUNNING"]),
+            DiscoveryEnrichmentJob.status.in_(["QUEUED", "RUNNING"]),
             DiscoveryEnrichmentJob.started_at >= cutoff,
         )
     ).order_by(
@@ -468,9 +468,9 @@ async def get_job_queue(
     for job in jobs_query:
         if job.status == "RUNNING":
             running_count += 1
-        elif job.status == "PENDING":
+        elif job.status == "QUEUED":
             pending_count += 1
-        elif job.status == "COMPLETED":
+        elif job.status == "DONE":
             completed_count += 1
         
         jobs.append(JobResponse(
