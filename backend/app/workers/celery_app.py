@@ -18,6 +18,7 @@ celery_app = Celery(
         "app.workers.auto_radar_task",
         "app.workers.radar_features_tasks",
         "app.workers.agency_automations",
+        "app.workers.discovery_pipeline",
     ],
 )
 
