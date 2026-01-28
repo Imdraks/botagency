@@ -339,7 +339,7 @@ async def search_artist(
         workspace_id=workspace_id,
         input_type=request.input_type.value,
         input_value=request.query,
-        status=JobStatus.PENDING.value,
+        status=JobStatus.QUEUED.value,
         current_step=JobStep.MATCH.value,
         progress_pct=0,
         started_at=datetime.utcnow(),
@@ -406,7 +406,7 @@ async def refresh_artist(
         artist_id=artist_id,
         input_type=InputType.NAME.value,
         input_value=artist.name,
-        status=JobStatus.PENDING.value,
+        status=JobStatus.QUEUED.value,
         current_step=JobStep.VIBERATE.value,  # Skip MATCH for existing artist
         progress_pct=0,
         started_at=datetime.utcnow(),
