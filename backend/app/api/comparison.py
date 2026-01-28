@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_user_workspace_id
 from app.db.models.user import User
 from app.db.models.discovery import (
     DiscoveryArtist,
@@ -110,11 +110,11 @@ class ComparisonListDetailResponse(BaseModel):
 async def get_comparison_lists(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Get all comparison lists (shortlists) for workspace.
     """
-    workspace_id = current_user.workspace_id
     
     lists = db.query(DiscoveryComparisonList).filter(
         DiscoveryComparisonList.workspace_id == workspace_id,
@@ -139,11 +139,11 @@ async def create_comparison_list(
     request: CreateListRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Create a new comparison list (shortlist).
     """
-    workspace_id = current_user.workspace_id
     
     new_list = DiscoveryComparisonList(
         workspace_id=workspace_id,
@@ -168,11 +168,11 @@ async def get_comparison_list(
     list_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Get a comparison list with all artist data for comparison view.
     """
-    workspace_id = current_user.workspace_id
     
     comparison_list = db.query(DiscoveryComparisonList).filter(
         DiscoveryComparisonList.id == list_id,
@@ -259,11 +259,11 @@ async def update_comparison_list(
     request: UpdateListRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Update a comparison list (rename).
     """
-    workspace_id = current_user.workspace_id
     
     comparison_list = db.query(DiscoveryComparisonList).filter(
         DiscoveryComparisonList.id == list_id,
@@ -294,11 +294,11 @@ async def delete_comparison_list(
     list_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Delete a comparison list.
     """
-    workspace_id = current_user.workspace_id
     
     comparison_list = db.query(DiscoveryComparisonList).filter(
         DiscoveryComparisonList.id == list_id,
@@ -330,12 +330,12 @@ async def add_artist_to_list(
     request: AddArtistRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Add an artist to a comparison list.
     Maximum 4 artists per list.
     """
-    workspace_id = current_user.workspace_id
     
     comparison_list = db.query(DiscoveryComparisonList).filter(
         DiscoveryComparisonList.id == list_id,
@@ -402,11 +402,11 @@ async def remove_artist_from_list(
     artist_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Remove an artist from a comparison list.
     """
-    workspace_id = current_user.workspace_id
     
     comparison_list = db.query(DiscoveryComparisonList).filter(
         DiscoveryComparisonList.id == list_id,
@@ -440,11 +440,11 @@ async def compare_artists(
     artist_ids: str = Query(..., description="Comma-separated artist IDs (max 4)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Quick compare artists by IDs without saving to a list.
     """
-    workspace_id = current_user.workspace_id
     
     # Parse IDs
     try:

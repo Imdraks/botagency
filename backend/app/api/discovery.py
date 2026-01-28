@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, func
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_user_workspace_id
 from app.db.models.user import User
 from app.db.models.discovery import (
     DiscoveryArtist,
@@ -173,12 +173,12 @@ async def get_discovery_feed(
     recommendation: Optional[str] = Query(None, description="Comma-separated recommendations"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Get discovery feed (RECOMMENDED or TRENDING).
     Returns pre-computed candidates from DiscoveryCandidate table.
     """
-    workspace_id = current_user.workspace_id
     offset = (page - 1) * limit
     
     # Base query - join with artist and metrics
@@ -288,12 +288,12 @@ async def search_artist(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Search for an artist and create enrichment job.
     Returns immediately with job ID for polling.
     """
-    workspace_id = current_user.workspace_id
     
     # Normalize name for dedup check
     normalized = DiscoveryArtist.normalize_name(request.query)
@@ -369,11 +369,11 @@ async def refresh_artist(
     artist_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Trigger re-enrichment of an existing artist.
     """
-    workspace_id = current_user.workspace_id
     
     artist = db.query(DiscoveryArtist).filter(
         DiscoveryArtist.id == artist_id,
@@ -440,11 +440,11 @@ async def refresh_artist(
 async def get_job_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Get current enrichment job queue for workspace.
     """
-    workspace_id = current_user.workspace_id
     
     # Get recent jobs (last 24h or still active)
     cutoff = datetime.utcnow() - timedelta(hours=24)
@@ -502,11 +502,11 @@ async def get_job_status(
     job_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Get status of a specific enrichment job.
     """
-    workspace_id = current_user.workspace_id
     
     job = db.query(DiscoveryEnrichmentJob).filter(
         DiscoveryEnrichmentJob.id == job_id,
@@ -540,11 +540,11 @@ async def get_artist_detail(
     artist_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Get full artist detail with all metrics.
     """
-    workspace_id = current_user.workspace_id
     
     artist = db.query(DiscoveryArtist).filter(
         DiscoveryArtist.id == artist_id,
@@ -610,11 +610,11 @@ async def delete_artist(
     artist_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     Soft delete an artist from discovery.
     """
-    workspace_id = current_user.workspace_id
     
     artist = db.query(DiscoveryArtist).filter(
         DiscoveryArtist.id == artist_id,
@@ -637,11 +637,11 @@ async def list_all_artists(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ):
     """
     List all artists in workspace (for autocomplete, etc.).
     """
-    workspace_id = current_user.workspace_id
     offset = (page - 1) * limit
     
     query = db.query(DiscoveryArtist).outerjoin(
