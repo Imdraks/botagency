@@ -349,7 +349,7 @@ async def search_artist(
     db.refresh(job)
     
     # Trigger async pipeline
-    run_enrichment_pipeline.delay(job.id)
+    run_enrichment_pipeline.delay(str(job.id))
     
     return JobResponse(
         id=str(job.id),
