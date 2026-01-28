@@ -144,3 +144,11 @@ from .discovery import (
     InputType,
 )
 
+# Spotify Search - Dedicated Spotify search engine
+from .spotify_search import (
+    SpotifySearchJob,
+    SpotifySearchResult,
+    SpotifyJobStatus,
+    SpotifyJobStep,
+)
+

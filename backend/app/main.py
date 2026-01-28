@@ -97,6 +97,11 @@ from app.api.discovery import router as discovery_router
 from app.api.comparison import router as comparison_router
 
 # ============================================================================
+# SPOTIFY SEARCH - Dedicated Spotify search engine with enrichment
+# ============================================================================
+from app.api.spotify_search import router as spotify_search_router
+
+# ============================================================================
 # ARTISTS V2 - "Google des artistes" search-first system
 # ============================================================================
 from app.api.artists import router as artists_v2_router
@@ -318,6 +323,11 @@ app.include_router(unified_assets_router, prefix="/api/v1", tags=["Assets"])
 # ============================================================================
 app.include_router(discovery_router, prefix="/api/v1", tags=["Discovery V3"])
 app.include_router(comparison_router, prefix="/api/v1", tags=["Comparison V3"])
+
+# ============================================================================
+# SPOTIFY SEARCH - Dedicated Spotify search engine
+# ============================================================================
+app.include_router(spotify_search_router, prefix="/api/v1", tags=["Spotify Search"])
 
 # ============================================================================
 # ARTISTS V2 - "Google des artistes" search-first endpoints
