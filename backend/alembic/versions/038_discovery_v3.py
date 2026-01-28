@@ -1,7 +1,7 @@
 """Discovery V3 - Complete data model refactoring
 
 Revision ID: 038_discovery_v3
-Revises: 037_crm_client_billing_fields
+Revises: 037
 Create Date: 2026-01-26
 
 New tables for Discovery V3:
@@ -22,7 +22,7 @@ import uuid
 
 # revision identifiers
 revision = '038_discovery_v3'
-down_revision = '037_crm_client_billing_fields'
+down_revision = '037'
 branch_labels = None
 depends_on = None
 
