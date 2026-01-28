@@ -55,12 +55,14 @@ const getStepIndex = (step: string): number => {
 
 const getStatusColor = (status: string): string => {
   switch (status) {
+    case "DONE":
     case "COMPLETED":
       return "text-green-600 dark:text-green-400";
     case "RUNNING":
       return "text-blue-600 dark:text-blue-400";
     case "FAILED":
       return "text-red-600 dark:text-red-400";
+    case "QUEUED":
     case "PENDING":
       return "text-yellow-600 dark:text-yellow-400";
     default:
@@ -70,12 +72,14 @@ const getStatusColor = (status: string): string => {
 
 const getStatusIcon = (status: string) => {
   switch (status) {
+    case "DONE":
     case "COMPLETED":
       return <CheckCircle2 className="h-4 w-4 text-green-500" />;
     case "RUNNING":
       return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
     case "FAILED":
       return <XCircle className="h-4 w-4 text-red-500" />;
+    case "QUEUED":
     case "PENDING":
       return <Clock className="h-4 w-4 text-yellow-500" />;
     default:
@@ -233,9 +237,9 @@ export function JobQueuePanel({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Separate jobs by status
-  const activeJobs = jobs.filter((j) => j.status === "RUNNING" || j.status === "PENDING");
+  const activeJobs = jobs.filter((j) => j.status === "RUNNING" || j.status === "QUEUED" || j.status === "PENDING");
   const recentJobs = jobs.filter(
-    (j) => j.status === "COMPLETED" || j.status === "FAILED"
+    (j) => j.status === "DONE" || j.status === "COMPLETED" || j.status === "FAILED"
   );
 
   return (

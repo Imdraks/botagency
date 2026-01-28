@@ -21,6 +21,8 @@ import {
   Users,
   Plus,
   Filter,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -294,6 +296,7 @@ function DiscoveryV3Page() {
   const [filters, setFilters] = useState<FeedFilters>(DEFAULT_FILTERS);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
+  const [lastJobCreated, setLastJobCreated] = useState<{ id: string; input: string } | null>(null);
 
   // Reset page when filters change
   useEffect(() => {
@@ -326,9 +329,12 @@ function DiscoveryV3Page() {
     mutationFn: ({ query, inputType }: { query: string; inputType: InputType }) =>
       searchArtist(query, inputType),
     onSuccess: (data) => {
-      toast.success("Recherche lancée", {
-        description: `Job #${data.id} créé pour "${data.input_value}"`,
+      toast.success("🎵 Analyse lancée !", {
+        description: `L'artiste "${data.input_value}" est en cours d'analyse`,
+        duration: 5000,
       });
+      // Track last job for visual indicator
+      setLastJobCreated({ id: data.id, input: data.input_value });
       // Refetch queue to show new job
       queryClient.invalidateQueries({ queryKey: ["discovery-queue"] });
     },
@@ -340,7 +346,7 @@ function DiscoveryV3Page() {
         });
       } else {
         toast.error("Erreur", {
-          description: "Une erreur est survenue lors de la recherche",
+          description: error?.response?.data?.detail || "Une erreur est survenue lors de la recherche",
         });
       }
     },
@@ -430,6 +436,62 @@ function DiscoveryV3Page() {
         isLoading={searchMutation.isPending}
         placeholder="Rechercher un artiste par nom, URL Spotify ou Viberate..."
       />
+
+      {/* Active analysis indicator */}
+      {(queueQuery.data?.running ?? 0) > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                Analyse en cours...
+              </h4>
+              <p className="text-sm text-blue-600 dark:text-blue-300">
+                {queueQuery.data?.running} artiste(s) en cours d'enrichissement. 
+                Les résultats apparaîtront automatiquement dans le feed.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <div className="flex items-center gap-2 text-xs text-blue-600">
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
+                  🔍 Identification
+                </span>
+                <span>→</span>
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
+                  📊 Viberate
+                </span>
+                <span>→</span>
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
+                  🎵 Spotify
+                </span>
+                <span>→</span>
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
+                  ⚡ Calcul
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending jobs indicator */}
+      {(queueQuery.data?.pending ?? 0) > 0 && (queueQuery.data?.running ?? 0) === 0 && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                {queueQuery.data?.pending} analyse(s) en attente
+              </h4>
+              <p className="text-sm text-yellow-600 dark:text-yellow-300">
+                Le worker va bientôt traiter ces demandes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Layout: Feed + Queue sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
