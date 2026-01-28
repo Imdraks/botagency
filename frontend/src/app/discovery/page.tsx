@@ -64,7 +64,7 @@ interface QueueResponse {
 }
 
 interface JobResponse {
-  id: number;
+  id: string;
   artist_name?: string;
   input_type: string;
   input_value: string;
