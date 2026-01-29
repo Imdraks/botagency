@@ -107,6 +107,7 @@ export function LockedFeature({ feature, title, compact = false }: LockedFeature
     discovery: 'Découverte',
     comparison: 'Comparaison',
     map: 'Carte',
+    spotify_search: 'Spotify Search',
     analytics: 'Analytics',
     competitor_watch: 'Veille Concurrentielle',
     ai_predictions: 'Prédictions IA',
