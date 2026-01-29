@@ -27,7 +27,7 @@ export type Feature =
   // Leads
   | 'leads' | 'kanban_leads' | 'scoring'
   // Talents
-  | 'artists' | 'profiles' | 'discovery' | 'comparison' | 'map'
+  | 'artists' | 'profiles' | 'discovery' | 'comparison' | 'map' | 'spotify_search'
   // Intelligence
   | 'analytics' | 'competitor_watch' | 'ai_predictions'
   // Radar Business
