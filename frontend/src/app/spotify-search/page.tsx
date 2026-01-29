@@ -797,7 +797,7 @@ function SpotifySearchPage() {
                                   Salles recommandées
                                 </h4>
                                 <div className="flex flex-wrap gap-2">
-                                  {aiData.booking_intelligence.venue_recommendations.map((venue, i) => (
+                                  {aiData.booking_intelligence.venue_recommendations?.map((venue, i) => (
                                     <Badge key={i} variant="secondary">{venue}</Badge>
                                   ))}
                                 </div>
