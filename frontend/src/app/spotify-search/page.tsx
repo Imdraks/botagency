@@ -774,14 +774,14 @@ function SpotifySearchPage() {
                               </div>
                             )}
 
-                            {aiData.booking_intelligence.negotiation_tips?.length > 0 && (
+                            {(aiData.booking_intelligence.negotiation_tips?.length ?? 0) > 0 && (
                               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                 <h4 className="font-medium mb-2 flex items-center gap-2">
                                   <Target className="h-4 w-4 text-blue-500" />
                                   Tips de négociation
                                 </h4>
                                 <ul className="text-sm space-y-1">
-                                  {aiData.booking_intelligence.negotiation_tips.map((tip, i) => (
+                                  {aiData.booking_intelligence.negotiation_tips?.map((tip, i) => (
                                     <li key={i} className="flex items-start gap-2">
                                       <span className="text-blue-500">•</span> {tip}
                                     </li>
@@ -790,7 +790,7 @@ function SpotifySearchPage() {
                               </div>
                             )}
 
-                            {aiData.booking_intelligence.venue_recommendations?.length > 0 && (
+                            {(aiData.booking_intelligence.venue_recommendations?.length ?? 0) > 0 && (
                               <div className="p-4 border rounded-lg">
                                 <h4 className="font-medium mb-2 flex items-center gap-2">
                                   <Globe className="h-4 w-4" />
