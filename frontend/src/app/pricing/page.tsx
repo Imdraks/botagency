@@ -59,8 +59,8 @@ const PLANS = [
     name: "Radar Standard",
     tagline: "Piloter et décider",
     description: "Pour les agences structurées qui veulent de la visibilité",
-    monthlyPrice: 24.99,
-    yearlyPrice: 19.99,
+    monthlyPrice: 19.99,
+    yearlyPrice: 15.99,
     packs: ["Core", "Discovery", "Analytics", "Spotify Search"],
     features: [
       "Tout de Mini +",
@@ -79,8 +79,8 @@ const PLANS = [
     name: "Radar Premium",
     tagline: "La machine complète",
     description: "Pour les agences avancées avec IA et gestion client",
-    monthlyPrice: 49.99,
-    yearlyPrice: 39.99,
+    monthlyPrice: 39.99,
+    yearlyPrice: 31.99,
     packs: ["Core", "Discovery", "Analytics", "Intelligence", "Business", "Data", "Spotify Search"],
     features: [
       "Tout de Standard +",
