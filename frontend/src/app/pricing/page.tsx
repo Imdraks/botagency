@@ -40,8 +40,8 @@ const PLANS = [
     name: "Radar Mini",
     tagline: "S'organiser et exécuter",
     description: "Pour les petites équipes qui centralisent leurs opérations",
-    monthlyPrice: 49,
-    yearlyPrice: 39,
+    monthlyPrice: 19.99,
+    yearlyPrice: 15.99,
     packs: ["Core"],
     features: [
       "Pipeline commercial unifié",
@@ -59,13 +59,14 @@ const PLANS = [
     name: "Radar Standard",
     tagline: "Piloter et décider",
     description: "Pour les agences structurées qui veulent de la visibilité",
-    monthlyPrice: 99,
-    yearlyPrice: 79,
-    packs: ["Core", "Discovery", "Analytics"],
+    monthlyPrice: 39.99,
+    yearlyPrice: 31.99,
+    packs: ["Core", "Discovery", "Analytics", "Spotify Search"],
     features: [
       "Tout de Mini +",
       "Prospection artistes",
       "Comparaison & shortlists",
+      "Recherche Spotify avec IA",
       "Tableaux de bord analytics",
       "10 membres par workspace",
     ],
@@ -78,13 +79,14 @@ const PLANS = [
     name: "Radar Premium",
     tagline: "La machine complète",
     description: "Pour les agences avancées avec IA et gestion client",
-    monthlyPrice: 199,
-    yearlyPrice: 159,
-    packs: ["Core", "Discovery", "Analytics", "Intelligence", "Business", "Data"],
+    monthlyPrice: 79.99,
+    yearlyPrice: 63.99,
+    packs: ["Core", "Discovery", "Analytics", "Intelligence", "Business", "Data", "Spotify Search"],
     features: [
       "Tout de Standard +",
-      "Recommandations IA",
-      "Scoring prédictif",
+      "Analyse IA complète (SWOT, prédictions)",
+      "Scoring prédictif artistes",
+      "Intelligence booking",
       "Devis & factures",
       "Membres illimités",
     ],
@@ -112,6 +114,15 @@ const PACKS = [
     color: "blue",
     description: "Trouvez les artistes parfaits pour vos projets.",
     features: ["Recherche artistes", "Comparaison", "Shortlists partagées"],
+  },
+  {
+    id: "SpotifySearch",
+    name: "Spotify Search IA",
+    tagline: "Analyse IA d'artistes",
+    icon: Brain,
+    color: "green",
+    description: "Scan web complet + Intelligence Artificielle.",
+    features: ["Score IA global", "Analyse SWOT", "Prédictions 30/90/180j", "Intelligence booking"],
   },
   {
     id: "Analytics",
@@ -168,6 +179,17 @@ const COMPARISON_DATA = [
       { name: "Recherche artistes", mini: false, standard: true, premium: true },
       { name: "Comparaison profils", mini: false, standard: true, premium: true },
       { name: "Shortlists partagées", mini: false, standard: true, premium: true },
+    ],
+  },
+  {
+    category: "Spotify Search IA",
+    features: [
+      { name: "Recherche artistes Spotify", mini: false, standard: true, premium: true },
+      { name: "Score IA global (0-100)", mini: false, standard: true, premium: true },
+      { name: "Analyse SWOT", mini: false, standard: "basique", premium: true },
+      { name: "Prédictions 30/90/180 jours", mini: false, standard: false, premium: true },
+      { name: "Intelligence booking", mini: false, standard: false, premium: true },
+      { name: "Cachet estimé & optimal", mini: false, standard: true, premium: true },
     ],
   },
   {
@@ -385,12 +407,12 @@ function PlanCard({
       {/* Price */}
       <div className="mb-6">
         <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-bold text-gray-900">{price}€</span>
+          <span className="text-4xl font-bold text-gray-900">{price.toFixed(2).replace('.', ',')}€</span>
           <span className="text-gray-500">/mois</span>
         </div>
         {isYearly && (
           <p className="text-sm text-gray-500 mt-1">
-            Facturé {price * 12}€/an
+            Facturé {(price * 12).toFixed(2).replace('.', ',')}€/an
           </p>
         )}
       </div>
