@@ -401,7 +401,7 @@ function ArtistPage() {
         per_page: "10",
       });
       if (historySearch) params.append("search", historySearch);
-      const response = await api.get(`/artists/history?${params}`);
+      const response = await api.get(`/artist-history?${params}`);
       return response.data;
     },
   });
@@ -410,7 +410,7 @@ function ArtistPage() {
   const { data: stats } = useQuery<Statistics>({
     queryKey: ["artist-stats"],
     queryFn: async () => {
-      const response = await api.get("/artists/statistics");
+      const response = await api.get("/artist-history/statistics");
       return response.data;
     },
   });
