@@ -940,6 +940,31 @@ def analyze_artist_task(self, artist_name: str, force_refresh: bool = False, use
             db.commit()
             analysis_id = analysis.id
             log.success(f"Analyse sauvegardée", analysis_id=str(analysis_id))
+            
+            # === CREATE SNAPSHOT FOR PREDICTIONS ===
+            try:
+                from app.db.models.artist_snapshot import ArtistSnapshot
+                
+                snapshot = ArtistSnapshot(
+                    artist_name=profile.name,
+                    artist_name_normalized=ArtistSnapshot.normalize_name(profile.name),
+                    workspace_id=workspace_id,
+                    spotify_monthly_listeners=profile.spotify_monthly_listeners,
+                    spotify_followers=0,  # Not yet tracked
+                    tiktok_followers=profile.tiktok_followers,
+                    youtube_subscribers=profile.youtube_subscribers,
+                    instagram_followers=profile.instagram_followers,
+                    concerts_next_30d=0,  # Could be enhanced with concert data
+                    source_quality_score=profile.confidence_score * 100 if profile.confidence_score else 50.0,
+                    sources_used=", ".join(profile.sources_scanned) if profile.sources_scanned else None,
+                )
+                db.add(snapshot)
+                db.commit()
+                log.info(f"Snapshot créé pour prédictions", artist=profile.name)
+            except Exception as snap_err:
+                log.warning(f"Échec création snapshot: {snap_err}")
+                # Non-blocking - continue even if snapshot fails
+                
         except Exception as e:
             log.error(f"Échec sauvegarde: {e}")
             analysis_id = None

@@ -75,6 +75,7 @@ import {
   Globe,
   History,
 } from "lucide-react";
+import { ArtistPredictionsPanel } from "@/components/artist/ArtistPredictionsPanel";
 
 // ============================================================================
 // ICONS
@@ -855,50 +856,16 @@ function ArtistPage() {
                             )}
                           </TabsContent>
 
-                          {/* Tab: Predictions */}
+                          {/* Tab: Predictions - New Component with Snapshots */}
                           <TabsContent value="predictions" className="space-y-4">
-                            {aiData?.predictions ? (
-                              <div className="space-y-4">
-                                <h4 className="font-medium flex items-center gap-2">
-                                  <LineChart className="h-4 w-4 text-purple-500" />
-                                  Prédictions de croissance
-                                </h4>
-                                <div className="grid grid-cols-3 gap-4">
-                                  {aiData.predictions.short_term && (
-                                    <div className="p-4 border rounded-lg">
-                                      <div className="text-sm text-muted-foreground mb-1">30 jours</div>
-                                      <div className="text-lg font-bold">{aiData.predictions.short_term.prediction}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Confiance: {(aiData.predictions.short_term.confidence * 100).toFixed(0)}%
-                                      </div>
-                                    </div>
-                                  )}
-                                  {aiData.predictions.medium_term && (
-                                    <div className="p-4 border rounded-lg">
-                                      <div className="text-sm text-muted-foreground mb-1">90 jours</div>
-                                      <div className="text-lg font-bold">{aiData.predictions.medium_term.prediction}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Confiance: {(aiData.predictions.medium_term.confidence * 100).toFixed(0)}%
-                                      </div>
-                                    </div>
-                                  )}
-                                  {aiData.predictions.long_term && (
-                                    <div className="p-4 border rounded-lg">
-                                      <div className="text-sm text-muted-foreground mb-1">180 jours</div>
-                                      <div className="text-lg font-bold">{aiData.predictions.long_term.prediction}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Confiance: {(aiData.predictions.long_term.confidence * 100).toFixed(0)}%
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-center py-8 text-muted-foreground">
-                                <LineChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                <p>Prédictions non disponibles</p>
-                              </div>
-                            )}
+                            <ArtistPredictionsPanel 
+                              artistName={profile.name} 
+                              onRefresh={() => {
+                                // Trigger a new analysis
+                                setSearchQuery(profile.name);
+                                analyzeMutation.mutate(profile.name);
+                              }}
+                            />
                           </TabsContent>
 
                           {/* Tab: Booking */}

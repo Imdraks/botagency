@@ -26,6 +26,7 @@ from app.api import (
 )
 from app.api.predictions import router as predictions_router, reports_router
 from app.api.artist_history import router as artist_history_router
+from app.api.artist_predictions import router as artist_predictions_router
 from app.api.enrichment import router as enrichment_router
 from app.api.sso import router as sso_router
 from app.api.ai_intelligence import router as ai_intelligence_router
@@ -253,6 +254,7 @@ app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(predictions_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(artist_history_router, prefix="/api/v1/artist-history", tags=["Artist History"])
+app.include_router(artist_predictions_router, prefix="/api/v1/artist-predictions", tags=["Artist Predictions"])
 app.include_router(enrichment_router, prefix="/api/v1", tags=["Artist Enrichment"])
 app.include_router(sso_router, prefix="/api/v1", tags=["SSO Authentication"])
 app.include_router(ai_intelligence_router, prefix="/api/v1", tags=["AI Intelligence"])
