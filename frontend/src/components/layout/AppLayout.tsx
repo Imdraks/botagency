@@ -160,8 +160,7 @@ const navigationSections: NavSection[] = [
     packRequired: "talents",
     items: [
       { name: "Découverte", href: "/discovery", icon: Search, feature: "discovery" },
-      { name: "Spotify Search", href: "/spotify-search", icon: Music, feature: "spotify_search" },
-      { name: "Artistes", href: "/artist-history", icon: Music, feature: "artists" },
+      { name: "Artistes", href: "/artist", icon: Music, feature: "artists" },
       { name: "Comparaison", href: "/comparison", icon: GitCompare, feature: "comparison" },
     ],
   },

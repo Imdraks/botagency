@@ -15,8 +15,7 @@ const MODULE_INFO: Record<string, { name: string; pack?: Pack; addon?: Addon; ad
   
   // Radar Discovery (talents pack)
   "/discovery": { name: "Radar Discovery", pack: "talents" },
-  "/spotify-search": { name: "Radar Discovery", pack: "talents" },
-  "/artist-history": { name: "Radar Discovery", pack: "talents" },
+  "/artist": { name: "Radar Discovery", pack: "talents" },
   "/comparison": { name: "Radar Discovery", pack: "talents" },
   
   // Radar Analytics (intelligence pack)
