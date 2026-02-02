@@ -540,8 +540,329 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* FAQ */}
+      {/* Comparison Table */}
       <section className="py-20 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+              Comparer les packs en détail
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Toutes les fonctionnalités par pack, pour faire le bon choix.
+            </p>
+          </div>
+
+          <div className="max-w-6xl mx-auto overflow-x-auto">
+            <table className="w-full border-collapse">
+              {/* Header */}
+              <thead>
+                <tr>
+                  <th className="text-left p-4 bg-gray-50 border-b border-gray-200 min-w-[200px]">
+                    <span className="text-sm font-semibold text-gray-900">Fonctionnalités</span>
+                  </th>
+                  <th className="p-4 bg-gray-50 border-b border-gray-200 text-center min-w-[140px]">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Layers className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900">Core</span>
+                      <span className="text-sm text-gray-500">7,99€/mois</span>
+                    </div>
+                  </th>
+                  <th className="p-4 bg-gray-50 border-b border-gray-200 text-center min-w-[140px]">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Search className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900">Discovery</span>
+                      <span className="text-sm text-gray-500">14,99€/mois</span>
+                    </div>
+                  </th>
+                  <th className="p-4 bg-purple-50 border-b border-purple-200 text-center min-w-[140px]">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <BarChart3 className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900">Analytics</span>
+                      <span className="text-sm text-gray-500">23,99€/mois</span>
+                      <Badge className="bg-purple-100 text-purple-700 text-xs">Populaire</Badge>
+                    </div>
+                  </th>
+                  <th className="p-4 bg-gray-50 border-b border-gray-200 text-center min-w-[140px]">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Briefcase className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900">Business</span>
+                      <span className="text-sm text-gray-500">33,99€/mois</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {/* Organisation */}
+                <tr>
+                  <td colSpan={5} className="bg-gray-100 p-3 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    📁 Organisation & Collaboration
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Workspace collaboratif</td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Projets & tâches</td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Gestion des fichiers / assets</td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Notifications & rappels</td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Intégrations (Slack, Google...)</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-500">Base</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-500">Base</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+
+                {/* Discovery */}
+                <tr>
+                  <td colSpan={5} className="bg-gray-100 p-3 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    🔍 Découverte & Suivi Artistes
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Recherche artistes</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Fiches artistes complètes</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Watchlists & Shortlists</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Comparaisons artistes</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Suivi d'évolution</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Alertes & notifications artistes</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-500">Base</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+
+                {/* Analytics */}
+                <tr>
+                  <td colSpan={5} className="bg-gray-100 p-3 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    📊 Analytics & Reporting
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Dashboards personnalisés</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">KPIs & métriques avancées</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Rapports partageables</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Exports CSV / PDF</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Benchmarks marché</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+
+                {/* Intelligence */}
+                <tr>
+                  <td colSpan={5} className="bg-purple-100 p-3 text-sm font-semibold text-purple-800 border-b border-purple-200">
+                    ✨ Radar Intelligence
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Scoring prédictif artistes</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Signaux faibles & opportunités</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Prédictions 30/60/90 jours</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Recommandations automatiques</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+
+                {/* Business */}
+                <tr>
+                  <td colSpan={5} className="bg-gray-100 p-3 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    💼 CRM & Facturation
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">CRM (clients & contacts)</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Pipeline commercial</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Devis & factures</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Suivi des paiements</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Exports comptabilité</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+
+                {/* Support */}
+                <tr>
+                  <td colSpan={5} className="bg-gray-100 p-3 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    🛟 Support & Services
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Support email</td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Support prioritaire</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Onboarding personnalisé</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-700">Account manager dédié</td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center bg-purple-50/50"><span className="text-sm text-gray-400">—</span></td>
+                  <td className="p-4 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* CTA sous le tableau */}
+          <div className="mt-12 text-center">
+            <Link href="/login">
+              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl">
+                Demander l'accès
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
