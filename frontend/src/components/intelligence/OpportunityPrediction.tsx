@@ -119,7 +119,7 @@ export function OpportunityPrediction({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
-            Analyse IA - {opportunityTitle}
+            Analyse - {opportunityTitle}
           </DialogTitle>
         </DialogHeader>
 

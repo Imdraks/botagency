@@ -193,7 +193,7 @@ const navigationSections: NavSection[] = [
       { name: "Daily Picks", href: "/shortlist", icon: Sparkles, feature: "daily_picks" },
       { name: "Scoring", href: "/scoring", icon: BarChart3, feature: "scoring" },
       { name: "Profils", href: "/profiles", icon: Sliders, feature: "profiles" },
-      { name: "Prédictions IA", href: "/predictions", icon: Brain, feature: "ai_predictions" },
+      { name: "Prédictions", href: "/predictions", icon: Brain, feature: "ai_predictions" },
     ],
   },
 

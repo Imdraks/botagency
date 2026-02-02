@@ -121,7 +121,7 @@ export function IntelligentSearchDialog() {
             Recherche Intelligente
           </DialogTitle>
           <DialogDescription>
-            Utilisez l'IA pour trouver des opportunités avec extraction de prix, contacts et analyse d'artistes.
+            Recherche avancée avec extraction de prix, contacts et analyse d'artistes.
           </DialogDescription>
         </DialogHeader>
 

@@ -235,7 +235,7 @@ function ArtistsPageContent() {
             Google des Artistes
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Analysez n'importe quel artiste en quelques secondes. Score IA, métriques sociales, 
+            Analysez n'importe quel artiste en quelques secondes. Score, métriques sociales, 
             estimation de cachet et recommandations personnalisées.
           </p>
         </div>
@@ -365,7 +365,7 @@ function ArtistsPageContent() {
                         <TableHead>Artiste</TableHead>
                         <TableHead>Genre</TableHead>
                         <TableHead>Cachet Estimé</TableHead>
-                        <TableHead>Score IA</TableHead>
+                        <TableHead>Score</TableHead>
                         <TableHead>Spotify</TableHead>
                         <TableHead>Tendance</TableHead>
                         <TableHead>Dernière MAJ</TableHead>

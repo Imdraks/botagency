@@ -18,7 +18,7 @@ const DASHBOARD_STEPS: OnboardingStep[] = [
     target: "[data-onboarding='collect-button']",
     title: "Lancer une collecte",
     description:
-      "Cliquez ici pour lancer une recherche d'opportunités. Vous pouvez faire une collecte standard via vos sources configurées, ou utiliser l'IA pour une recherche avancée avec ChatGPT.",
+      "Cliquez ici pour lancer une recherche d'opportunités. Vous pouvez faire une collecte standard via vos sources configurées, ou utiliser la recherche intelligente pour une analyse avancée.",
     position: "bottom",
   },
   {

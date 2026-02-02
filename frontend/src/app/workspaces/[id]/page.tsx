@@ -93,7 +93,7 @@ const PACKS = [
   { value: 'clients', label: 'Clients', description: 'Gestion des clients, Dossiers, Daily Picks', minPlan: 'mini' },
   { value: 'leads', label: 'Leads', description: 'Leads, Kanban, Scoring', minPlan: 'standard' },
   { value: 'talents', label: 'Talents', description: 'Artistes, Profils, Découverte, Comparaison, Map', minPlan: 'standard' },
-  { value: 'intelligence', label: 'Intelligence', description: 'Analytics, Veille concurrentielle, Prédictions IA', minPlan: 'premium' },
+  { value: 'intelligence', label: 'Intelligence', description: 'Analytics, Veille concurrentielle, Prédictions avancées', minPlan: 'premium' },
 ];
 
 const ADDONS = [

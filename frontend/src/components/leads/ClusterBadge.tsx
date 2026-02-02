@@ -56,7 +56,7 @@ function getMatchTypeInfo(matchType: ClusterMatchType) {
     case "ai":
       return {
         icon: <Brain className="h-3 w-3" />,
-        label: "IA",
+        label: "Auto",
         color: "bg-green-100 text-green-700 border-green-200",
       };
     default:

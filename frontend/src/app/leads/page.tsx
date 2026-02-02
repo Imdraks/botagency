@@ -335,11 +335,11 @@ function LeadsContent() {
                 <Link href="/predictions">
                   <Button variant="outline" size="sm" className="gap-2">
                     <Brain className="h-4 w-4 text-purple-600" />
-                    <span className="hidden sm:inline">IA</span>
+                    <span className="hidden sm:inline">Prédictions</span>
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>Prédictions IA</TooltipContent>
+              <TooltipContent>Prédictions</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>

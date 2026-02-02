@@ -115,7 +115,7 @@ export function QuickStartExamples({ onSelect }: QuickStartExamplesProps) {
           </div>
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-amber-500" />
-            <span>Score IA</span>
+            <span>Score Radar</span>
           </div>
         </div>
 

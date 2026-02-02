@@ -65,7 +65,7 @@ const PACK_DESCRIPTIONS: Record<Pack, string> = {
   clients: 'CRM, Dossiers clients, Historique',
   leads: 'Daily Picks, Kanban, Scoring',
   talents: 'Artistes, Profils, Découverte, Comparaison',
-  intelligence: 'Analytics, Veille, Prédictions IA, Carte',
+  intelligence: 'Analytics, Veille, Prédictions, Carte',
 };
 
 // ============================================================================

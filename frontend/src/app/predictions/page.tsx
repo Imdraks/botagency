@@ -230,7 +230,7 @@ function PredictionsContent() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <Brain className="h-8 w-8 text-purple-600" />
-            Prédictions IA
+            Prédictions
           </h1>
           <p className="text-muted-foreground">
             Analyse prédictive de votre pipeline commercial

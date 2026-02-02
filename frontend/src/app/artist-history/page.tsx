@@ -609,7 +609,7 @@ function ArtistDetailDialog({
                 {analysis.ai_score && (
                   <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold ${analysis.ai_score >= 80 ? "bg-green-100 text-green-700" : analysis.ai_score >= 60 ? "bg-yellow-100 text-yellow-700" : analysis.ai_score >= 40 ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700"}`}>
                     <Brain className="h-3.5 w-3.5" />
-                    Score IA: {analysis.ai_score.toFixed(0)}
+                    Score: {analysis.ai_score.toFixed(0)}
                   </div>
                 )}
               </DialogTitle>
@@ -1132,7 +1132,7 @@ function ArtistHistoryContent() {
                       <TableHead className="font-semibold">Genre</TableHead>
                       <TableHead className="font-semibold">Cachet Estimé</TableHead>
                       <TableHead className="font-semibold">Niveau</TableHead>
-                      <TableHead className="font-semibold">Score IA</TableHead>
+                      <TableHead className="font-semibold">Score</TableHead>
                       <TableHead className="font-semibold">Spotify</TableHead>
                       <TableHead className="font-semibold">Tendance</TableHead>
                       <TableHead className="font-semibold">Date</TableHead>

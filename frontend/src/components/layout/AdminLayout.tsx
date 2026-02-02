@@ -46,7 +46,7 @@ const toolsNavigation = [
   { name: 'Source Health', href: '/source-health', icon: HeartPulse },
   { name: 'Profils', href: '/profiles', icon: Sliders },
   { name: 'Scoring', href: '/scoring', icon: BarChart3 },
-  { name: 'Prédictions IA', href: '/predictions', icon: Brain },
+  { name: 'Prédictions', href: '/predictions', icon: Brain },
 ];
 
 const bottomNavigation = [

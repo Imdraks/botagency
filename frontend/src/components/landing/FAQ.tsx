@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "Comment fonctionne le scoring des leads ?",
     answer:
-      "Le scoring analyse plusieurs critères : budget estimé, deadline, correspondance avec vos services, localisation, etc. L'IA attribue un score de 0 à 100 pour prioriser vos opportunités.",
+      "Le scoring analyse plusieurs critères : budget estimé, deadline, correspondance avec vos services, localisation, etc. Radar attribue un score de 0 à 100 pour prioriser vos opportunités.",
   },
   {
     question: "Comment gérer les rôles et permissions ?",

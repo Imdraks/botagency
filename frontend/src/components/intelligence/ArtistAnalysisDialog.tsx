@@ -317,10 +317,10 @@ export function ArtistAnalysisDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-purple-500" />
-            Analyse IA d'Artiste
+            Analyse d'Artiste
           </DialogTitle>
           <DialogDescription>
-            Scan web + Intelligence Artificielle : prédictions, SWOT, stratégie de booking
+            Scan web complet : prédictions, SWOT, stratégie de booking
           </DialogDescription>
         </DialogHeader>
 
@@ -346,7 +346,7 @@ export function ArtistAnalysisDialog() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    Score IA global (0-100)
+                    Score global (0-100)
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -392,7 +392,7 @@ export function ArtistAnalysisDialog() {
                 ) : (
                   <Brain className="h-4 w-4" />
                 )}
-                Lancer l'Analyse IA
+                Lancer l'Analyse
               </Button>
             </DialogFooter>
           </>
@@ -406,12 +406,12 @@ export function ArtistAnalysisDialog() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-500 absolute -bottom-2 -right-2" />
                   </div>
                   <p className="text-lg font-medium">
-                    Analyse IA en cours pour <strong>{artistName}</strong>
+                    Analyse en cours pour <strong>{artistName}</strong>
                   </p>
                   <div className="text-sm text-muted-foreground text-center max-w-md space-y-1">
                     <p>🔍 Scan des sources web...</p>
                     <p>🧠 Génération des prédictions...</p>
-                    <p>📊 Calcul du score IA...</p>
+                    <p>📊 Calcul du score...</p>
                   </div>
                 </div>
               ) : taskStatus?.ready && profile ? (

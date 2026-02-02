@@ -355,7 +355,7 @@ export function EmergingArtistsWidget() {
                   {analysisProgress > 60 && (
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      Analyse IA des cachets...
+                      Estimation des cachets...
                     </div>
                   )}
                 </div>

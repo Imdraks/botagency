@@ -248,7 +248,7 @@ Orelsan`}
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  Score IA & Prédictions
+                  Score & Prédictions
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
@@ -327,7 +327,7 @@ Orelsan`}
                         </div>
                         {task.status === "completed" && task.result?.ai_score && (
                           <div className="text-xs text-muted-foreground mt-1">
-                            Score IA: {task.result.ai_score} • 
+                            Score: {task.result.ai_score} • 
                             {task.result.result?.financials?.estimated_fee_min?.toLocaleString()}€ - 
                             {task.result.result?.financials?.estimated_fee_max?.toLocaleString()}€
                           </div>

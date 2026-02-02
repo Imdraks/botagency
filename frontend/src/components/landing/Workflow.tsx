@@ -14,7 +14,7 @@ const steps = [
     step: "02",
     icon: Sparkles,
     title: "Qualifier",
-    description: "Scorez automatiquement vos opportunités grâce à l'IA. Focus sur les meilleurs prospects.",
+    description: "Scorez automatiquement vos opportunités. Focus sur les meilleurs prospects.",
     color: "from-purple-500 to-pink-500",
   },
   {

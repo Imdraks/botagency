@@ -160,7 +160,7 @@ export const PLAN_CONFIGS: Record<Plan, PlanConfig> = {
     packs: ['core', 'clients', 'leads', 'talents', 'intelligence'],
     highlights: [
       'Tout Standard inclus',
-      'Analytics, Veille Concur., Prédictions IA',
+      'Analytics, Veille, Prédictions avancées',
       'Radar Business inclus (devis + factures)',
     ],
   },

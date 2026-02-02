@@ -242,7 +242,7 @@ function SpotifySearchPage() {
     onSuccess: (data) => {
       setTaskId(data.task_id);
       setPolling(true);
-      toast.success("🧠 Analyse IA lancée !");
+      toast.success("🧠 Analyse lancée !");
       
       // Ajouter à l'historique
       setSearchHistory(prev => [{
@@ -315,9 +315,9 @@ function SpotifySearchPage() {
                 <Brain className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Recherche Artiste IA</h1>
+                <h1 className="text-2xl font-bold">Recherche Artiste</h1>
                 <p className="text-muted-foreground">
-                  Scan web + Intelligence Artificielle : données, prédictions, SWOT, stratégie booking
+                  Scan web complet : données, prédictions, SWOT, stratégie booking
                 </p>
               </div>
             </div>
@@ -375,11 +375,11 @@ function SpotifySearchPage() {
                         <Loader2 className="h-10 w-10 animate-spin text-pink-500 absolute -bottom-2 -right-2" />
                       </div>
                       <p className="text-xl font-medium">
-                        Analyse IA en cours pour <strong className="text-purple-600">{searchQuery}</strong>
+                        Analyse en cours pour <strong className="text-purple-600">{searchQuery}</strong>
                       </p>
                       <div className="text-sm text-muted-foreground text-center space-y-1">
                         <p>🔍 Scan des sources web (Spotify, YouTube, Viberate...)</p>
-                        <p>🧠 Génération des prédictions IA...</p>
+                        <p>🧠 Génération des prédictions...</p>
                         <p>📊 Calcul du score et analyse SWOT...</p>
                       </div>
                       <div className="w-64">
@@ -822,15 +822,15 @@ function SpotifySearchPage() {
                   <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Brain className="h-12 w-12 text-purple-500" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-3">Analyse IA d'artiste</h3>
+                  <h3 className="text-xl font-semibold mb-3">Analyse d'artiste</h3>
                   <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                    Entrez le nom d'un artiste pour lancer un scan web complet avec analyse IA : 
+                    Entrez le nom d'un artiste pour lancer un scan web complet : 
                     données sociales, prédictions, SWOT, stratégie de booking.
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-lg mx-auto text-sm">
                     <div className="flex items-center gap-2 p-2 bg-muted rounded">
                       <CheckCircle className="h-4 w-4 text-green-500" />
-                      Score IA global
+                      Score global
                     </div>
                     <div className="flex items-center gap-2 p-2 bg-muted rounded">
                       <CheckCircle className="h-4 w-4 text-green-500" />

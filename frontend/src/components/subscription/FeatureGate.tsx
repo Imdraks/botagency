@@ -110,7 +110,7 @@ export function LockedFeature({ feature, title, compact = false }: LockedFeature
     spotify_search: 'Spotify Search',
     analytics: 'Analytics',
     competitor_watch: 'Veille Concurrentielle',
-    ai_predictions: 'Prédictions IA',
+    ai_predictions: 'Prédictions',
     crm_extended: 'CRM Étendu',
     quotes: 'Devis',
     invoices: 'Factures',
