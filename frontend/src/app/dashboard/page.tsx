@@ -69,7 +69,7 @@ function DashboardContent() {
           </div>
           
           {/* Lien vers Discovery - Artistes */}
-          <Link href="/artist-history">
+          <Link href="/artist">
             <Button variant="outline" className="gap-2">
               <Music className="h-4 w-4" />
               Analyser un Artiste
@@ -292,7 +292,7 @@ function DashboardContent() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Link href="/artist-history">
+              <Link href="/artist">
                 <Button variant="outline" className="border-purple-200 hover:bg-purple-100">
                   Artistes
                 </Button>

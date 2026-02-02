@@ -400,7 +400,7 @@ export function EmergingArtistsWidget() {
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/artist-history">
+            <Link href="/artist">
               <Music className="h-4 w-4 mr-2" />
               Tous les artistes
             </Link>
