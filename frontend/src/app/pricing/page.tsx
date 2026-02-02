@@ -582,12 +582,12 @@ export default function PricingPage() {
               {/* Analytics - Highlighted */}
               <div className="p-4 text-center">
                 <div className="bg-gradient-to-b from-purple-50 to-white rounded-2xl border-2 border-purple-400 p-5 shadow-lg shadow-purple-500/10 relative">
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
                       Le plus populaire
                     </span>
                   </div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-3 mt-2 shadow-lg shadow-purple-500/30">
                     <BarChart3 className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="font-bold text-gray-900 text-lg">Analytics</h3>
