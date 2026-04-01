@@ -326,8 +326,19 @@ export const useBankingStore = create<BankingState>()((set, get) => ({
 
   updateConnection: async (connectionId, updateData) => {
     try {
+      // Optimistic update for toggle responsiveness
+      const current = get().selectedConnection;
+      if (current && current.id === connectionId) {
+        set({
+          selectedConnection: { ...current, ...updateData },
+        });
+      }
       await api.patch(`/banking/connections/${connectionId}`, updateData);
       get().fetchConnections();
+      // Refresh selected connection detail
+      if (get().selectedConnection?.id === connectionId) {
+        get().fetchConnectionDetail(connectionId);
+      }
       return true;
     } catch (err: any) {
       set({ error: err?.response?.data?.detail || 'Erreur lors de la mise à jour' });
