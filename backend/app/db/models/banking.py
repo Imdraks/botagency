@@ -140,6 +140,9 @@ class BankConnection(Base):
     
     # Audit trail (JSON array of events)
     audit_log = Column(JSON, default=list)
+
+    # Provider-specific metadata (token expiry, scopes, etc.)
+    bank_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
