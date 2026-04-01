@@ -88,6 +88,10 @@ class Workspace(Base):
     legal_email: Mapped[Optional[str]] = mapped_column(String(255))
     siret: Mapped[Optional[str]] = mapped_column(String(20))
     vat_number: Mapped[Optional[str]] = mapped_column(String(30))
+    forme_juridique: Mapped[Optional[str]] = mapped_column(String(50))  # SAS, SARL, EURL, EI, SASU, SA, SCI
+    capital_social: Mapped[Optional[str]] = mapped_column(String(50))  # "10 000 €"
+    rcs_city: Mapped[Optional[str]] = mapped_column(String(100))  # Ville d'immatriculation RCS
+    tva_franchise: Mapped[Optional[bool]] = mapped_column(default=False)  # Franchise de base TVA (art. 293 B)
     logo_drive_file_id: Mapped[Optional[str]] = mapped_column(String(255))
     
     # Payment info (IBAN, BIC, payment instructions)

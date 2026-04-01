@@ -102,6 +102,10 @@ interface WorkspaceDetail {
   legal_email: string | null;
   siret: string | null;
   vat_number: string | null;
+  forme_juridique: string | null;
+  capital_social: string | null;
+  rcs_city: string | null;
+  tva_franchise: boolean | null;
 }
 
 interface InviteEmail {
@@ -361,6 +365,10 @@ function CompanyInfoSection({
     legal_email: workspace.legal_email || "",
     siret: workspace.siret || "",
     vat_number: workspace.vat_number || "",
+    forme_juridique: workspace.forme_juridique || "",
+    capital_social: workspace.capital_social || "",
+    rcs_city: workspace.rcs_city || "",
+    tva_franchise: workspace.tva_franchise || false,
   });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -438,6 +446,10 @@ function CompanyInfoSection({
       legal_country: "France",
       siret: siege.siret || "",
       vat_number: vatNumber || form.vat_number,
+      forme_juridique: company.nature_juridique || form.forme_juridique,
+      rcs_city: siege.libelle_commune || form.rcs_city,
+      capital_social: form.capital_social,
+      tva_franchise: form.tva_franchise,
       legal_phone: form.legal_phone,
       legal_email: form.legal_email,
     });
@@ -582,6 +594,55 @@ function CompanyInfoSection({
             disabled={!isAdmin}
             placeholder="FR 12 345678901"
           />
+        </div>
+
+        {/* Forme juridique, Capital, RCS */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="forme_juridique">Forme juridique</Label>
+            <Input
+              id="forme_juridique"
+              value={typeof form.forme_juridique === 'string' ? form.forme_juridique : ''}
+              onChange={(e) => handleChange("forme_juridique", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="SAS, SARL, EURL, EI..."
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="capital_social">Capital social</Label>
+            <Input
+              id="capital_social"
+              value={typeof form.capital_social === 'string' ? form.capital_social : ''}
+              onChange={(e) => handleChange("capital_social", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="10 000 €"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="rcs_city">Ville RCS</Label>
+            <Input
+              id="rcs_city"
+              value={typeof form.rcs_city === 'string' ? form.rcs_city : ''}
+              onChange={(e) => handleChange("rcs_city", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="Paris"
+            />
+          </div>
+        </div>
+
+        {/* Franchise TVA */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="tva_franchise"
+            checked={!!form.tva_franchise}
+            onChange={(e) => setForm({ ...form, tva_franchise: e.target.checked })}
+            disabled={!isAdmin}
+            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          />
+          <Label htmlFor="tva_franchise" className="text-sm">
+            Franchise en base de TVA (art. 293 B du CGI)
+          </Label>
         </div>
 
         {/* Adresse */}

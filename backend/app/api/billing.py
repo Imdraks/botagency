@@ -1269,19 +1269,46 @@ async def generate_quote_pdf(
     # ========== LEGAL FOOTER ==========
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
     elements.append(Spacer(1, 3*mm))
-    
-    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-6 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
+
+    # TVA franchise mention
+    if workspace and workspace.tva_franchise:
+        elements.append(Paragraph("<b>TVA non applicable, article 293 B du Code Général des Impôts.</b>", footer_style))
+        elements.append(Spacer(1, 2*mm))
+
+    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-10 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
     elements.append(Paragraph(legal_text, footer_style))
     elements.append(Spacer(1, 3*mm))
     
     # Company registration info
     reg_parts = []
     if workspace:
-        if workspace.legal_city:
-            reg_parts.append(f"Enregistré au RCS de: {workspace.legal_city}")
+        if workspace.forme_juridique:
+            forme = workspace.forme_juridique
+            if workspace.capital_social:
+                forme += f" au capital de {workspace.capital_social}"
+            reg_parts.append(forme)
+        if workspace.rcs_city:
+            siren = workspace.siret[:9] if workspace.siret and len(workspace.siret) >= 9 else ""
+            reg_parts.append(f"RCS {workspace.rcs_city} {siren}".strip())
+        elif workspace.legal_city and workspace.siret:
+            siren = workspace.siret[:9] if len(workspace.siret) >= 9 else workspace.siret
+            reg_parts.append(f"RCS {workspace.legal_city} {siren}")
         if workspace.siret:
-            reg_parts.append(f"Agrément n°: {workspace.siret[:9] if len(workspace.siret) >= 9 else workspace.siret}")
-    elements.append(Paragraph("    ".join(reg_parts) if reg_parts else "", footer_style))
+            reg_parts.append(f"SIRET: {workspace.siret}")
+        if workspace.vat_number and not workspace.tva_franchise:
+            reg_parts.append(f"TVA: {workspace.vat_number}")
+    elements.append(Paragraph("  •  ".join(reg_parts) if reg_parts else "", footer_style))
+    elements.append(Spacer(1, 8*mm))
+
+    # ========== SIGNATURE ==========
+    sig_style = ParagraphStyle('SigStyle', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT)
+    sig_data = [[
+        [Paragraph("<b>Bon pour accord</b>", sig_style), Paragraph("Date et signature du client :", ParagraphStyle('SigLabel', fontSize=8, textColor=GRAY_TEXT)), Spacer(1, 20*mm)],
+        [Paragraph("", sig_style)]
+    ]]
+    sig_table = Table(sig_data, colWidths=[90*mm, 85*mm])
+    sig_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOX', (0, 0), (0, 0), 0.5, BORDER_COLOR)]))
+    elements.append(sig_table)
     
     # Build PDF
     doc.build(elements)
@@ -1469,7 +1496,44 @@ async def upload_quote_pdf_to_drive(
     
     # Footer
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
-    elements.append(Paragraph("Pour tout professionnel, en cas de retard de paiement...", footer_style))
+    elements.append(Spacer(1, 3*mm))
+
+    if workspace and workspace.tva_franchise:
+        elements.append(Paragraph("<b>TVA non applicable, article 293 B du Code Général des Impôts.</b>", footer_style))
+        elements.append(Spacer(1, 2*mm))
+
+    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-10 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
+    elements.append(Paragraph(legal_text, footer_style))
+    elements.append(Spacer(1, 3*mm))
+
+    reg_parts = []
+    if workspace:
+        if workspace.forme_juridique:
+            forme = workspace.forme_juridique
+            if workspace.capital_social:
+                forme += f" au capital de {workspace.capital_social}"
+            reg_parts.append(forme)
+        if workspace.rcs_city:
+            siren = workspace.siret[:9] if workspace.siret and len(workspace.siret) >= 9 else ""
+            reg_parts.append(f"RCS {workspace.rcs_city} {siren}".strip())
+        elif workspace.legal_city and workspace.siret:
+            siren = workspace.siret[:9] if len(workspace.siret) >= 9 else workspace.siret
+            reg_parts.append(f"RCS {workspace.legal_city} {siren}")
+        if workspace.siret:
+            reg_parts.append(f"SIRET: {workspace.siret}")
+        if workspace.vat_number and not workspace.tva_franchise:
+            reg_parts.append(f"TVA: {workspace.vat_number}")
+    elements.append(Paragraph("  •  ".join(reg_parts) if reg_parts else "", footer_style))
+    elements.append(Spacer(1, 8*mm))
+
+    sig_style = ParagraphStyle('SigStyle', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT)
+    sig_data = [[
+        [Paragraph("<b>Bon pour accord</b>", sig_style), Paragraph("Date et signature du client :", ParagraphStyle('SigLabel', fontSize=8, textColor=GRAY_TEXT)), Spacer(1, 20*mm)],
+        [Paragraph("", sig_style)]
+    ]]
+    sig_table = Table(sig_data, colWidths=[90*mm, 85*mm])
+    sig_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOX', (0, 0), (0, 0), 0.5, BORDER_COLOR)]))
+    elements.append(sig_table)
     
     doc.build(elements)
     pdf_bytes = buffer.getvalue()
@@ -2122,17 +2186,32 @@ async def generate_invoice_pdf(
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
     elements.append(Spacer(1, 3*mm))
 
-    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-6 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
+    if workspace and workspace.tva_franchise:
+        elements.append(Paragraph("<b>TVA non applicable, article 293 B du Code Général des Impôts.</b>", footer_style))
+        elements.append(Spacer(1, 2*mm))
+
+    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-10 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
     elements.append(Paragraph(legal_text, footer_style))
     elements.append(Spacer(1, 3*mm))
 
     reg_parts = []
     if workspace:
-        if workspace.legal_city:
-            reg_parts.append(f"Enregistré au RCS de: {workspace.legal_city}")
+        if workspace.forme_juridique:
+            forme = workspace.forme_juridique
+            if workspace.capital_social:
+                forme += f" au capital de {workspace.capital_social}"
+            reg_parts.append(forme)
+        if workspace.rcs_city:
+            siren = workspace.siret[:9] if workspace.siret and len(workspace.siret) >= 9 else ""
+            reg_parts.append(f"RCS {workspace.rcs_city} {siren}".strip())
+        elif workspace.legal_city and workspace.siret:
+            siren = workspace.siret[:9] if len(workspace.siret) >= 9 else workspace.siret
+            reg_parts.append(f"RCS {workspace.legal_city} {siren}")
         if workspace.siret:
-            reg_parts.append(f"Agrément n°: {workspace.siret[:9] if len(workspace.siret) >= 9 else workspace.siret}")
-    elements.append(Paragraph("    ".join(reg_parts) if reg_parts else "", footer_style))
+            reg_parts.append(f"SIRET: {workspace.siret}")
+        if workspace.vat_number and not workspace.tva_franchise:
+            reg_parts.append(f"TVA: {workspace.vat_number}")
+    elements.append(Paragraph("  •  ".join(reg_parts) if reg_parts else "", footer_style))
 
     # Build PDF
     doc.build(elements)
@@ -2345,8 +2424,33 @@ async def upload_invoice_pdf_to_drive(
     # Footer
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
     elements.append(Spacer(1, 3*mm))
-    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-6 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
+
+    if workspace and workspace.tva_franchise:
+        elements.append(Paragraph("<b>TVA non applicable, article 293 B du Code Général des Impôts.</b>", footer_style))
+        elements.append(Spacer(1, 2*mm))
+
+    legal_text = "Pour tout professionnel, en cas de retard de paiement, seront exigibles, conformément à l'article L 441-10 du code de commerce, une indemnité calculée sur la base de trois fois le taux de l'intérêt légal en vigueur ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 euros."
     elements.append(Paragraph(legal_text, footer_style))
+    elements.append(Spacer(1, 3*mm))
+
+    reg_parts = []
+    if workspace:
+        if workspace.forme_juridique:
+            forme = workspace.forme_juridique
+            if workspace.capital_social:
+                forme += f" au capital de {workspace.capital_social}"
+            reg_parts.append(forme)
+        if workspace.rcs_city:
+            siren = workspace.siret[:9] if workspace.siret and len(workspace.siret) >= 9 else ""
+            reg_parts.append(f"RCS {workspace.rcs_city} {siren}".strip())
+        elif workspace.legal_city and workspace.siret:
+            siren = workspace.siret[:9] if len(workspace.siret) >= 9 else workspace.siret
+            reg_parts.append(f"RCS {workspace.legal_city} {siren}")
+        if workspace.siret:
+            reg_parts.append(f"SIRET: {workspace.siret}")
+        if workspace.vat_number and not workspace.tva_franchise:
+            reg_parts.append(f"TVA: {workspace.vat_number}")
+    elements.append(Paragraph("  •  ".join(reg_parts) if reg_parts else "", footer_style))
 
     doc.build(elements)
     pdf_bytes = buffer.getvalue()

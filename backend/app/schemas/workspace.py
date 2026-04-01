@@ -52,6 +52,10 @@ class WorkspaceUpdate(BaseModel):
     legal_email: Optional[str] = Field(None, max_length=255)
     siret: Optional[str] = Field(None, max_length=20)
     vat_number: Optional[str] = Field(None, max_length=30)
+    forme_juridique: Optional[str] = Field(None, max_length=50)
+    capital_social: Optional[str] = Field(None, max_length=50)
+    rcs_city: Optional[str] = Field(None, max_length=100)
+    tva_franchise: Optional[bool] = None
 
 
 class WorkspaceMemberResponse(BaseModel):
@@ -100,6 +104,10 @@ class WorkspaceResponse(BaseModel):
     legal_email: Optional[str] = None
     siret: Optional[str] = None
     vat_number: Optional[str] = None
+    forme_juridique: Optional[str] = None
+    capital_social: Optional[str] = None
+    rcs_city: Optional[str] = None
+    tva_franchise: Optional[bool] = None
     
     # Members count
     members_count: int = 0
