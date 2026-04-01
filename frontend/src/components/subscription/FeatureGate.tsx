@@ -116,6 +116,7 @@ export function LockedFeature({ feature, title, compact = false }: LockedFeature
     invoices: 'Factures',
     sources: 'Sources',
     source_health: 'Santé des Sources',
+    banking: 'Connexions Bancaires',
   };
   
   if (compact) {
