@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   ChevronRight,
   Settings2,
-  ExternalLink,
   Unplug,
   ArrowDownUp,
   CreditCard,
@@ -53,8 +52,6 @@ function BankingPageContent() {
     revolutTransactions,
     revolutTransactionsLoading,
     fetchRevolutStatus,
-    connectRevolut,
-    completeRevolutOAuth,
     syncRevolut,
     fetchRevolutTransactions,
     disconnectRevolut,
@@ -62,7 +59,6 @@ function BankingPageContent() {
 
   const [view, setView] = useState<"list" | "detail" | "revolut">("list");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [revolutConnecting, setRevolutConnecting] = useState(false);
   const [revolutSuccess, setRevolutSuccess] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin" || user?.is_superuser === true;
@@ -113,14 +109,6 @@ function BankingPageContent() {
     fetchRevolutStatus();
   };
 
-  const handleConnectRevolut = async () => {
-    setRevolutConnecting(true);
-    const url = await connectRevolut();
-    setRevolutConnecting(false);
-    if (url) {
-      window.location.href = url;
-    }
-  };
 
   const handleRevolutView = () => {
     setView("revolut");
@@ -306,67 +294,50 @@ function BankingPageContent() {
         </div>
       )}
 
-      {/* ── Revolut Section ──────────────────────────────────── */}
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 overflow-hidden">
-        <div className="px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#0075EB] flex items-center justify-center">
-              <span className="text-white text-lg font-bold">R</span>
+      {/* ── Connections & Revolut data ──────────────────────────── */}
+      {/* Revolut Section — data only, connect is in Settings */}
+      {revolutStatus?.connected && (
+        <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 overflow-hidden">
+          <div className="px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#0075EB] flex items-center justify-center">
+                <span className="text-white text-lg font-bold">R</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Revolut Business
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {revolutStatus.accounts_count} compte(s) · Dernière sync {revolutStatus.last_sync_at ? new Date(revolutStatus.last_sync_at).toLocaleDateString("fr-FR") : "—"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                Revolut Business
-              </h3>
-              <p className="text-xs text-gray-400">
-                {revolutStatus?.connected
-                  ? `${revolutStatus.accounts_count} compte(s) · Dernière sync ${revolutStatus.last_sync_at ? new Date(revolutStatus.last_sync_at).toLocaleDateString("fr-FR") : "—"}`
-                  : "Connectez votre compte Revolut Business"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {revolutStatus?.connected ? (
-              <>
-                <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Connecté
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => syncRevolut()}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isLoading && "animate-spin")} />
-                  Sync
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleRevolutView}
-                >
-                  <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
-                  Transactions
-                </Button>
-              </>
-            ) : (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Connecté
+              </span>
               <Button
+                variant="outline"
                 size="sm"
-                onClick={handleConnectRevolut}
-                disabled={revolutConnecting}
-                className="bg-[#0075EB] hover:bg-[#005fc0] text-white"
+                onClick={() => syncRevolut()}
+                disabled={isLoading}
               >
-                {revolutConnecting ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                ) : (
-                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                )}
-                Connecter Revolut
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isLoading && "animate-spin")} />
+                Sync
               </Button>
-            )}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleRevolutView}
+              >
+                <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
+                Transactions
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Connections Grid */}
       {isLoading && connections.length === 0 ? (

@@ -59,7 +59,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/auth";
 import { useBankingStore } from "@/store/bankingStore";
-import { ConnectBankDialog, BankStatusBadge, SyncStatusBadge } from "@/components/banking";
+import { BankStatusBadge, SyncStatusBadge } from "@/components/banking";
+import { ExternalLink, Unplug } from "lucide-react";
 
 // ============================================================================
 // TYPES
@@ -1040,19 +1041,48 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
     isSyncing,
     triggerSync,
     updateConnection,
+    // Revolut
+    revolutStatus,
+    fetchRevolutStatus,
+    connectRevolut,
+    syncRevolut,
+    disconnectRevolut,
   } = useBankingStore();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [revolutConnecting, setRevolutConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+    fetchRevolutStatus();
+  }, [fetchDashboard, fetchRevolutStatus]);
 
   useEffect(() => {
     if (selectedId) {
       fetchConnectionDetail(selectedId);
     }
   }, [selectedId, fetchConnectionDetail]);
+
+  const handleConnectRevolut = async () => {
+    setRevolutConnecting(true);
+    setShowAddDialog(false);
+    const url = await connectRevolut();
+    setRevolutConnecting(false);
+    if (url) {
+      window.location.href = url;
+    }
+  };
+
+  const handleDisconnectRevolut = async () => {
+    if (!confirm("Déconnecter Revolut ? Les comptes et données liés seront supprimés.")) return;
+    setIsDisconnecting(true);
+    await disconnectRevolut();
+    setIsDisconnecting(false);
+    fetchDashboard();
+    fetchRevolutStatus();
+  };
 
   const formatCurrency = (val: number, currency: string = "EUR") =>
     new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(val);
@@ -1122,7 +1152,11 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
         <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
           {/* Connection header */}
           <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex items-center gap-4">
-            {selectedConnection.bank_logo_url ? (
+            {selectedConnection.provider === "revolut" ? (
+              <div className="w-10 h-10 rounded-xl bg-[#0075EB] flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-lg font-bold">R</span>
+              </div>
+            ) : selectedConnection.bank_logo_url ? (
               <img
                 src={selectedConnection.bank_logo_url}
                 alt=""
@@ -1262,6 +1296,26 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Disconnect button */}
+              {selectedConnection.provider === "revolut" && (
+                <div className="pt-3 mt-3 border-t border-gray-100 dark:border-slate-800">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDisconnectRevolut}
+                    disabled={isDisconnecting}
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                  >
+                    {isDisconnecting ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <Unplug className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Déconnecter Revolut
+                  </Button>
                 </div>
               )}
             </div>
@@ -1407,17 +1461,90 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
         {/* Add account/card button — pink pill */}
         {isAdmin && (
           <div className="px-6 py-5 flex justify-center border-t border-gray-100 dark:border-slate-800">
-            <ConnectBankDialog
-              trigger={
-                <Button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-6 h-10 text-sm font-medium shadow-sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter un compte ou une carte
-                </Button>
-              }
-            />
+            <Button
+              className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-6 h-10 text-sm font-medium shadow-sm"
+              onClick={() => setShowAddDialog(true)}
+              disabled={revolutConnecting}
+            >
+              {revolutConnecting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              {revolutConnecting ? "Connexion en cours…" : "Ajouter un compte ou une carte"}
+            </Button>
           </div>
         )}
       </div>
+
+      {/* Add Bank Dialog — for now, only Revolut is available */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Landmark className="h-5 w-5 text-purple-600" />
+              Connecter une banque
+            </DialogTitle>
+            <DialogDescription>
+              Sélectionnez le service bancaire à connecter.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            {/* Revolut option */}
+            <button
+              onClick={handleConnectRevolut}
+              disabled={revolutConnecting || revolutStatus?.connected}
+              className={cn(
+                "w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all border",
+                revolutStatus?.connected
+                  ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50 cursor-default"
+                  : "hover:bg-purple-50 dark:hover:bg-purple-900/20 border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700",
+              )}
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#0075EB] flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-lg font-bold">R</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Revolut Business
+                </p>
+                <p className="text-xs text-gray-400">
+                  {revolutStatus?.connected
+                    ? `Déjà connecté · ${revolutStatus.accounts_count} compte(s)`
+                    : "Comptes professionnels, cartes, virements"}
+                </p>
+              </div>
+              {revolutStatus?.connected ? (
+                <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Connecté
+                </span>
+              ) : (
+                <ExternalLink className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+
+            {/* More banks coming soon */}
+            <div className="flex items-center gap-4 px-4 py-3.5 rounded-xl border border-dashed border-gray-200 dark:border-slate-700 opacity-50">
+              <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                <Landmark className="h-5 w-5 text-gray-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Autres banques
+                </p>
+                <p className="text-xs text-gray-400">
+                  BNP, Société Générale, Crédit Agricole… Bientôt disponible
+                </p>
+              </div>
+              <span className="text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                SOON
+              </span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
