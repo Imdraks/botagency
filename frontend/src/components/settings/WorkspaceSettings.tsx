@@ -383,8 +383,10 @@ function CompanyInfoSection({
     setSearchResults([]);
     setSearchError(null);
     try {
+      const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(clean)}&per_page=5`
+        `/api/v1/workspaces/siret/search?q=${encodeURIComponent(clean)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
         const data = await res.json();

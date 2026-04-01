@@ -338,6 +338,31 @@ async def delete_workspace(
 
 
 # ============================================================================
+# SIRET SEARCH (proxy to avoid CSP issues)
+# ============================================================================
+
+@router.get("/siret/search")
+async def search_siret(
+    q: str = Query(..., min_length=1, max_length=100),
+    current_user: User = Depends(get_current_user)
+):
+    """Proxy search to recherche-entreprises.api.gouv.fr"""
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://recherche-entreprises.api.gouv.fr/search",
+                params={"q": q, "per_page": 5}
+            )
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail="Erreur API entreprises")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Impossible de contacter l'API entreprises")
+
+
+# ============================================================================
 # MEMBERS
 # ============================================================================
 
