@@ -5,7 +5,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.db.models.billing import QuoteStatus, InvoiceStatus, PaymentMethod
 
@@ -188,6 +188,15 @@ class QuoteResponse(QuoteBase):
     items: List[QuoteItemResponse] = []
     client: Optional[ClientResponse] = None
 
+    @model_validator(mode='before')
+    @classmethod
+    def map_billing_client(cls, data):
+        if hasattr(data, 'billing_client') and not hasattr(data, 'client'):
+            data.__dict__['client'] = data.billing_client
+        elif hasattr(data, '__dict__') and 'billing_client' in data.__dict__ and 'client' not in data.__dict__:
+            data.__dict__['client'] = data.__dict__['billing_client']
+        return data
+
     class Config:
         from_attributes = True
 
@@ -299,6 +308,15 @@ class InvoiceResponse(InvoiceBase):
     updated_at: datetime
     items: List[InvoiceItemResponse] = []
     client: Optional[ClientResponse] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_billing_client(cls, data):
+        if hasattr(data, 'billing_client') and not hasattr(data, 'client'):
+            data.__dict__['client'] = data.billing_client
+        elif hasattr(data, '__dict__') and 'billing_client' in data.__dict__ and 'client' not in data.__dict__:
+            data.__dict__['client'] = data.__dict__['billing_client']
+        return data
 
     class Config:
         from_attributes = True

@@ -1081,8 +1081,8 @@ async def generate_quote_pdf(
     
     address_data = [[
         [
-            Paragraph("Adresse de livraison", address_title_style),
-            Paragraph("<br/>".join(client_lines) if client_lines else "-", address_detail_style),
+            Paragraph("Adresse de facturation", address_title_style),
+            Paragraph("<br/>".join(company_lines) if company_lines else "-", address_detail_style),
         ],
         [
             Paragraph("Devis proposé à", address_title_style),
@@ -1407,7 +1407,7 @@ async def upload_quote_pdf_to_drive(
         if c.postal_code or c.city: client_lines.append(f"{c.postal_code or ''} {c.city or ''}")
     
     address_data = [[
-        [Paragraph("Adresse de livraison", address_title_style), Paragraph("<br/>".join(client_lines) if client_lines else "-", address_detail_style)],
+        [Paragraph("Adresse de facturation", address_title_style), Paragraph("<br/>".join(company_lines) if company_lines else "-", address_detail_style)],
         [Paragraph("Devis proposé à", address_title_style), Paragraph(f"A l'attention de {quote.billing_client.name if quote.billing_client else '-'}", address_style)]
     ]]
     address_table = Table(address_data, colWidths=[90*mm, 85*mm])
@@ -1978,7 +1978,7 @@ async def generate_invoice_pdf(
     address_data = [[
         [
             Paragraph("Adresse de facturation", address_title_style),
-            Paragraph("<br/>".join(client_lines) if client_lines else "-", address_detail_style),
+            Paragraph("<br/>".join(company_lines) if company_lines else "-", address_detail_style),
         ],
         [
             Paragraph("Facture adressée à", address_title_style),
@@ -2269,7 +2269,7 @@ async def upload_invoice_pdf_to_drive(
         if client_addr: client_lines.append(client_addr)
 
     address_data = [[
-        [Paragraph("Adresse de facturation", address_title_style), Paragraph("<br/>".join(client_lines) if client_lines else "-", address_detail_style)],
+        [Paragraph("Adresse de facturation", address_title_style), Paragraph("<br/>".join(company_lines) if company_lines else "-", address_detail_style)],
         [Paragraph("Facture adressée à", address_title_style), Paragraph(f"A l'attention de {contact_name}", address_style)]
     ]]
     address_table = Table(address_data, colWidths=[90*mm, 85*mm])
