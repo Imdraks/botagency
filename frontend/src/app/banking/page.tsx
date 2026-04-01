@@ -1,24 +1,24 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Landmark,
   RefreshCw,
   AlertTriangle,
-  TrendingUp,
-  ArrowLeft,
-  Wallet,
-  Clock,
-  ShieldCheck,
-  ChevronRight,
   Settings2,
-  Unplug,
-  ArrowDownUp,
+  Search,
+  SlidersHorizontal,
+  Plus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Repeat,
   CreditCard,
   CheckCircle2,
   XCircle,
   Loader2,
+  ChevronDown,
+  Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -26,11 +26,106 @@ import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useBankingStore } from "@/store/bankingStore";
 import { useAuthStore } from "@/store/auth";
-import { BankCard, BankStatusBadge, SyncStatusBadge } from "@/components/banking";
-import type { BankConnectionDetail, BankAccount, RevolutTransaction } from "@/store/bankingStore";
+import type { RevolutTransaction } from "@/store/bankingStore";
 
 // ============================================================================
-// MAIN PAGE
+// HELPERS
+// ============================================================================
+
+const MONTH_NAMES = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
+const SHORT_MONTHS = [
+  "janv.", "févr.", "mars", "avr.", "mai", "juin",
+  "juil.", "août", "sept.", "oct.", "nov.", "déc.",
+];
+
+const MONTH_EMOJIS: Record<number, string> = {
+  0: "❄️", 1: "🌸", 2: "🌱", 3: "🌷", 4: "🌺", 5: "☀️",
+  6: "🌻", 7: "🌊", 8: "🍂", 9: "🍁", 10: "🌧️", 11: "🎄",
+};
+
+function getMonthKey(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
+}
+
+function getMonthLabel(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function getMonthEmoji(dateStr: string) {
+  return MONTH_EMOJIS[new Date(dateStr).getMonth()] || "📅";
+}
+
+function getDayInfo(dateStr: string) {
+  const d = new Date(dateStr);
+  return {
+    day: String(d.getDate()).padStart(2, "0"),
+    monthShort: SHORT_MONTHS[d.getMonth()],
+  };
+}
+
+function classifyTransaction(tx: RevolutTransaction): { label: string; color: string } {
+  const type = tx.type?.toLowerCase() || "";
+  const mainLeg = tx.legs?.[0];
+  const amount = mainLeg?.amount ?? 0;
+  const desc = (mainLeg?.description || tx.reference || "").toLowerCase();
+
+  if (type === "card_payment" || type === "atm") {
+    return { label: "Carte bancaire", color: "text-blue-600 dark:text-blue-400" };
+  }
+  if (type === "transfer" && amount > 0) {
+    if (desc.includes("pro") || desc.includes("business")) {
+      return { label: "Apport personnel", color: "text-emerald-600 dark:text-emerald-400" };
+    }
+    return { label: "Recette", color: "text-emerald-600 dark:text-emerald-400" };
+  }
+  if (type === "transfer" && amount < 0) {
+    if (desc.includes("personal") || desc.includes("perso")) {
+      return { label: "Prélèvement personnel", color: "text-gray-700 dark:text-gray-300" };
+    }
+    return { label: "Virement sortant", color: "text-gray-700 dark:text-gray-300" };
+  }
+  if (type === "exchange") {
+    return { label: "Change", color: "text-purple-600 dark:text-purple-400" };
+  }
+  if (type === "fee") {
+    return { label: "Frais bancaires", color: "text-red-600 dark:text-red-400" };
+  }
+  if (type === "topup" || type === "top_up") {
+    return { label: "Apport personnel", color: "text-emerald-600 dark:text-emerald-400" };
+  }
+  if (amount > 0) {
+    return { label: "Recette", color: "text-emerald-600 dark:text-emerald-400" };
+  }
+  if (amount < 0) {
+    return { label: "Prélèvement personnel", color: "text-gray-700 dark:text-gray-300" };
+  }
+  return { label: "Banque", color: "text-amber-600 dark:text-amber-400" };
+}
+
+function getTxIcon(tx: RevolutTransaction) {
+  const amount = tx.legs?.[0]?.amount ?? 0;
+  const type = tx.type?.toLowerCase() || "";
+  if (type === "card_payment") return CreditCard;
+  if (type === "exchange") return Repeat;
+  if (amount > 0) return ArrowDownLeft;
+  return ArrowUpRight;
+}
+
+function formatAmount(amount: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+// ============================================================================
+// MAIN PAGE CONTENT
 // ============================================================================
 
 function BankingPageContent() {
@@ -40,36 +135,36 @@ function BankingPageContent() {
   const {
     dashboard,
     connections,
-    selectedConnection,
-    accounts,
     isLoading,
     error,
     fetchDashboard,
-    fetchConnectionDetail,
-    fetchAccounts,
-    // Revolut
     revolutStatus,
     revolutTransactions,
     revolutTransactionsLoading,
     fetchRevolutStatus,
     syncRevolut,
     fetchRevolutTransactions,
-    disconnectRevolut,
   } = useBankingStore();
 
-  const [view, setView] = useState<"list" | "detail" | "revolut">("list");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [revolutSuccess, setRevolutSuccess] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const isAdmin = user?.role === "admin" || user?.is_superuser === true;
 
-  // Load dashboard + Revolut status on mount
   useEffect(() => {
     fetchDashboard();
     fetchRevolutStatus();
   }, [fetchDashboard, fetchRevolutStatus]);
 
-  // Handle Revolut OAuth callback params
+  useEffect(() => {
+    if (revolutStatus?.connected) {
+      fetchRevolutTransactions({ count: 100 });
+    }
+  }, [revolutStatus?.connected, fetchRevolutTransactions]);
+
   useEffect(() => {
     const revolutConnected = searchParams.get("revolut_connected");
     const revolutError = searchParams.get("revolut_error");
@@ -79,7 +174,6 @@ function BankingPageContent() {
       setRevolutSuccess(`Revolut connecté ! ${accountsCount || 0} compte(s) synchronisé(s).`);
       fetchDashboard();
       fetchRevolutStatus();
-      // Clean URL
       router.replace("/banking");
     }
     if (revolutError) {
@@ -90,803 +184,356 @@ function BankingPageContent() {
     }
   }, [searchParams, fetchDashboard, fetchRevolutStatus, router]);
 
-  // Load connection detail when selected
-  useEffect(() => {
-    if (selectedId) {
-      fetchConnectionDetail(selectedId);
-      setView("detail");
+  const totalBalance = useMemo(() => {
+    if (dashboard?.total_balances?.["EUR"]) return dashboard.total_balances["EUR"];
+    return 0;
+  }, [dashboard]);
+
+  const { groupedTransactions, filteredCount, allTypes } = useMemo(() => {
+    let txs = [...revolutTransactions];
+    const types = new Set<string>();
+    txs.forEach((tx) => types.add(tx.type));
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      txs = txs.filter((tx) => {
+        const desc = tx.legs?.[0]?.description || "";
+        const ref = tx.reference || "";
+        const merchant = tx.merchant?.name || "";
+        return (
+          desc.toLowerCase().includes(q) ||
+          ref.toLowerCase().includes(q) ||
+          merchant.toLowerCase().includes(q) ||
+          tx.type.toLowerCase().includes(q)
+        );
+      });
     }
-  }, [selectedId, fetchConnectionDetail]);
 
-  const handleSelectConnection = (id: number) => {
-    setSelectedId(id);
-  };
+    if (typeFilter !== "all") {
+      txs = txs.filter((tx) => tx.type === typeFilter);
+    }
 
-  const handleBack = () => {
-    setSelectedId(null);
-    setView("list");
-    fetchDashboard();
-    fetchRevolutStatus();
-  };
+    txs.sort((a, b) => {
+      const da = a.completed_at || a.created_at || "";
+      const db = b.completed_at || b.created_at || "";
+      return db.localeCompare(da);
+    });
 
+    const groups: Record<string, { label: string; emoji: string; date: string; transactions: RevolutTransaction[] }> = {};
+    txs.forEach((tx) => {
+      const dateStr = tx.completed_at || tx.created_at || "";
+      if (!dateStr) return;
+      const key = getMonthKey(dateStr);
+      if (!groups[key]) {
+        groups[key] = { label: getMonthLabel(dateStr), emoji: getMonthEmoji(dateStr), date: dateStr, transactions: [] };
+      }
+      groups[key].transactions.push(tx);
+    });
 
-  const handleRevolutView = () => {
-    setView("revolut");
-    fetchRevolutTransactions();
+    const sorted = Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([, v]) => v);
+
+    return { groupedTransactions: sorted, filteredCount: txs.length, allTypes: Array.from(types) };
+  }, [revolutTransactions, searchQuery, typeFilter]);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    await syncRevolut();
+    await fetchRevolutTransactions({ count: 100 });
+    setIsSyncing(false);
   };
 
   const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(val);
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(val);
 
-  const formatDate = (d?: string | null) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // ─── NOT ENABLED STATE ─────────────────────────────────────────────
-  if (dashboard && !dashboard.banking_enabled) {
+  // ─── EMPTY / NOT CONNECTED ───────────────────────────────────────
+  if (!isLoading && !revolutStatus?.connected && connections.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <div className="w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-6">
           <Landmark className="h-8 w-8 text-purple-600 dark:text-purple-400" />
         </div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          Connexions bancaires
+          Transactions
         </h2>
         <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-          Cette fonctionnalité n&apos;est pas encore activée pour votre espace de travail.
-          Contactez votre administrateur pour l&apos;activer.
+          Connectez votre banque pour visualiser vos transactions en temps réel.
         </p>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <ShieldCheck className="h-4 w-4" />
-          Radar Business · Connexions bancaires sécurisées
-        </div>
+        <Button onClick={() => router.push("/settings")} className="bg-pink-500 hover:bg-pink-600 text-white rounded-full px-5">
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter un compte
+        </Button>
       </div>
     );
   }
 
-  // ─── DETAIL VIEW ───────────────────────────────────────────────────
-  if (view === "detail" && selectedConnection) {
-    return (
-      <ConnectionDetailView
-        connection={selectedConnection}
-        isAdmin={isAdmin}
-        onBack={handleBack}
-        formatDate={formatDate}
-        formatCurrency={formatCurrency}
-      />
-    );
-  }
-
-  // ─── REVOLUT VIEW ────────────────────────────────────────────────
-  if (view === "revolut" && revolutStatus?.connected) {
-    return (
-      <RevolutDetailView
-        revolutStatus={revolutStatus}
-        transactions={revolutTransactions}
-        transactionsLoading={revolutTransactionsLoading}
-        isAdmin={isAdmin}
-        onBack={handleBack}
-        onSync={syncRevolut}
-        onDisconnect={disconnectRevolut}
-        onFetchTransactions={fetchRevolutTransactions}
-        formatDate={formatDate}
-        formatCurrency={formatCurrency}
-        isLoading={isLoading}
-      />
-    );
-  }
-
-  // ─── LIST VIEW (DASHBOARD) ────────────────────────────────────────
+  // ─── MAIN VIEW ───────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Landmark className="h-6 w-6 text-purple-600" />
-            Connexions bancaires
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Vue d&apos;ensemble de vos comptes bancaires connectés
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchDashboard()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-1", isLoading && "animate-spin")} />
-            Actualiser
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/settings")}
-          >
-            <Settings2 className="h-4 w-4 mr-1" />
-            Gérer
-          </Button>
-        </div>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Transactions
+        </h1>
+        <Button
+          onClick={() => router.push("/settings")}
+          className="bg-pink-500 hover:bg-pink-600 text-white rounded-full px-5 h-9"
+        >
+          <Plus className="h-4 w-4 mr-1.5" />
+          Ajouter
+        </Button>
       </div>
 
-      {/* Error banner */}
+      {/* Error */}
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm flex items-center gap-2">
+        <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm flex items-center gap-2 mb-6">
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Stats Cards */}
-      {dashboard && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Banques connectées"
-            value={dashboard.active_connections}
-            total={dashboard.total_connections}
-            icon={Landmark}
-            color="purple"
-          />
-          <StatCard
-            label="Comptes actifs"
-            value={dashboard.total_accounts}
-            icon={Wallet}
-            color="blue"
-          />
-          <StatCard
-            label="Solde total"
-            value={
-              dashboard.total_balances["EUR"]
-                ? formatCurrency(dashboard.total_balances["EUR"])
-                : "—"
-            }
-            icon={TrendingUp}
-            color="emerald"
-          />
-          <StatCard
-            label="Dernière sync"
-            value={dashboard.last_sync_at ? formatDate(dashboard.last_sync_at) : "Jamais"}
-            icon={Clock}
-            color="amber"
-          />
-        </div>
-      )}
-
-      {/* Revolut success banner */}
-      {revolutSuccess && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="px-4 py-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 text-sm flex items-center gap-2"
-        >
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-          {revolutSuccess}
-          <button
-            onClick={() => setRevolutSuccess(null)}
-            className="ml-auto text-emerald-500 hover:text-emerald-700"
+      {/* Success */}
+      <AnimatePresence>
+        {revolutSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="px-4 py-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 text-sm flex items-center gap-2 mb-6"
           >
-            <XCircle className="h-4 w-4" />
-          </button>
-        </motion.div>
-      )}
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            {revolutSuccess}
+            <button onClick={() => setRevolutSuccess(null)} className="ml-auto text-emerald-500 hover:text-emerald-700">
+              <XCircle className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Consent alerts */}
-      {dashboard && dashboard.expiring_consents > 0 && (
-        <div className="px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          {dashboard.expiring_consents} consentement{dashboard.expiring_consents > 1 ? "s" : ""}{" "}
-          expire{dashboard.expiring_consents > 1 ? "nt" : ""} dans les 14 prochains jours.
-          <Button variant="link" size="sm" className="text-amber-700 dark:text-amber-400 px-0">
-            Renouveler →
-          </Button>
-        </div>
-      )}
-
-      {/* ── Connections & Revolut data ──────────────────────────── */}
-      {/* Revolut Section — data only, connect is in Settings */}
-      {revolutStatus?.connected && (
-        <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 overflow-hidden">
-          <div className="px-5 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#0075EB] flex items-center justify-center">
-                <span className="text-white text-lg font-bold">R</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Revolut Business
-                </h3>
-                <p className="text-xs text-gray-400">
-                  {revolutStatus.accounts_count} compte(s) · Dernière sync {revolutStatus.last_sync_at ? new Date(revolutStatus.last_sync_at).toLocaleDateString("fr-FR") : "—"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Connecté
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => syncRevolut()}
-                disabled={isLoading}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isLoading && "animate-spin")} />
-                Sync
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleRevolutView}
-              >
-                <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
-                Transactions
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Connections Grid */}
-      {isLoading && connections.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-48 rounded-xl border border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/50 animate-pulse"
-            />
-          ))}
-        </div>
-      ) : connections.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence>
-            {connections.map((conn) => (
-              <motion.div
-                key={conn.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <BankCard
-                  connection={conn}
-                  onSelect={handleSelectConnection}
-                  isAdmin={false}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : (
-        /* Empty state */
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-            <Landmark className="h-7 w-7 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-            Aucune banque connectée
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">
-            Connectez votre première banque pour centraliser la vue de vos comptes professionnels.
+      {/* Summary + search/filter bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">
+            Solde total
           </p>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/settings")}
-          >
-            <Settings2 className="h-4 w-4 mr-2" />
-            Gérer dans les paramètres
-          </Button>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+            {formatCurrency(totalBalance)}
+          </p>
         </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// STAT CARD
-// ============================================================================
-
-function StatCard({
-  label,
-  value,
-  total,
-  icon: Icon,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  total?: number;
-  icon: React.ElementType;
-  color: "purple" | "blue" | "emerald" | "amber";
-}) {
-  const colorMap = {
-    purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-    blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-    emerald: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
-    amber: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
-  };
-
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 p-4">
-      <div className="flex items-center gap-3 mb-2">
-        <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", colorMap[color])}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
-      </div>
-      <p className="text-lg font-bold text-gray-900 dark:text-white">
-        {value}
-        {total !== undefined && (
-          <span className="text-sm font-normal text-gray-400 ml-1">/ {total}</span>
-        )}
-      </p>
-    </div>
-  );
-}
-
-// ============================================================================
-// CONNECTION DETAIL VIEW
-// ============================================================================
-
-function ConnectionDetailView({
-  connection,
-  isAdmin,
-  onBack,
-  formatDate,
-  formatCurrency,
-}: {
-  connection: BankConnectionDetail;
-  isAdmin: boolean;
-  onBack: () => void;
-  formatDate: (d?: string | null) => string;
-  formatCurrency: (val: number) => string;
-}) {
-  const router = useRouter();
-
-  return (
-    <div className="space-y-6">
-      {/* Back button + Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            {connection.provider === "revolut" ? (
-              <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
-            ) : connection.bank_logo_url ? (
-              <img
-                src={connection.bank_logo_url}
-                alt=""
-                className="w-10 h-10 rounded-lg object-contain bg-gray-50 dark:bg-slate-800 p-1"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-                <Landmark className="h-5 w-5 text-white" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                {connection.bank_name}
-              </h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <BankStatusBadge status={connection.status} size="sm" />
-                {connection.provider && (
-                  <span className="text-xs text-gray-400">via {connection.provider}</span>
-                )}
-              </div>
-            </div>
+        <div className="flex items-center gap-2.5">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 w-44 transition-all"
+            />
           </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/settings")}
-        >
-          <Settings2 className="h-4 w-4 mr-1" />
-          Gérer
-        </Button>
-      </div>
-
-      {/* Consent info */}
-      {connection.active_consent && (
-        <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Consentement {connection.active_consent.consent_type}
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-            <div>
-              <span className="text-gray-400">Accordé le</span>
-              <p className="font-medium text-gray-700 dark:text-gray-300">
-                {formatDate(connection.active_consent.granted_at)}
-              </p>
-            </div>
-            <div>
-              <span className="text-gray-400">Expire le</span>
-              <p className="font-medium text-gray-700 dark:text-gray-300">
-                {formatDate(connection.active_consent.expires_at)}
-              </p>
-            </div>
-            <div>
-              <span className="text-gray-400">Jours restants</span>
-              <p className={cn(
-                "font-medium",
-                (connection.active_consent.days_until_expiry ?? 0) <= 14
-                  ? "text-amber-600"
-                  : "text-emerald-600",
-              )}>
-                {connection.active_consent.days_until_expiry ?? "—"}
-              </p>
-            </div>
-            <div>
-              <span className="text-gray-400">Statut</span>
-              <p className="font-medium text-gray-700 dark:text-gray-300 capitalize">
-                {connection.active_consent.status}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Accounts */}
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Comptes ({connection.accounts.length})
-          </h3>
-        </div>
-        {connection.accounts.length > 0 ? (
-          <div className="divide-y divide-gray-100 dark:divide-slate-800">
-            {connection.accounts.map((acc) => (
-              <div key={acc.id} className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: acc.display_color || "#8B5CF6" }}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {acc.account_name}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {acc.account_type} · {acc.currency}
-                      {acc.iban_masked && ` · ${acc.iban_masked}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    {acc.balance != null ? formatCurrency(acc.balance) : "—"}
-                  </p>
-                  {acc.balance_updated_at && (
-                    <p className="text-[10px] text-gray-400">
-                      {formatDate(acc.balance_updated_at)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="px-4 py-8 text-center text-sm text-gray-400">
-            Aucun compte découvert. Lancez une synchronisation.
-          </div>
-        )}
-      </div>
-
-      {/* Sync History */}
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Historique de synchronisation
-          </h3>
-        </div>
-        {connection.recent_syncs.length > 0 ? (
-          <div className="divide-y divide-gray-100 dark:divide-slate-800">
-            {connection.recent_syncs.map((sync) => (
-              <div key={sync.id} className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <SyncStatusBadge status={sync.status} />
-                  <div>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      {formatDate(sync.started_at)}
-                    </p>
-                    {sync.error_message && (
-                      <p className="text-xs text-red-500 mt-0.5">{sync.error_message}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right text-xs text-gray-400">
-                  <p>{sync.accounts_synced} comptes</p>
-                  {sync.duration_ms != null && (
-                    <p>{(sync.duration_ms / 1000).toFixed(1)}s</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="px-4 py-8 text-center text-sm text-gray-400">
-            Aucune synchronisation
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// REVOLUT DETAIL VIEW
-// ============================================================================
-
-function RevolutDetailView({
-  revolutStatus,
-  transactions,
-  transactionsLoading,
-  isAdmin,
-  onBack,
-  onSync,
-  onDisconnect,
-  onFetchTransactions,
-  formatDate,
-  formatCurrency,
-  isLoading,
-}: {
-  revolutStatus: import("@/store/bankingStore").RevolutStatus;
-  transactions: RevolutTransaction[];
-  transactionsLoading: boolean;
-  isAdmin: boolean;
-  onBack: () => void;
-  onSync: () => Promise<boolean>;
-  onDisconnect: () => Promise<boolean>;
-  onFetchTransactions: (params?: { from_date?: string; to_date?: string; account_id?: string; count?: number }) => Promise<void>;
-  formatDate: (d?: string | null) => string;
-  formatCurrency: (val: number) => string;
-  isLoading: boolean;
-}) {
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [txCount, setTxCount] = useState(50);
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    await onSync();
-    setIsSyncing(false);
-  };
-
-  const handleDisconnect = async () => {
-    if (!confirm("Déconnecter Revolut ? Tous les comptes liés seront retirés.")) return;
-    setIsDisconnecting(true);
-    await onDisconnect();
-    setIsDisconnecting(false);
-    onBack();
-  };
-
-  const handleLoadMore = () => {
-    const next = txCount + 50;
-    setTxCount(next);
-    onFetchTransactions({ count: next });
-  };
-
-  const stateColors: Record<string, string> = {
-    completed: "text-emerald-600 dark:text-emerald-400",
-    pending: "text-amber-600 dark:text-amber-400",
-    declined: "text-red-600 dark:text-red-400",
-    failed: "text-red-600 dark:text-red-400",
-    reverted: "text-gray-500",
-    created: "text-blue-600 dark:text-blue-400",
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#0075EB] flex items-center justify-center">
-              <span className="text-white text-lg font-bold">R</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Revolut Business
-              </h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Connecté
-                </span>
-                <span className="text-xs text-gray-400">
-                  · {revolutStatus.accounts_count} compte(s)
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              "rounded-xl gap-1.5 h-[38px] px-3.5",
+              showFilters && "border-purple-300 bg-purple-50 dark:bg-purple-900/20",
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtrer
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-xl h-[38px] w-[38px]"
             onClick={handleSync}
             disabled={isSyncing}
           >
-            <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isSyncing && "animate-spin")} />
-            Synchroniser
+            <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
           </Button>
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDisconnect}
-              disabled={isDisconnecting}
-              className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
-            >
-              <Unplug className="h-3.5 w-3.5 mr-1" />
-              Déconnecter
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Info card */}
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div>
-            <span className="text-gray-400">Comptes</span>
-            <p className="font-semibold text-gray-900 dark:text-white text-base">
-              {revolutStatus.accounts_count}
-            </p>
-          </div>
-          <div>
-            <span className="text-gray-400">Connecté le</span>
-            <p className="font-medium text-gray-700 dark:text-gray-300">
-              {formatDate(revolutStatus.connected_at)}
-            </p>
-          </div>
-          <div>
-            <span className="text-gray-400">Dernière sync</span>
-            <p className="font-medium text-gray-700 dark:text-gray-300">
-              {formatDate(revolutStatus.last_sync_at)}
-            </p>
-          </div>
-          <div>
-            <span className="text-gray-400">Statut</span>
-            <p className="font-medium text-emerald-600 dark:text-emerald-400 capitalize">
-              {revolutStatus.status || "connected"}
-            </p>
-          </div>
-        </div>
+      {/* Filters */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap items-center gap-2 pb-5">
+              <button
+                onClick={() => setTypeFilter("all")}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                  typeFilter === "all"
+                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white"
+                    : "bg-white dark:bg-slate-900 text-gray-500 border-gray-200 dark:border-slate-700 hover:border-gray-400",
+                )}
+              >
+                Tous
+              </button>
+              {allTypes.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-medium border transition-all capitalize",
+                    typeFilter === t
+                      ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white"
+                      : "bg-white dark:bg-slate-900 text-gray-500 border-gray-200 dark:border-slate-700 hover:border-gray-400",
+                  )}
+                >
+                  {t.replace(/_/g, " ")}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Transaction count */}
+      <div className="flex items-center justify-end mb-5">
+        <span className="text-sm text-gray-400 font-medium">
+          {filteredCount} Transaction{filteredCount !== 1 ? "s" : ""}
+        </span>
       </div>
 
-      {/* Transactions */}
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <ArrowDownUp className="h-4 w-4 text-gray-400" />
-            Transactions récentes
-            {transactions.length > 0 && (
-              <span className="ml-1 text-xs font-normal text-gray-400">
-                ({transactions.length})
-              </span>
-            )}
+      {/* ── TIMELINE ──────────────────────────────────────────────── */}
+      {revolutTransactionsLoading && revolutTransactions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 text-purple-400 animate-spin mb-3" />
+          <p className="text-sm text-gray-400">Chargement des transactions…</p>
+        </div>
+      ) : groupedTransactions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+            <Calendar className="h-7 w-7 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+            Aucune transaction
           </h3>
-          {transactionsLoading && (
-            <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
-          )}
+          <p className="text-sm text-gray-400 max-w-sm">
+            {searchQuery ? "Aucun résultat pour cette recherche." : "Vos transactions apparaîtront ici après synchronisation."}
+          </p>
         </div>
+      ) : (
+        <div className="space-y-10">
+          {groupedTransactions.map((group, gi) => (
+            <div key={gi}>
+              {/* ── Month header ── */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/30 flex items-center justify-center text-base">
+                  {group.emoji}
+                </div>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  {group.label}
+                </h2>
+              </div>
 
-        {transactions.length > 0 ? (
-          <>
-            {/* Transactions table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-gray-400 border-b border-gray-100 dark:border-slate-800">
-                    <th className="px-4 py-2 font-medium">Date</th>
-                    <th className="px-4 py-2 font-medium">Type</th>
-                    <th className="px-4 py-2 font-medium">Description</th>
-                    <th className="px-4 py-2 font-medium">Marchand</th>
-                    <th className="px-4 py-2 font-medium text-right">Montant</th>
-                    <th className="px-4 py-2 font-medium text-right">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
-                  {transactions.map((tx) => {
+              {/* ── Transactions with timeline ── */}
+              <div className="relative ml-1">
+                {/* Vertical line */}
+                <div className="absolute left-[18px] top-2 bottom-2 w-px bg-gray-200 dark:bg-slate-700/60" />
+
+                <div className="space-y-1.5">
+                  {group.transactions.map((tx, ti) => {
+                    const dateStr = tx.completed_at || tx.created_at || "";
+                    const { day, monthShort } = getDayInfo(dateStr);
                     const mainLeg = tx.legs?.[0];
                     const amount = mainLeg?.amount ?? 0;
-                    const currency = mainLeg?.currency ?? "EUR";
-                    const isNegative = amount < 0;
+                    const description = mainLeg?.description || tx.reference || tx.merchant?.name || tx.type;
+                    const category = classifyTransaction(tx);
+                    const TxIcon = getTxIcon(tx);
+                    const isPositive = amount > 0;
+
+                    const prevTx = ti > 0 ? group.transactions[ti - 1] : null;
+                    const prevDate = prevTx ? getDayInfo(prevTx.completed_at || prevTx.created_at || "") : null;
+                    const showDate = !prevDate || prevDate.day !== day;
 
                     return (
-                      <tr
-                        key={tx.id}
-                        className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-600 dark:text-gray-300 text-xs">
-                          {tx.completed_at
-                            ? new Date(tx.completed_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
-                            : tx.created_at
-                              ? new Date(tx.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
-                              : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300">
-                            <CreditCard className="h-3 w-3" />
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 max-w-[220px] truncate text-gray-700 dark:text-gray-300 text-xs">
-                          {mainLeg?.description || tx.reference || "—"}
-                        </td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-500">
-                          {tx.merchant?.name || "—"}
-                        </td>
-                        <td className={cn(
-                          "px-4 py-2.5 text-right whitespace-nowrap font-semibold text-xs",
-                          isNegative ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400",
-                        )}>
-                          {isNegative ? "" : "+"}{amount.toFixed(2)} {currency}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <span className={cn("text-xs font-medium capitalize", stateColors[tx.state] || "text-gray-500")}>
-                            {tx.state}
-                          </span>
-                        </td>
-                      </tr>
+                      <div key={tx.id} className="flex items-start gap-0">
+                        {/* Date column */}
+                        <div className="w-[56px] flex-shrink-0 relative pt-3">
+                          {showDate && (
+                            <>
+                              <div className="absolute left-[15px] top-[18px] w-[7px] h-[7px] rounded-full bg-gray-300 dark:bg-slate-500 ring-[3px] ring-white dark:ring-slate-950 z-10" />
+                              <div className="text-center pr-2">
+                                <p className="text-[15px] font-bold text-gray-600 dark:text-gray-300 leading-none">
+                                  {day}
+                                </p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                  {monthShort}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Card */}
+                        <div className="flex-1 min-w-0 ml-2">
+                          <div className="group rounded-xl border border-gray-100 dark:border-slate-800/80 bg-white dark:bg-slate-900 px-4 py-3.5 flex items-center gap-3.5 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] dark:hover:shadow-none hover:border-gray-200 dark:hover:border-slate-700 transition-all cursor-default">
+                            {/* Icon */}
+                            <div className="w-9 h-9 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-gray-100 dark:group-hover:bg-slate-700 transition-colors">
+                              <TxIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                            </div>
+
+                            {/* Description */}
+                            <p className="flex-1 min-w-0 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                              {description}
+                            </p>
+
+                            {/* Category */}
+                            <span className={cn("text-xs font-bold whitespace-nowrap hidden sm:block", category.color)}>
+                              {category.label}
+                            </span>
+
+                            {/* Amount */}
+                            <p
+                              className={cn(
+                                "text-sm font-bold tabular-nums whitespace-nowrap min-w-[72px] text-right",
+                                isPositive
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-gray-900 dark:text-white",
+                              )}
+                            >
+                              {isPositive ? "" : "-"}{formatAmount(Math.abs(amount))}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Load more */}
-            {transactions.length >= txCount && (
-              <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-800 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLoadMore}
-                  disabled={transactionsLoading}
-                >
-                  {transactionsLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 mr-1" />
-                  )}
-                  Charger plus
-                </Button>
+                </div>
               </div>
-            )}
-          </>
-        ) : transactionsLoading ? (
-          <div className="px-4 py-12 text-center">
-            <Loader2 className="h-6 w-6 text-gray-400 animate-spin mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Chargement des transactions…</p>
-          </div>
-        ) : (
-          <div className="px-4 py-12 text-center text-sm text-gray-400">
-            Aucune transaction trouvée.
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+
+          {/* Load more */}
+          {revolutTransactions.length >= 100 && (
+            <div className="text-center pt-2 pb-8">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchRevolutTransactions({ count: revolutTransactions.length + 100 })}
+                disabled={revolutTransactionsLoading}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                {revolutTransactionsLoading ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 mr-1.5" />
+                )}
+                Charger plus de transactions
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -898,7 +545,13 @@ function RevolutDetailView({
 export default function BankingPage() {
   return (
     <AppLayout>
-      <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          </div>
+        }
+      >
         <BankingPageContent />
       </Suspense>
     </AppLayout>
