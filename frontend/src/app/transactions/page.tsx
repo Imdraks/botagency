@@ -164,13 +164,13 @@ function BankingPageContent() {
       setRevolutSuccess(`Revolut connecté ! ${accountsCount || 0} compte(s) synchronisé(s).`);
       fetchDashboard();
       fetchRevolutStatus();
-      router.replace("/banking");
+      router.replace("/transactions");
     }
     if (revolutError) {
       useBankingStore.setState({
         error: `Erreur Revolut : ${decodeURIComponent(revolutError)}`,
       });
-      router.replace("/banking");
+      router.replace("/transactions");
     }
   }, [searchParams, fetchDashboard, fetchRevolutStatus, router]);
 

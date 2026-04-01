@@ -111,7 +111,7 @@ export const FEATURE_ROUTES: Record<string, Feature> = {
   '/predictions': 'ai_predictions',
   '/quotes': 'quotes',
   '/invoices': 'invoices',
-  '/banking': 'banking',
+  '/transactions': 'banking',
   '/sources': 'sources',
   '/source-health': 'source_health',
 };

@@ -148,7 +148,7 @@ const navigationSections: NavSection[] = [
     items: [
       { name: "Devis", href: "/devis", icon: Receipt, feature: "quotes" },
       { name: "Factures", href: "/factures", icon: FileCheck, feature: "invoices" },
-      { name: "Banques", href: "/banking", icon: Landmark, feature: "banking", isNew: true },
+      { name: "Transactions", href: "/transactions", icon: Landmark, feature: "banking", isNew: true },
     ],
   },
 

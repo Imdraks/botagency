@@ -240,23 +240,23 @@ async def revolut_oauth_callback(
         
         accounts_count = len(connection.accounts) if connection.accounts else 0
         
-        # Redirect to banking page with success
+        # Redirect to transactions page with success
         return RedirectResponse(
-            url=f"{frontend_url}/banking?revolut_connected=true&accounts={accounts_count}"
+            url=f"{frontend_url}/transactions?revolut_connected=true&accounts={accounts_count}"
         )
     
     except (RevolutAPIError, ValueError) as e:
         logger.error(f"Revolut OAuth callback failed: {e}")
         return RedirectResponse(
-            url=f"{frontend_url}/banking?revolut_error={str(e)[:100]}"
+            url=f"{frontend_url}/transactions?revolut_error={str(e)[:100]}"
         )
     except Exception as e:
         logger.exception(f"Revolut OAuth callback unexpected error: {e}")
         return RedirectResponse(
-            url=f"{frontend_url}/banking?revolut_error=internal_error"
+            url=f"{frontend_url}/transactions?revolut_error=internal_error"
         )
         return RedirectResponse(
-            url=f"{frontend_url}/banking?revolut_error=internal_error"
+            url=f"{frontend_url}/transactions?revolut_error=internal_error"
         )
 
 
