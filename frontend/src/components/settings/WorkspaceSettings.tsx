@@ -1161,7 +1161,7 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
           {/* Connection header */}
           <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex items-center gap-4">
             {selectedConnection.provider === "revolut" ? (
-              <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
+              <img src="/revolut-logo.webp" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
             ) : selectedConnection.bank_logo_url ? (
               <img
                 src={selectedConnection.bank_logo_url}
@@ -1375,7 +1375,7 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
                 >
                   {/* Bank logo */}
                   {conn.provider === "revolut" ? (
-                    <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
+                    <img src="/revolut-logo.webp" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
                   ) : conn.bank_logo_url ? (
                     <img src={conn.bank_logo_url} alt="" className="w-10 h-10 rounded-xl object-contain bg-gray-50 dark:bg-slate-800 p-1 flex-shrink-0" />
                   ) : (
@@ -1510,7 +1510,7 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
                   : "hover:bg-purple-50 dark:hover:bg-purple-900/20 border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700",
               )}
             >
-              <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
+              <img src="/revolut-logo.webp" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   Revolut Business

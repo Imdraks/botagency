@@ -147,7 +147,7 @@ def initiate_revolut_oauth(
             workspace_id=workspace_id,
             bank_name=REVOLUT_BANK_NAME,
             bank_code=REVOLUT_BANK_CODE,
-            bank_logo_url="/revolut-logo.svg",
+            bank_logo_url="/revolut-logo.webp",
             bank_country="GB",
             provider=REVOLUT_PROVIDER,
             status=BankConnectionStatus.CONNECTING,

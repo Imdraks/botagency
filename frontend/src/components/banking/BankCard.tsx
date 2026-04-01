@@ -79,7 +79,7 @@ export function BankCard({ connection, onSelect, isAdmin }: BankCardProps) {
         <div className="flex items-center gap-3 min-w-0">
           {/* Bank logo / fallback */}
           {connection.provider === "revolut" ? (
-            <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
+            <img src="/revolut-logo.webp" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
           ) : connection.bank_logo_url ? (
             <img
               src={connection.bank_logo_url}
