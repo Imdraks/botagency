@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   FileCheck, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, X,
-  Building2, User, Calendar, Clock, CreditCard, AlertTriangle, DollarSign, Pencil
+  Building2, User, Calendar, Clock, CreditCard, AlertTriangle, DollarSign, Pencil,
+  Download, Loader2, Eye
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
@@ -119,6 +120,8 @@ export default function InvoiceDetailPage() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showEditItemDialog, setShowEditItemDialog] = useState(false);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -485,6 +488,45 @@ export default function InvoiceDetailPage() {
     ? (Number(invoice.amount_paid) / Number(invoice.total)) * 100 
     : 0;
 
+  const generatePdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/billing/invoices/${invoiceId}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        if (pdfUrl) window.URL.revokeObjectURL(pdfUrl);
+        const url = window.URL.createObjectURL(blob);
+        setPdfUrl(url);
+        toast.success('PDF généré avec succès');
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur de génération du PDF');
+      }
+    } catch (err) {
+      toast.error('Erreur de connexion');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const viewPdf = () => {
+    if (pdfUrl) window.open(pdfUrl, '_blank');
+  };
+
+  const downloadPdf = () => {
+    if (pdfUrl) {
+      const a = document.createElement('a');
+      a.href = pdfUrl;
+      a.download = `${invoice?.reference || 'facture'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   return (
     <>
     <ProtectedRoute>
@@ -510,6 +552,22 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={generatePdf} disabled={generatingPdf}>
+            {generatingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {generatingPdf ? 'Génération...' : 'PDF'}
+          </Button>
+          {pdfUrl && (
+            <>
+              <Button variant="outline" onClick={viewPdf}>
+                <Eye className="h-4 w-4 mr-2" />
+                Voir PDF
+              </Button>
+              <Button variant="outline" onClick={downloadPdf}>
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger
+              </Button>
+            </>
+          )}
           {invoice.status === 'DRAFT' && (
             <Button variant="outline" onClick={() => updateStatus('SENT')}>
               <Send className="h-4 w-4 mr-2" />
