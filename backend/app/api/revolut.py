@@ -197,53 +197,66 @@ async def revolut_oauth_callback(
     
     In production, redirects the user back to the banking page.
     """
-    # If no workspace_id in query, try to find the connecting workspace
-    if not workspace_id:
-        from app.db.models.banking import BankConnection, BankConnectionStatus
-        connecting = db.query(BankConnection).filter(
-            BankConnection.provider == "revolut",
-            BankConnection.status == BankConnectionStatus.CONNECTING,
-        ).order_by(BankConnection.updated_at.desc()).first()
-        
-        if connecting:
-            workspace_id = connecting.workspace_id
-        else:
-            # Redirect to frontend with error
-            frontend_url = settings.frontend_url
-            return RedirectResponse(
-                url=f"{frontend_url}/banking?revolut_error=no_connection"
-            )
-    
-    # Find the user who initiated (from the connection's connected_by_id)
-    from app.db.models.banking import BankConnection
-    connection = db.query(BankConnection).filter(
-        BankConnection.workspace_id == workspace_id,
-        BankConnection.provider == "revolut",
-    ).first()
-    
-    user_id = connection.connected_by_id if connection else None
+    frontend_url = settings.frontend_url
     
     try:
+        # If no workspace_id in query, try to find the connecting workspace
+        if not workspace_id:
+            from app.db.models.banking import BankConnection, BankConnectionStatus
+            connecting = db.query(BankConnection).filter(
+                BankConnection.provider == "revolut",
+                BankConnection.status == BankConnectionStatus.CONNECTING,
+            ).order_by(BankConnection.updated_at.desc()).first()
+            
+            if connecting:
+                workspace_id = connecting.workspace_id
+            else:
+                logger.warning("Revolut callback: no CONNECTING connection found")
+                return RedirectResponse(
+                    url=f"{frontend_url}/banking?revolut_error=no_connection"
+                )
+        
+        # Find the user who initiated (from the connection's connected_by_id)
+        from app.db.models.banking import BankConnection
+        connection = db.query(BankConnection).filter(
+            BankConnection.workspace_id == workspace_id,
+            BankConnection.provider == "revolut",
+        ).first()
+        
+        if not connection:
+            logger.warning(f"Revolut callback: no connection found for workspace {workspace_id}")
+            return RedirectResponse(
+                url=f"{frontend_url}/banking?revolut_error=connection_not_found"
+            )
+        
+        user_id = connection.connected_by_id or 0
+        
         connection = await complete_revolut_oauth(
             db=db,
             workspace_id=workspace_id,
-            user_id=user_id or 0,
+            user_id=user_id,
             authorization_code=code,
         )
         
         accounts_count = len(connection.accounts) if connection.accounts else 0
         
         # Redirect to banking page with success
-        frontend_url = settings.frontend_url
         return RedirectResponse(
             url=f"{frontend_url}/banking?revolut_connected=true&accounts={accounts_count}"
         )
     
     except (RevolutAPIError, ValueError) as e:
         logger.error(f"Revolut OAuth callback failed: {e}")
-        frontend_url = settings.frontend_url
         return RedirectResponse(
             url=f"{frontend_url}/banking?revolut_error={str(e)[:100]}"
+        )
+    except Exception as e:
+        logger.exception(f"Revolut OAuth callback unexpected error: {e}")
+        return RedirectResponse(
+            url=f"{frontend_url}/banking?revolut_error=internal_error"
+        )
+        return RedirectResponse(
+            url=f"{frontend_url}/banking?revolut_error=internal_error"
         )
 
 
