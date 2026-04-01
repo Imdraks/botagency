@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Landmark,
@@ -925,7 +925,9 @@ function RevolutDetailView({
 export default function BankingPage() {
   return (
     <AppLayout>
-      <BankingPageContent />
+      <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+        <BankingPageContent />
+      </Suspense>
     </AppLayout>
   );
 }
