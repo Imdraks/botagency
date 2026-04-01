@@ -42,6 +42,17 @@ class WorkspaceUpdate(BaseModel):
     calendar_id: Optional[str] = None
     settings: Optional[dict] = None
 
+    # Company / Legal info
+    legal_name: Optional[str] = Field(None, max_length=255)
+    legal_address: Optional[str] = Field(None, max_length=500)
+    legal_city: Optional[str] = Field(None, max_length=100)
+    legal_postal_code: Optional[str] = Field(None, max_length=20)
+    legal_country: Optional[str] = Field(None, max_length=100)
+    legal_phone: Optional[str] = Field(None, max_length=50)
+    legal_email: Optional[str] = Field(None, max_length=255)
+    siret: Optional[str] = Field(None, max_length=20)
+    vat_number: Optional[str] = Field(None, max_length=30)
+
 
 class WorkspaceMemberResponse(BaseModel):
     id: int
@@ -78,6 +89,17 @@ class WorkspaceResponse(BaseModel):
     
     # Settings
     settings: Optional[dict] = None
+
+    # Company / Legal info
+    legal_name: Optional[str] = None
+    legal_address: Optional[str] = None
+    legal_city: Optional[str] = None
+    legal_postal_code: Optional[str] = None
+    legal_country: Optional[str] = None
+    legal_phone: Optional[str] = None
+    legal_email: Optional[str] = None
+    siret: Optional[str] = None
+    vat_number: Optional[str] = None
     
     # Members count
     members_count: int = 0

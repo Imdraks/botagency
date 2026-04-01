@@ -91,6 +91,16 @@ interface WorkspaceDetail {
   members: WorkspaceMember[];
   created_at: string;
   updated_at: string;
+  // Company / Legal info
+  legal_name: string | null;
+  legal_address: string | null;
+  legal_city: string | null;
+  legal_postal_code: string | null;
+  legal_country: string | null;
+  legal_phone: string | null;
+  legal_email: string | null;
+  siret: string | null;
+  vat_number: string | null;
 }
 
 interface InviteEmail {
@@ -251,6 +261,7 @@ function GeneralSection({
   };
 
   return (
+    <div className="space-y-4">
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -310,6 +321,10 @@ function GeneralSection({
         )}
       </CardContent>
     </Card>
+
+    {/* Company / Legal Info */}
+    <CompanyInfoSection workspace={workspace} isAdmin={isAdmin} onUpdated={onUpdated} />
+    </div>
   );
 }
 
@@ -319,6 +334,190 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
       <p className="text-sm font-medium text-gray-900 dark:text-white">{value}</p>
     </div>
+  );
+}
+
+// ============================================================================
+// COMPANY INFO SECTION
+// ============================================================================
+
+function CompanyInfoSection({
+  workspace,
+  isAdmin,
+  onUpdated,
+}: {
+  workspace: WorkspaceDetail;
+  isAdmin: boolean;
+  onUpdated: () => void;
+}) {
+  const [form, setForm] = useState({
+    legal_name: workspace.legal_name || "",
+    legal_address: workspace.legal_address || "",
+    legal_city: workspace.legal_city || "",
+    legal_postal_code: workspace.legal_postal_code || "",
+    legal_country: workspace.legal_country || "France",
+    legal_phone: workspace.legal_phone || "",
+    legal_email: workspace.legal_email || "",
+    siret: workspace.siret || "",
+    vat_number: workspace.vat_number || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/workspaces/${workspace.id}`, form);
+      setSuccess(true);
+      onUpdated();
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-purple-600" />
+          Informations de l&apos;entreprise
+        </CardTitle>
+        <CardDescription>
+          Ces informations apparaîtront sur vos devis et factures.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Nom société + SIRET */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="legal_name">Raison sociale</Label>
+            <Input
+              id="legal_name"
+              value={form.legal_name}
+              onChange={(e) => handleChange("legal_name", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="Mon Agence SAS"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="siret">SIRET</Label>
+            <Input
+              id="siret"
+              value={form.siret}
+              onChange={(e) => handleChange("siret", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="123 456 789 00012"
+            />
+          </div>
+        </div>
+
+        {/* TVA */}
+        <div className="space-y-1.5">
+          <Label htmlFor="vat_number">N° TVA intracommunautaire</Label>
+          <Input
+            id="vat_number"
+            value={form.vat_number}
+            onChange={(e) => handleChange("vat_number", e.target.value)}
+            disabled={!isAdmin}
+            placeholder="FR 12 345678901"
+          />
+        </div>
+
+        {/* Adresse */}
+        <div className="space-y-1.5">
+          <Label htmlFor="legal_address">Adresse</Label>
+          <Input
+            id="legal_address"
+            value={form.legal_address}
+            onChange={(e) => handleChange("legal_address", e.target.value)}
+            disabled={!isAdmin}
+            placeholder="12 rue de la Paix"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="legal_postal_code">Code postal</Label>
+            <Input
+              id="legal_postal_code"
+              value={form.legal_postal_code}
+              onChange={(e) => handleChange("legal_postal_code", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="75001"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="legal_city">Ville</Label>
+            <Input
+              id="legal_city"
+              value={form.legal_city}
+              onChange={(e) => handleChange("legal_city", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="Paris"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="legal_country">Pays</Label>
+            <Input
+              id="legal_country"
+              value={form.legal_country}
+              onChange={(e) => handleChange("legal_country", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="France"
+            />
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="legal_email">Email de facturation</Label>
+            <Input
+              id="legal_email"
+              type="email"
+              value={form.legal_email}
+              onChange={(e) => handleChange("legal_email", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="facturation@monagence.fr"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="legal_phone">Téléphone</Label>
+            <Input
+              id="legal_phone"
+              value={form.legal_phone}
+              onChange={(e) => handleChange("legal_phone", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="+33 1 23 45 67 89"
+            />
+          </div>
+        </div>
+
+        {/* Save */}
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Save className="h-4 w-4 mr-1.5" />
+              )}
+              Enregistrer
+            </Button>
+            {success && (
+              <p className="text-xs text-emerald-600">✓ Informations enregistrées</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
