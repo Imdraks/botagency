@@ -417,9 +417,9 @@ function BankingPageContent() {
               </div>
 
               {/* ── Transactions with timeline ── */}
-              <div className="relative ml-1">
+              <div className="relative">
                 {/* Vertical line */}
-                <div className="absolute left-[18px] top-2 bottom-2 w-px bg-gray-200 dark:bg-slate-700/60" />
+                <div className="absolute left-[28px] top-2 bottom-2 w-px bg-gray-200 dark:bg-slate-700/60" />
 
                 <div className="space-y-1.5">
                   {group.transactions.map((tx, ti) => {
@@ -439,11 +439,11 @@ function BankingPageContent() {
                     return (
                       <div key={tx.id} className="flex items-start gap-0">
                         {/* Date column */}
-                        <div className="w-[56px] flex-shrink-0 relative pt-3">
+                        <div className="w-[56px] flex-shrink-0 relative flex items-start justify-center pt-4">
                           {showDate && (
                             <>
-                              <div className="absolute left-[15px] top-[18px] w-[7px] h-[7px] rounded-full bg-gray-300 dark:bg-slate-500 ring-[3px] ring-white dark:ring-slate-950 z-10" />
-                              <div className="text-center pr-2">
+                              <div className="absolute left-1/2 -translate-x-1/2 top-[22px] w-[7px] h-[7px] rounded-full bg-gray-300 dark:bg-slate-500 ring-[3px] ring-white dark:ring-slate-950 z-10" />
+                              <div className="text-center">
                                 <p className="text-[15px] font-bold text-gray-600 dark:text-gray-300 leading-none">
                                   {day}
                                 </p>
