@@ -1041,6 +1041,7 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
     isSyncing,
     triggerSync,
     updateConnection,
+    deleteConnection,
     // Revolut
     revolutStatus,
     fetchRevolutStatus,
@@ -1075,13 +1076,20 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
     }
   };
 
-  const handleDisconnectRevolut = async () => {
-    if (!confirm("Déconnecter Revolut ? Les comptes et données liés seront supprimés.")) return;
+  const handleDeleteConnection = async (conn: typeof selectedConnection) => {
+    if (!conn) return;
+    const label = conn.bank_name || "cette banque";
+    if (!confirm(`Supprimer ${label} ? Les comptes et données liés seront supprimés.`)) return;
     setIsDisconnecting(true);
-    await disconnectRevolut();
+    if (conn.provider === "revolut") {
+      await disconnectRevolut();
+      fetchRevolutStatus();
+    } else {
+      await deleteConnection(conn.id);
+    }
     setIsDisconnecting(false);
+    setSelectedId(null);
     fetchDashboard();
-    fetchRevolutStatus();
   };
 
   const formatCurrency = (val: number, currency: string = "EUR") =>
@@ -1299,25 +1307,23 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
                 </div>
               )}
 
-              {/* Disconnect button */}
-              {selectedConnection.provider === "revolut" && (
-                <div className="pt-3 mt-3 border-t border-gray-100 dark:border-slate-800">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDisconnectRevolut}
-                    disabled={isDisconnecting}
-                    className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
-                  >
-                    {isDisconnecting ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    ) : (
-                      <Unplug className="h-3.5 w-3.5 mr-1.5" />
-                    )}
-                    Déconnecter Revolut
-                  </Button>
-                </div>
-              )}
+              {/* Delete / disconnect button */}
+              <div className="pt-3 mt-3 border-t border-gray-100 dark:border-slate-800">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeleteConnection(selectedConnection)}
+                  disabled={isDisconnecting}
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                >
+                  {isDisconnecting ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Supprimer {selectedConnection.bank_name}
+                </Button>
+              </div>
             </div>
           )}
         </div>
