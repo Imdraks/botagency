@@ -465,7 +465,9 @@ function ConnectionDetailView({
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-3">
-            {connection.bank_logo_url ? (
+            {connection.provider === "revolut" ? (
+              <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
+            ) : connection.bank_logo_url ? (
               <img
                 src={connection.bank_logo_url}
                 alt=""

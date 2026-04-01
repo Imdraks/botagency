@@ -78,7 +78,9 @@ export function BankCard({ connection, onSelect, isAdmin }: BankCardProps) {
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           {/* Bank logo / fallback */}
-          {connection.bank_logo_url ? (
+          {connection.provider === "revolut" ? (
+            <img src="/revolut-logo.svg" alt="Revolut" className="w-10 h-10 rounded-xl flex-shrink-0" />
+          ) : connection.bank_logo_url ? (
             <img
               src={connection.bank_logo_url}
               alt={connection.bank_name}
