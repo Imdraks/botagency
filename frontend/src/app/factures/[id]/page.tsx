@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { 
   FileCheck, ArrowLeft, Edit2, Trash2, Plus, Save, Send, Check, X,
   Building2, User, Calendar, Clock, CreditCard, AlertTriangle, DollarSign, Pencil,
-  Download, Loader2, Eye
+  Download, Loader2, Eye, Cloud, ExternalLink
 } from 'lucide-react';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Button } from '@/components/ui/button';
@@ -122,6 +122,8 @@ export default function InvoiceDetailPage() {
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [savingToDrive, setSavingToDrive] = useState(false);
+  const [driveLink, setDriveLink] = useState<string | null>(null);
   
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -516,6 +518,37 @@ export default function InvoiceDetailPage() {
     if (pdfUrl) window.open(pdfUrl, '_blank');
   };
 
+  const saveToDrive = async () => {
+    setSavingToDrive(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/billing/invoices/${invoiceId}/pdf/drive`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDriveLink(data.web_view_link);
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
+        toast.success('PDF sauvegardé sur Google Drive');
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Erreur de sauvegarde sur Drive');
+      }
+    } catch (err) {
+      toast.error('Erreur de connexion');
+    } finally {
+      setSavingToDrive(false);
+    }
+  };
+
+  const openDriveLink = () => {
+    if (driveLink) window.open(driveLink, '_blank');
+  };
+
   const downloadPdf = () => {
     if (pdfUrl) {
       const a = document.createElement('a');
@@ -566,7 +599,17 @@ export default function InvoiceDetailPage() {
                 <Download className="h-4 w-4 mr-2" />
                 Télécharger
               </Button>
+              <Button variant="outline" onClick={saveToDrive} disabled={savingToDrive}>
+                <Cloud className="h-4 w-4 mr-2" />
+                {savingToDrive ? 'Sauvegarde...' : 'Sauver sur Drive'}
+              </Button>
             </>
+          )}
+          {driveLink && (
+            <Button variant="outline" onClick={openDriveLink}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Voir sur Drive
+            </Button>
           )}
           {invoice.status === 'DRAFT' && (
             <Button variant="outline" onClick={() => updateStatus('SENT')}>

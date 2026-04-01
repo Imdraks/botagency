@@ -26,6 +26,7 @@ import {
   Clock,
   MailPlus,
   CheckCircle2,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -364,8 +365,84 @@ function CompanyInfoSection({
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // SIRET lookup
+  const [siretSearch, setSiretSearch] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const searchSiret = async () => {
+    const clean = siretSearch.replace(/\s/g, "");
+    if (!clean) return;
+    setSearching(true);
+    setSearchResults([]);
+    setSearchError(null);
+    try {
+      const res = await fetch(
+        `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(clean)}&per_page=5`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          setSearchResults(data.results);
+          setShowResults(true);
+        } else {
+          setSearchError("Aucune entreprise trouvée");
+        }
+      } else {
+        setSearchError("Erreur lors de la recherche");
+      }
+    } catch (err) {
+      console.error("SIRET lookup error", err);
+      setSearchError("Erreur de connexion");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const selectCompany = (company: any) => {
+    const siege = company.siege || {};
+
+    // Build street address from parts
+    const addrParts: string[] = [];
+    if (siege.numero_voie) addrParts.push(siege.numero_voie);
+    if (siege.indice_repetition) addrParts.push(siege.indice_repetition);
+    if (siege.type_voie) addrParts.push(siege.type_voie);
+    if (siege.libelle_voie) addrParts.push(siege.libelle_voie);
+    const streetAddress = addrParts.join(" ");
+
+    // Compute TVA intracommunautaire from SIREN
+    const siren = company.siren || "";
+    let vatNumber = "";
+    if (siren && siren.length === 9) {
+      const sirenNum = parseInt(siren, 10);
+      if (!isNaN(sirenNum)) {
+        const key = (12 + 3 * (sirenNum % 97)) % 97;
+        vatNumber = `FR${key.toString().padStart(2, "0")}${siren}`;
+      }
+    }
+
+    setForm({
+      ...form,
+      legal_name: company.nom_complet || company.nom_raison_sociale || "",
+      legal_address: streetAddress || siege.complement_adresse || "",
+      legal_city: siege.libelle_commune || "",
+      legal_postal_code: siege.code_postal || "",
+      legal_country: "France",
+      siret: siege.siret || "",
+      vat_number: vatNumber || form.vat_number,
+      legal_phone: form.legal_phone,
+      legal_email: form.legal_email,
+    });
+
+    setShowResults(false);
+    setSiretSearch("");
+    setSearchResults([]);
   };
 
   const handleSave = async () => {
@@ -394,6 +471,81 @@ function CompanyInfoSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* SIRET Lookup */}
+        {isAdmin && (
+          <div className="relative">
+            <Label className="text-sm font-medium mb-1.5 block">Recherche par SIRET ou nom d&apos;entreprise</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={siretSearch}
+                  onChange={(e) => {
+                    setSiretSearch(e.target.value);
+                    setSearchError(null);
+                    if (!e.target.value) {
+                      setShowResults(false);
+                      setSearchResults([]);
+                    }
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchSiret(); } }}
+                  placeholder="Ex: 123 456 789 00012 ou Nom de l'entreprise"
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={searchSiret}
+                disabled={searching || !siretSearch.trim()}
+                className="shrink-0"
+              >
+                {searching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>Rechercher</>
+                )}
+              </Button>
+            </div>
+            {searchError && (
+              <p className="text-xs text-red-500 mt-1.5">{searchError}</p>
+            )}
+            {/* Search results dropdown */}
+            {showResults && searchResults.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-72 overflow-auto">
+                {searchResults.map((company, idx) => {
+                  const siege = company.siege || {};
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors"
+                      onClick={() => selectCompany(company)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">
+                          {company.nom_complet}
+                        </span>
+                        <span className="text-xs font-mono text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">
+                          {siege.siret}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {siege.adresse || "Adresse non renseignée"}
+                      </p>
+                      {company.etat_administratif === "C" && (
+                        <span className="inline-block text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded mt-1">
+                          Cessée
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Nom société + SIRET */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
