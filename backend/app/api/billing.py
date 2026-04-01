@@ -996,12 +996,13 @@ async def generate_quote_pdf(
         if workspace.vat_number:
             company_lines.append(f"TVA: {workspace.vat_number}")
     
-    # Header table: Company info left, Total right
+    # Header table: Total right-aligned
+    total_formatted = f"{int(total):,d} €".replace(',', ' ') if total == int(total) else f"{total:,.2f} €".replace(',', ' ').replace('.', ',')
     header_data = [[
-        Paragraph("<br/>".join(company_lines) if company_lines else "Votre entreprise", company_info_style),
+        Paragraph("", company_info_style),
         [
             Paragraph("Montant total", total_label_style),
-            Paragraph(f"{total:,.0f} €".replace(',', ' '), total_big_style)
+            Paragraph(total_formatted, total_big_style)
         ]
     ]]
     
@@ -1409,9 +1410,10 @@ async def upload_quote_pdf_to_drive(
         if workspace.siret: company_lines.append(f"SIRET: {workspace.siret}")
     
     # Header
+    total_formatted = f"{int(total):,d} €".replace(',', ' ') if total == int(total) else f"{total:,.2f} €".replace(',', ' ').replace('.', ',')
     header_data = [[
-        Paragraph("<br/>".join(company_lines) if company_lines else "Entreprise", company_info_style),
-        [Paragraph("Montant total", total_label_style), Paragraph(f"{total:,.0f} €".replace(',', ' '), total_big_style)]
+        Paragraph("", company_info_style),
+        [Paragraph("Montant total", total_label_style), Paragraph(total_formatted, total_big_style)]
     ]]
     header_table = Table(header_data, colWidths=[120*mm, 55*mm])
     header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
@@ -1984,11 +1986,12 @@ async def generate_invoice_pdf(
         if workspace.vat_number:
             company_lines.append(f"TVA: {workspace.vat_number}")
 
+    total_formatted = f"{int(total):,d} €".replace(',', ' ') if total == int(total) else f"{total:,.2f} €".replace(',', ' ').replace('.', ',')
     header_data = [[
-        Paragraph("<br/>".join(company_lines) if company_lines else "Votre entreprise", company_info_style),
+        Paragraph("", company_info_style),
         [
             Paragraph("Montant total TTC", total_label_style),
-            Paragraph(f"{total:,.2f} €".replace(',', ' ').replace('.', ','), total_big_style)
+            Paragraph(total_formatted, total_big_style)
         ]
     ]]
     header_table = Table(header_data, colWidths=[120*mm, 55*mm])
@@ -2312,9 +2315,10 @@ async def upload_invoice_pdf_to_drive(
         if workspace.vat_number: company_lines.append(f"TVA: {workspace.vat_number}")
 
     # Header
+    total_formatted = f"{int(total):,d} €".replace(',', ' ') if total == int(total) else f"{total:,.2f} €".replace(',', ' ').replace('.', ',')
     header_data = [[
-        Paragraph("<br/>".join(company_lines) if company_lines else "Votre entreprise", company_info_style),
-        [Paragraph("Montant total TTC", total_label_style), Paragraph(f"{total:,.2f} €".replace(',', ' ').replace('.', ','), total_big_style)]
+        Paragraph("", company_info_style),
+        [Paragraph("Montant total TTC", total_label_style), Paragraph(total_formatted, total_big_style)]
     ]]
     header_table = Table(header_data, colWidths=[120*mm, 55*mm])
     header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
