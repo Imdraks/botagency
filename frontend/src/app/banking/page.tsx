@@ -9,7 +9,6 @@ import {
   Settings2,
   Search,
   SlidersHorizontal,
-  Plus,
   ArrowUpRight,
   ArrowDownLeft,
   Repeat,
@@ -251,9 +250,9 @@ function BankingPageContent() {
         <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
           Connectez votre banque pour visualiser vos transactions en temps réel.
         </p>
-        <Button onClick={() => router.push("/settings")} className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-5 shadow-sm shadow-purple-500/20">
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter un compte
+        <Button onClick={() => router.push("/settings")} variant="outline" className="rounded-full px-5">
+          <Settings2 className="h-4 w-4 mr-2" />
+          Gérer dans les paramètres
         </Button>
       </div>
     );
@@ -263,17 +262,10 @@ function BankingPageContent() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Transactions
         </h1>
-        <Button
-          onClick={() => router.push("/settings")}
-          className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-5 h-9 shadow-sm shadow-purple-500/20"
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          Ajouter
-        </Button>
       </div>
 
       {/* Error */}
