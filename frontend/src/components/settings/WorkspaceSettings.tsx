@@ -59,7 +59,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/auth";
 import { useBankingStore } from "@/store/bankingStore";
-import { BankCard, ConnectBankDialog, BankStatusBadge, SyncStatusBadge } from "@/components/banking";
+import { ConnectBankDialog, BankStatusBadge, SyncStatusBadge } from "@/components/banking";
 
 // ============================================================================
 // TYPES
@@ -1025,7 +1025,7 @@ function MembersSection({
 }
 
 // ============================================================================
-// BANKING SECTION
+// BANKING SECTION — Revolut-style design
 // ============================================================================
 
 function BankingSection({ isAdmin }: { isAdmin: boolean }) {
@@ -1054,8 +1054,8 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
     }
   }, [selectedId, fetchConnectionDetail]);
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(val);
+  const formatCurrency = (val: number, currency: string = "EUR") =>
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(val);
 
   const formatDateShort = (d?: string | null) => {
     if (!d) return "—";
@@ -1067,113 +1067,148 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
     });
   };
 
-  // Not enabled
+  const getStatusInfo = (s: string) => {
+    switch (s) {
+      case "CONNECTED":
+        return { label: "Actif", cls: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800" };
+      case "CONNECTING":
+        return { label: "Connexion en cours", cls: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800" };
+      case "SYNC_ERROR":
+        return { label: "Erreur de synchronisation", cls: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800" };
+      case "CONSENT_EXPIRED":
+        return { label: "Consentement expiré", cls: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800" };
+      case "SUSPENDED":
+        return { label: "Suspendu", cls: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-slate-800 dark:text-gray-400 dark:border-slate-700" };
+      case "NOT_CONNECTED":
+      case "REVOKED":
+        return { label: "Identification nécessaire", cls: "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800" };
+      default:
+        return { label: s, cls: "bg-gray-50 text-gray-600 border-gray-200" };
+    }
+  };
+
+  // ── Not enabled ──
   if (dashboard && !dashboard.banking_enabled) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto mb-4">
-            <Landmark className="h-7 w-7 text-purple-600 dark:text-purple-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Connexions bancaires
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Cette fonctionnalité n&apos;est pas activée pour votre espace de travail.
-            Souscrivez à l&apos;addon <strong>Radar Business</strong> pour en bénéficier.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto mb-4">
+          <Landmark className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Connexions bancaires
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+          Cette fonctionnalité n&apos;est pas activée pour votre espace de travail.
+          Souscrivez à l&apos;addon <strong>Radar Business</strong> pour en bénéficier.
+        </p>
+      </div>
     );
   }
 
-  // Detail view for selected connection
+  // ── Detail view (Administrer) ──
   if (selectedId && selectedConnection) {
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
-              ← Retour
-            </Button>
-            <div className="flex items-center gap-2">
-              {selectedConnection.bank_logo_url ? (
-                <img
-                  src={selectedConnection.bank_logo_url}
-                  alt=""
-                  className="w-8 h-8 rounded-lg object-contain bg-gray-50 dark:bg-slate-800 p-0.5"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-                  <Landmark className="h-4 w-4 text-white" />
-                </div>
-              )}
-              <div>
-                <CardTitle className="text-base">{selectedConnection.bank_name}</CardTitle>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <BankStatusBadge status={selectedConnection.status} size="sm" />
-                </div>
+      <div className="space-y-4">
+        {/* Back button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSelectedId(null)}
+          className="text-gray-500 hover:text-gray-900 dark:hover:text-white -ml-2"
+        >
+          ← Retour aux comptes
+        </Button>
+
+        <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+          {/* Connection header */}
+          <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex items-center gap-4">
+            {selectedConnection.bank_logo_url ? (
+              <img
+                src={selectedConnection.bank_logo_url}
+                alt=""
+                className="w-10 h-10 rounded-xl object-contain bg-gray-50 dark:bg-slate-800 p-1"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                <Landmark className="h-5 w-5 text-white" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                {selectedConnection.bank_name}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <BankStatusBadge status={selectedConnection.status} size="sm" />
+                {selectedConnection.last_sync_at && (
+                  <span className="text-xs text-gray-400">
+                    Dernière sync : {formatDateShort(selectedConnection.last_sync_at)}
+                  </span>
+                )}
               </div>
             </div>
+            {isAdmin && (selectedConnection.status === "CONNECTED" || selectedConnection.status === "SYNC_ERROR") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-pink-600 border-pink-200 hover:bg-pink-50 dark:text-pink-400 dark:border-pink-800 dark:hover:bg-pink-950/30"
+                onClick={() => triggerSync(selectedConnection.id)}
+                disabled={isSyncing[selectedConnection.id]}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isSyncing[selectedConnection.id] && "animate-spin")} />
+                {isSyncing[selectedConnection.id] ? "Sync…" : "Synchroniser"}
+              </Button>
+            )}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
+
           {/* Accounts */}
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <div className="px-6 py-4">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
               Comptes ({selectedConnection.accounts.length})
             </h4>
+
             {selectedConnection.accounts.length > 0 ? (
-              <div className="space-y-2">
-                {selectedConnection.accounts.map((acc) => (
-                  <div key={acc.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: acc.display_color || "#8B5CF6" }}
-                      />
+              <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                {selectedConnection.accounts.map((acc, i) => (
+                  <div key={acc.id} className="flex items-center justify-between py-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
+                          {i + 1}
+                        </span>
+                      </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                           {acc.account_name}
                         </p>
                         <p className="text-xs text-gray-400">
                           {acc.account_type} · {acc.currency}
-                          {acc.iban_masked && ` · ${acc.iban_masked}`}
+                          {acc.iban_masked ? ` · ${acc.iban_masked}` : ""}
                         </p>
                       </div>
                     </div>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">
-                      {acc.balance != null ? formatCurrency(acc.balance) : "—"}
+                    <p className="text-sm font-bold text-gray-900 dark:text-white ml-4 flex-shrink-0">
+                      {acc.balance != null
+                        ? formatCurrency(acc.balance, acc.currency || "EUR")
+                        : "—"}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 text-center py-4">Aucun compte. Lancez une synchronisation.</p>
+              <p className="text-sm text-gray-400 text-center py-8">
+                Aucun compte. Lancez une synchronisation.
+              </p>
             )}
           </div>
 
-          {/* Sync + Settings for admin */}
+          {/* Admin settings */}
           {isAdmin && (
-            <div className="space-y-4">
-              {/* Sync button */}
-              {(selectedConnection.status === "CONNECTED" || selectedConnection.status === "SYNC_ERROR") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => triggerSync(selectedConnection.id)}
-                  disabled={isSyncing[selectedConnection.id]}
-                >
-                  <RefreshCw className={cn("h-4 w-4 mr-1", isSyncing[selectedConnection.id] && "animate-spin")} />
-                  {isSyncing[selectedConnection.id] ? "Synchronisation…" : "Synchroniser"}
-                </Button>
-              )}
-
-              {/* Auto sync toggle */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 space-y-4">
+              {/* Auto-sync toggle */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/50">
                 <div>
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Synchronisation auto
+                    Synchronisation automatique
                   </p>
                   <p className="text-xs text-gray-400">
                     Toutes les {selectedConnection.sync_frequency_hours}h
@@ -1187,7 +1222,9 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
                   }
                   className={cn(
                     "relative w-11 h-6 rounded-full transition-colors",
-                    selectedConnection.auto_sync_enabled ? "bg-purple-600" : "bg-gray-300 dark:bg-gray-600",
+                    selectedConnection.auto_sync_enabled
+                      ? "bg-pink-500"
+                      : "bg-gray-300 dark:bg-gray-600",
                   )}
                 >
                   <span
@@ -1202,19 +1239,25 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
               {/* Recent syncs */}
               {selectedConnection.recent_syncs.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                    Dernières synchronisations
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Historique de synchronisation
                   </h4>
                   <div className="space-y-1.5">
                     {selectedConnection.recent_syncs.slice(0, 5).map((sync) => (
-                      <div key={sync.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-800/50 text-xs">
+                      <div
+                        key={sync.id}
+                        className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-800/50 text-xs"
+                      >
                         <div className="flex items-center gap-2">
                           <SyncStatusBadge status={sync.status} />
-                          <span className="text-gray-500">{formatDateShort(sync.started_at)}</span>
+                          <span className="text-gray-500">
+                            {formatDateShort(sync.started_at)}
+                          </span>
                         </div>
                         <span className="text-gray-400">
                           {sync.accounts_synced} comptes
-                          {sync.duration_ms != null && ` · ${(sync.duration_ms / 1000).toFixed(1)}s`}
+                          {sync.duration_ms != null &&
+                            ` · ${(sync.duration_ms / 1000).toFixed(1)}s`}
                         </span>
                       </div>
                     ))}
@@ -1223,117 +1266,158 @@ function BankingSection({ isAdmin }: { isAdmin: boolean }) {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
-  // List view
+  // ── Main list view — Revolut-style ──
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Landmark className="h-5 w-5 text-purple-600" />
-              Connexions bancaires
-            </CardTitle>
-            <CardDescription>
-              {connections.length} banque{connections.length !== 1 ? "s" : ""} connectée{connections.length !== 1 ? "s" : ""}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchDashboard()}
-              disabled={isLoading}
-            >
-              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-            </Button>
-            {isAdmin && <ConnectBankDialog />}
-          </div>
+    <div className="space-y-4">
+      {/* Error banner */}
+      {error && (
+        <div className="px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm flex items-center gap-2 border border-red-200 dark:border-red-800/50">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          {error}
         </div>
-      </CardHeader>
-      <CardContent>
-        {/* Summary stats */}
-        {dashboard && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <MiniStat label="Connectées" value={dashboard.active_connections} />
-            <MiniStat label="Comptes" value={dashboard.total_accounts} />
-            <MiniStat
-              label="Solde EUR"
-              value={
-                dashboard.total_balances["EUR"]
-                  ? formatCurrency(dashboard.total_balances["EUR"])
-                  : "—"
+      )}
+
+      {/* Consent alert */}
+      {dashboard && dashboard.expiring_consents > 0 && (
+        <div className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          {dashboard.expiring_consents} consentement
+          {dashboard.expiring_consents > 1 ? "s" : ""} expire
+          {dashboard.expiring_consents > 1 ? "nt" : ""} bientôt.
+        </div>
+      )}
+
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+        {/* Section header */}
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">
+            Comptes et cartes
+          </h3>
+        </div>
+
+        {/* Accounts / connections list */}
+        <div className="divide-y divide-gray-100 dark:divide-slate-800">
+          {isLoading && connections.length === 0 ? (
+            <div className="px-6 py-12 flex items-center justify-center gap-2 text-sm text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Chargement…
+            </div>
+          ) : connections.length > 0 ? (
+            connections.map((conn, index) => {
+              const si = getStatusInfo(conn.status);
+              return (
+                <div
+                  key={conn.id}
+                  className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                >
+                  {/* Numbered circle */}
+                  <div className="w-10 h-10 rounded-full border-2 border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-600 dark:text-gray-300">
+                      {index + 1}
+                    </span>
+                  </div>
+
+                  {/* Name + subtitle */}
+                  <div className="min-w-0 flex-shrink-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {conn.accounts_count === 1 && conn.provider === "revolut"
+                        ? "Pocket EUR"
+                        : conn.bank_name}
+                    </p>
+                    <p className="text-xs text-gray-400">{conn.bank_name}</p>
+                  </div>
+
+                  {/* Status badge */}
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2.5 py-0.5 rounded border text-[11px] font-medium whitespace-nowrap",
+                      si.cls,
+                    )}
+                  >
+                    {si.label}
+                  </span>
+
+                  {/* Spacer */}
+                  <div className="flex-1" />
+
+                  {/* Balance */}
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                    {conn.total_balance != null
+                      ? formatCurrency(conn.total_balance)
+                      : "0,00 €"}
+                  </p>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isAdmin &&
+                      (conn.status === "CONNECTED" ||
+                        conn.status === "SYNC_ERROR") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-pink-600 border-pink-200 hover:bg-pink-50 dark:text-pink-400 dark:border-pink-800 dark:hover:bg-pink-950/30 h-8 text-xs rounded-lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerSync(conn.id);
+                          }}
+                          disabled={isSyncing[conn.id]}
+                        >
+                          <RefreshCw
+                            className={cn(
+                              "h-3.5 w-3.5 mr-1.5",
+                              isSyncing[conn.id] && "animate-spin",
+                            )}
+                          />
+                          Vérifier
+                        </Button>
+                      )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs rounded-lg"
+                      onClick={() => setSelectedId(conn.id)}
+                    >
+                      <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+                      Administrer
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="px-6 py-14 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                <Landmark className="h-6 w-6 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Aucun compte connecté
+              </p>
+              <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+                Connectez votre première banque pour centraliser vos comptes professionnels.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Add account/card button — pink pill */}
+        {isAdmin && (
+          <div className="px-6 py-5 flex justify-center border-t border-gray-100 dark:border-slate-800">
+            <ConnectBankDialog
+              trigger={
+                <Button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-6 h-10 text-sm font-medium shadow-sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter un compte ou une carte
+                </Button>
               }
             />
-            <MiniStat
-              label="Dernière sync"
-              value={dashboard.last_sync_at ? formatDateShort(dashboard.last_sync_at) : "Jamais"}
-            />
           </div>
         )}
-
-        {/* Error */}
-        {error && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            {error}
-          </div>
-        )}
-
-        {/* Consent alerts */}
-        {dashboard && dashboard.expiring_consents > 0 && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            {dashboard.expiring_consents} consentement{dashboard.expiring_consents > 1 ? "s" : ""}{" "}
-            expire{dashboard.expiring_consents > 1 ? "nt" : ""} bientôt.
-          </div>
-        )}
-
-        {/* Connections */}
-        {isLoading && connections.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-gray-400 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Chargement…
-          </div>
-        ) : connections.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {connections.map((conn) => (
-              <BankCard
-                key={conn.id}
-                connection={conn}
-                onSelect={(id) => setSelectedId(id)}
-                isAdmin={isAdmin}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="py-10 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
-              <Landmark className="h-6 w-6 text-gray-400" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-              Aucune banque connectée
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto mb-4">
-              Connectez votre première banque pour centraliser la vue de vos comptes professionnels.
-            </p>
-            {isAdmin && <ConnectBankDialog />}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg bg-gray-50 dark:bg-slate-800/50 px-3 py-2.5 text-center">
-      <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-gray-900 dark:text-white">{value}</p>
+      </div>
     </div>
   );
 }
