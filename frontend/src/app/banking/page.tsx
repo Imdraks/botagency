@@ -680,8 +680,8 @@ function RevolutDetailView({
   transactionsLoading: boolean;
   isAdmin: boolean;
   onBack: () => void;
-  onSync: () => Promise<void>;
-  onDisconnect: () => Promise<void>;
+  onSync: () => Promise<boolean>;
+  onDisconnect: () => Promise<boolean>;
   onFetchTransactions: (params?: { from_date?: string; to_date?: string; account_id?: string; count?: number }) => Promise<void>;
   formatDate: (d?: string | null) => string;
   formatCurrency: (val: number) => string;
