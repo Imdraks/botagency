@@ -42,11 +42,6 @@ const SHORT_MONTHS = [
   "juil.", "août", "sept.", "oct.", "nov.", "déc.",
 ];
 
-const MONTH_EMOJIS: Record<number, string> = {
-  0: "❄️", 1: "🌸", 2: "🌱", 3: "🌷", 4: "🌺", 5: "☀️",
-  6: "🌻", 7: "🌊", 8: "🍂", 9: "🍁", 10: "🌧️", 11: "🎄",
-};
-
 function getMonthKey(dateStr: string) {
   const d = new Date(dateStr);
   return `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
@@ -55,10 +50,6 @@ function getMonthKey(dateStr: string) {
 function getMonthLabel(dateStr: string) {
   const d = new Date(dateStr);
   return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function getMonthEmoji(dateStr: string) {
-  return MONTH_EMOJIS[new Date(dateStr).getMonth()] || "📅";
 }
 
 function getDayInfo(dateStr: string) {
@@ -219,13 +210,13 @@ function BankingPageContent() {
       return db.localeCompare(da);
     });
 
-    const groups: Record<string, { label: string; emoji: string; date: string; transactions: RevolutTransaction[] }> = {};
+    const groups: Record<string, { label: string; date: string; transactions: RevolutTransaction[] }> = {};
     txs.forEach((tx) => {
       const dateStr = tx.completed_at || tx.created_at || "";
       if (!dateStr) return;
       const key = getMonthKey(dateStr);
       if (!groups[key]) {
-        groups[key] = { label: getMonthLabel(dateStr), emoji: getMonthEmoji(dateStr), date: dateStr, transactions: [] };
+        groups[key] = { label: getMonthLabel(dateStr), date: dateStr, transactions: [] };
       }
       groups[key].transactions.push(tx);
     });
@@ -260,7 +251,7 @@ function BankingPageContent() {
         <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
           Connectez votre banque pour visualiser vos transactions en temps réel.
         </p>
-        <Button onClick={() => router.push("/settings")} className="bg-pink-500 hover:bg-pink-600 text-white rounded-full px-5">
+        <Button onClick={() => router.push("/settings")} className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-5 shadow-sm shadow-purple-500/20">
           <Plus className="h-4 w-4 mr-2" />
           Ajouter un compte
         </Button>
@@ -278,7 +269,7 @@ function BankingPageContent() {
         </h1>
         <Button
           onClick={() => router.push("/settings")}
-          className="bg-pink-500 hover:bg-pink-600 text-white rounded-full px-5 h-9"
+          className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-5 h-9 shadow-sm shadow-purple-500/20"
         >
           <Plus className="h-4 w-4 mr-1.5" />
           Ajouter
@@ -329,7 +320,7 @@ function BankingPageContent() {
               placeholder="Rechercher"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 w-44 transition-all"
+              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-500 w-44 transition-all"
             />
           </div>
           <Button
@@ -338,7 +329,7 @@ function BankingPageContent() {
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
               "rounded-xl gap-1.5 h-[38px] px-3.5",
-              showFilters && "border-purple-300 bg-purple-50 dark:bg-purple-900/20",
+              showFilters && "border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
             )}
           >
             <SlidersHorizontal className="h-4 w-4" />
@@ -371,8 +362,8 @@ function BankingPageContent() {
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
                   typeFilter === "all"
-                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white"
-                    : "bg-white dark:bg-slate-900 text-gray-500 border-gray-200 dark:border-slate-700 hover:border-gray-400",
+                    ? "bg-purple-600 text-white border-purple-600 shadow-sm shadow-purple-500/20"
+                    : "bg-white dark:bg-slate-900 text-gray-500 border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700",
                 )}
               >
                 Tous
@@ -384,8 +375,8 @@ function BankingPageContent() {
                   className={cn(
                     "px-3 py-1.5 rounded-full text-xs font-medium border transition-all capitalize",
                     typeFilter === t
-                      ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white"
-                      : "bg-white dark:bg-slate-900 text-gray-500 border-gray-200 dark:border-slate-700 hover:border-gray-400",
+                      ? "bg-purple-600 text-white border-purple-600 shadow-sm shadow-purple-500/20"
+                      : "bg-white dark:bg-slate-900 text-gray-500 border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700",
                   )}
                 >
                   {t.replace(/_/g, " ")}
@@ -406,7 +397,7 @@ function BankingPageContent() {
       {/* ── TIMELINE ──────────────────────────────────────────────── */}
       {revolutTransactionsLoading && revolutTransactions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24">
-          <Loader2 className="h-8 w-8 text-purple-400 animate-spin mb-3" />
+          <Loader2 className="h-8 w-8 text-purple-600 dark:text-purple-400 animate-spin mb-3" />
           <p className="text-sm text-gray-400">Chargement des transactions…</p>
         </div>
       ) : groupedTransactions.length === 0 ? (
@@ -426,11 +417,9 @@ function BankingPageContent() {
           {groupedTransactions.map((group, gi) => (
             <div key={gi}>
               {/* ── Month header ── */}
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/30 flex items-center justify-center text-base">
-                  {group.emoji}
-                </div>
-                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-1.5 h-5 rounded-full bg-purple-600 dark:bg-purple-500" />
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                   {group.label}
                 </h2>
               </div>
