@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import JSON
 
 
 # revision identifiers, used by Alembic.
-revision = '042_add_bank_metadata_to_connections'
+revision = '042_bank_metadata_conn'
 down_revision = '041_banking_connections'
 branch_labels = None
 depends_on = None
