@@ -40,6 +40,7 @@ import {
   Compass,
   Database,
   Home,
+  Landmark,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -147,6 +148,7 @@ const navigationSections: NavSection[] = [
     items: [
       { name: "Devis", href: "/devis", icon: Receipt, feature: "quotes" },
       { name: "Factures", href: "/factures", icon: FileCheck, feature: "invoices" },
+      { name: "Banques", href: "/banking", icon: Landmark, feature: "banking", isNew: true },
     ],
   },
 

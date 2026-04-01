@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     # Tavily API (for real-time web search)
     tavily_api_key: Optional[str] = None
     
+    # Revolut Business API
+    revolut_client_id: str = ""
+    revolut_private_key_path: str = ""   # Path to RSA private key PEM file
+    revolut_redirect_uri: str = ""       # OAuth redirect URI (e.g. https://radarapp.fr/api/v1/banking/revolut/callback)
+    revolut_sandbox: bool = True         # Use sandbox environment
+    
     # SSO - Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""

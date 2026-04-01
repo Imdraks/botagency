@@ -3,6 +3,7 @@ Workspace API - Multi-user workspace management
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -246,11 +247,66 @@ async def delete_workspace(
     if workspace.owner_user_id != current_user.id and current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Only owner or admin can delete workspace")
     
-    # Delete related data first
-    db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == workspace_id).delete()
-    db.query(WorkspaceInvite).filter(WorkspaceInvite.workspace_id == workspace_id).delete()
+    # Use raw SQL to cascade-delete all related data safely
+    # First, find which tables actually have a workspace_id column
+    from sqlalchemy import text
     
-    db.delete(workspace)
+    result = db.execute(text("""
+        SELECT table_name FROM information_schema.columns
+        WHERE column_name = 'workspace_id'
+        AND table_schema = 'public'
+    """))
+    tables_with_workspace_id = {row[0] for row in result}
+    
+    # Ordered list – children before parents to respect FK constraints
+    related_tables = [
+        # Banking
+        "banking_sync_logs", "banking_consents", "banking_accounts", "banking_connections",
+        # Billing
+        "billing_invoice_items", "billing_invoices", "billing_clients",
+        # Discovery
+        "discovery_enrichment_jobs", "discovery_comparison_lists",
+        "discovery_candidates", "discovery_artists",
+        # Collections
+        "lead_items", "collections",
+        # CRM
+        "opportunities", "contacts", "clients",
+        # Entities & briefs
+        "entities",
+        # Profiles
+        "profiles",
+        # Inbox
+        "inbox_items",
+        # Artist data
+        "artist_analyses", "artist_snapshots",
+        # Jobs
+        "spotify_search_jobs",
+        # Drive
+        "drive_folder_map",
+        # Agency
+        "agency_tasks", "agency_projects",
+        # Tags / comments / favorites
+        "tags", "comments", "favorites",
+        # Activity & audit
+        "activity_logs", "audit_logs",
+        # Radar
+        "radar_configs", "radar_harvest_reports",
+        # Workspace core (last)
+        "workspace_invites", "workspace_members",
+    ]
+    
+    for table in related_tables:
+        if table in tables_with_workspace_id:
+            db.execute(
+                text(f"DELETE FROM {table} WHERE workspace_id = :wid"),
+                {"wid": workspace_id},
+            )
+    
+    # Delete the workspace itself
+    db.execute(
+        text("DELETE FROM workspaces WHERE id = :wid"),
+        {"wid": workspace_id},
+    )
     db.commit()
 
 
@@ -277,7 +333,33 @@ async def add_member(
     # Find user by email
     user = db.query(User).filter(User.email == data.user_email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        # Super-admin can auto-create users on the fly
+        if not current_user.is_superuser:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        provider = (data.auth_provider or "credentials").lower()
+        if provider not in ("credentials", "google"):
+            raise HTTPException(status_code=400, detail="auth_provider must be 'credentials' or 'google'")
+        
+        hashed_pw = None
+        if provider == "credentials":
+            if not data.password or len(data.password) < 6:
+                raise HTTPException(status_code=400, detail="A password of at least 6 characters is required for credential accounts")
+            from app.core.security import get_password_hash
+            hashed_pw = get_password_hash(data.password)
+        
+        user = User(
+            email=data.user_email.strip().lower(),
+            hashed_password=hashed_pw,
+            full_name=data.user_email.split("@")[0].replace(".", " ").title(),
+            role="viewer",
+            is_active=True,
+            is_superuser=False,
+            is_whitelisted=True,
+            auth_provider=provider,
+        )
+        db.add(user)
+        db.flush()  # get user.id without committing yet
     
     # Check if already member
     existing = db.query(WorkspaceMember).filter(
@@ -381,6 +463,61 @@ async def remove_member(
     
     db.delete(member)
     db.commit()
+
+
+class ResetPasswordRequest(BaseModel):
+    """Optional: provide a specific new password, otherwise one is generated."""
+    new_password: Optional[str] = None
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str
+    generated_password: str
+    user_email: str
+
+
+@router.post("/{workspace_id}/members/{member_id}/reset-password", response_model=ResetPasswordResponse)
+async def reset_member_password(
+    workspace_id: int,
+    member_id: int,
+    data: ResetPasswordRequest = ResetPasswordRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reset a member's password. Super-admin only."""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Only super-admin can reset passwords")
+
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.id == member_id,
+        WorkspaceMember.workspace_id == workspace_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    user = db.query(User).filter(User.id == member.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.auth_provider and user.auth_provider != "credentials":
+        raise HTTPException(
+            status_code=400,
+            detail=f"This user authenticates via {user.auth_provider}. Password reset is not applicable.",
+        )
+
+    import secrets, string
+    new_pw = data.new_password if (data.new_password and len(data.new_password) >= 6) else \
+        ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+
+    from app.core.security import get_password_hash
+    user.hashed_password = get_password_hash(new_pw)
+    db.commit()
+
+    return ResetPasswordResponse(
+        message="Password reset successfully",
+        generated_password=new_pw,
+        user_email=user.email or "",
+    )
 
 
 # ============================================================================
@@ -537,12 +674,12 @@ async def list_workspace_invites(
     current_user: User = Depends(get_current_user),
 ):
     """List all authorized emails for a workspace. Admin only."""
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Admin only")
-    
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    if not current_user.is_superuser and not _user_is_workspace_admin(db, current_user.id, workspace_id, workspace.owner_user_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
     
     invites = db.query(WorkspaceInvite).filter(
         WorkspaceInvite.workspace_id == workspace_id
@@ -570,12 +707,12 @@ async def add_workspace_invite(
     current_user: User = Depends(get_current_user),
 ):
     """Add an authorized email to a workspace and send invitation email. Admin only."""
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Admin only")
-    
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    if not current_user.is_superuser and not _user_is_workspace_admin(db, current_user.id, workspace_id, workspace.owner_user_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
     
     # Check if email already exists
     existing = db.query(WorkspaceInvite).filter(
@@ -633,8 +770,12 @@ async def remove_workspace_invite(
     current_user: User = Depends(get_current_user),
 ):
     """Remove an authorized email from a workspace. Admin only."""
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Admin only")
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    if not current_user.is_superuser and not _user_is_workspace_admin(db, current_user.id, workspace_id, workspace.owner_user_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
     
     invite = db.query(WorkspaceInvite).filter(
         WorkspaceInvite.id == invite_id,

@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/store/auth";
-import { Bell, User, Lock, Palette, LayoutDashboard, Bookmark } from "lucide-react";
+import { Bell, User, Lock, Palette, LayoutDashboard, Bookmark, Building2 } from "lucide-react";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { DashboardCustomizer } from "@/components/settings/DashboardCustomizer";
 import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { WorkspaceSettings } from "@/components/settings/WorkspaceSettings";
 
 function SettingsContent() {
   const { user } = useAuthStore();
@@ -26,8 +27,12 @@ function SettingsContent() {
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs defaultValue="workspace" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="workspace">
+            <Building2 className="h-4 w-4 mr-2" />
+            Espace de travail
+          </TabsTrigger>
           <TabsTrigger value="profile">
             <User className="h-4 w-4 mr-2" />
             Profil
@@ -49,6 +54,10 @@ function SettingsContent() {
             Apparence
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="workspace">
+          <WorkspaceSettings />
+        </TabsContent>
 
         <TabsContent value="profile">
           <Card>

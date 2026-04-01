@@ -355,18 +355,20 @@ function WorkspacesContent() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-red-600">Supprimer l'instance</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer le workspace <strong>"{workspaceToDelete?.name}"</strong> ?
-              <br /><br />
-              Cette action est <strong className="text-red-600">irréversible</strong> et supprimera :
-              <ul className="list-disc list-inside mt-2 text-sm">
-                <li>Tous les emails autorisés</li>
-                <li>Tous les membres associés</li>
-                <li>Toutes les configurations</li>
-              </ul>
+            <DialogTitle className="text-red-600">Supprimer l&apos;instance</DialogTitle>
+            <DialogDescription className="sr-only">
+              Confirmer la suppression du workspace
             </DialogDescription>
           </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            <p>Êtes-vous sûr de vouloir supprimer le workspace <strong>&quot;{workspaceToDelete?.name}&quot;</strong> ?</p>
+            <p className="mt-2">Cette action est <strong className="text-red-600">irréversible</strong> et supprimera :</p>
+            <ul className="list-disc list-inside mt-2">
+              <li>Tous les emails autorisés</li>
+              <li>Tous les membres associés</li>
+              <li>Toutes les configurations</li>
+            </ul>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Annuler

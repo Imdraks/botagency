@@ -31,7 +31,7 @@ export type Feature =
   // Intelligence
   | 'analytics' | 'competitor_watch' | 'ai_predictions'
   // Radar Business
-  | 'crm_extended' | 'quotes' | 'invoices'
+  | 'crm_extended' | 'quotes' | 'invoices' | 'banking'
   // Admin only
   | 'sources' | 'source_health';
 
@@ -111,6 +111,7 @@ export const FEATURE_ROUTES: Record<string, Feature> = {
   '/predictions': 'ai_predictions',
   '/quotes': 'quotes',
   '/invoices': 'invoices',
+  '/banking': 'banking',
   '/sources': 'sources',
   '/source-health': 'source_health',
 };

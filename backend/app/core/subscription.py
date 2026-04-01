@@ -78,6 +78,7 @@ class Feature(str, Enum):
     CRM_EXTENDED = "crm_extended"
     QUOTES = "quotes"
     INVOICES = "invoices"
+    BANKING = "banking"
     
     # Admin only (always available to admins)
     SOURCES = "sources"
@@ -126,6 +127,7 @@ ADDON_FEATURES: Dict[Addon, Set[Feature]] = {
         Feature.CRM_EXTENDED,
         Feature.QUOTES,
         Feature.INVOICES,
+        Feature.BANKING,
     },
 }
 
@@ -390,6 +392,7 @@ FEATURE_ROUTES: Dict[str, Feature] = {
     # Radar Business
     "/quotes": Feature.QUOTES,
     "/invoices": Feature.INVOICES,
+    "/banking": Feature.BANKING,
     
     # Admin
     "/sources": Feature.SOURCES,

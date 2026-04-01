@@ -21,6 +21,13 @@ import {
   Crown,
   Save,
   RefreshCw,
+  Lock,
+  KeyRound,
+  Copy,
+  CheckCircle,
+  MoreVertical,
+  UserPlus,
+  AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminLayout, ProtectedRoute } from "@/components/layout";
@@ -46,6 +53,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -58,6 +72,30 @@ interface WorkspaceInvite {
   claimed: boolean;
   claimed_at?: string;
   created_at: string;
+}
+
+interface WorkspaceMember {
+  id: number;
+  user_id: number;
+  role: 'admin' | 'member' | 'viewer';
+  user_name: string | null;
+  user_email: string | null;
+  user_avatar: string | null;
+  invited_at: string | null;
+  accepted_at: string | null;
+}
+
+interface WorkspaceDetailFull {
+  id: number;
+  name: string;
+  owner_user_id: number;
+  owner_name: string | null;
+  drive_root_folder_id: string | null;
+  drive_url: string | null;
+  members_count: number;
+  members: WorkspaceMember[];
+  created_at: string;
+  updated_at: string;
 }
 
 interface Workspace {
@@ -138,6 +176,24 @@ function WorkspaceDetailContent() {
   const [newRole, setNewRole] = useState<'admin' | 'member' | 'viewer'>('member');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = loading
 
+  // Members management
+  const [wsDetail, setWsDetail] = useState<WorkspaceDetailFull | null>(null);
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberRole, setMemberRole] = useState<'admin' | 'member' | 'viewer'>('member');
+  const [memberAuthProvider, setMemberAuthProvider] = useState<'credentials' | 'google'>('credentials');
+  const [memberPassword, setMemberPassword] = useState('');
+  const [addingMember, setAddingMember] = useState(false);
+  const [memberError, setMemberError] = useState<string | null>(null);
+
+  // Reset password
+  const [showResetPwDialog, setShowResetPwDialog] = useState(false);
+  const [resetTarget, setResetTarget] = useState<WorkspaceMember | null>(null);
+  const [resettingPw, setResettingPw] = useState(false);
+  const [generatedPw, setGeneratedPw] = useState<string | null>(null);
+  const [resetPwError, setResetPwError] = useState<string | null>(null);
+  const [pwCopied, setPwCopied] = useState(false);
+
   useEffect(() => {
     // Check admin role
     const token = localStorage.getItem('access_token');
@@ -151,6 +207,7 @@ function WorkspaceDetailContent() {
     fetchWorkspace();
     fetchInvites();
     fetchSubscription();
+    fetchMembers();
   }, [workspaceId]);
 
   const fetchWorkspace = async () => {
@@ -376,6 +433,137 @@ function WorkspaceDetailContent() {
       }
     } catch (err) {
       toast.error('Erreur');
+    }
+  };
+
+  // ---- Members management ----
+
+  const fetchMembers = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/workspaces/${workspaceId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWsDetail(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch members', err);
+    }
+  };
+
+  const addMember = async () => {
+    if (!memberEmail.trim()) return;
+    if (memberAuthProvider === 'credentials' && memberPassword.length < 6) {
+      setMemberError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    setAddingMember(true);
+    setMemberError(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      const payload: Record<string, string> = {
+        user_email: memberEmail.trim().toLowerCase(),
+        role: memberRole,
+        auth_provider: memberAuthProvider,
+      };
+      if (memberAuthProvider === 'credentials') {
+        payload.password = memberPassword;
+      }
+      const res = await fetch(`/api/v1/workspaces/${workspaceId}/members`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success('Membre ajouté !');
+        setShowAddMemberDialog(false);
+        setMemberEmail('');
+        setMemberRole('member');
+        setMemberAuthProvider('credentials');
+        setMemberPassword('');
+        fetchMembers();
+        fetchWorkspace();
+      } else {
+        const error = await res.json();
+        setMemberError(error.detail || 'Erreur');
+      }
+    } catch (err) {
+      setMemberError("Erreur lors de l'ajout");
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const updateMemberRole = async (memberId: number, newRole: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`/api/v1/workspaces/${workspaceId}/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      });
+      fetchMembers();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const removeMember = async (memberId: number) => {
+    if (!confirm('Retirer ce membre ?')) return;
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`/api/v1/workspaces/${workspaceId}/members/${memberId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      toast.success('Membre retiré');
+      fetchMembers();
+      fetchWorkspace();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openResetPw = (member: WorkspaceMember) => {
+    setResetTarget(member);
+    setGeneratedPw(null);
+    setResetPwError(null);
+    setPwCopied(false);
+    setShowResetPwDialog(true);
+  };
+
+  const confirmResetPw = async () => {
+    if (!resetTarget) return;
+    setResettingPw(true);
+    setResetPwError(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/v1/workspaces/${workspaceId}/members/${resetTarget.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGeneratedPw(data.generated_password);
+      } else {
+        const error = await res.json();
+        setResetPwError(error.detail || 'Erreur');
+      }
+    } catch (err) {
+      setResetPwError('Erreur lors de la réinitialisation');
+    } finally {
+      setResettingPw(false);
+    }
+  };
+
+  const copyPw = () => {
+    if (generatedPw) {
+      navigator.clipboard.writeText(generatedPw);
+      setPwCopied(true);
+      setTimeout(() => setPwCopied(false), 2000);
     }
   };
 
@@ -620,80 +808,345 @@ function WorkspaceDetailContent() {
         </CardContent>
       </Card>
 
-      {/* Info Card */}
+      {/* Membres & Accès */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Emails Autorisés
-          </CardTitle>
-          <CardDescription>
-            Les utilisateurs avec ces emails seront automatiquement ajoutés à ce workspace lors de leur connexion.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Add Button */}
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter un Email
-          </Button>
-
-          {/* Invites List */}
-          {invites.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Aucun email autorisé</p>
-              <p className="text-sm">Ajoutez des emails pour autoriser l'accès à ce workspace</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                Membres & Accès
+              </CardTitle>
+              <CardDescription>
+                Gérez les membres et les emails autorisés de ce workspace
+              </CardDescription>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {invites.map((invite) => (
-                <div
-                  key={invite.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="font-medium">{invite.email}</p>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Badge variant="outline" className={roleLabels[invite.role].color}>
-                          {roleLabels[invite.role].icon}
-                          <span className="ml-1">{roleLabels[invite.role].label}</span>
-                        </Badge>
-                        {invite.claimed ? (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <Check className="h-3 w-3" />
-                            Utilisé
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-orange-500">
-                            <Clock className="h-3 w-3" />
-                            En attente
-                          </span>
-                        )}
-                        <span className="text-gray-400">
-                          Ajouté le {format(new Date(invite.created_at), 'dd MMM yyyy', { locale: fr })}
-                        </span>
-                      </div>
-                    </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
+                <Mail className="h-4 w-4 mr-2" />
+                Email autorisé
+              </Button>
+              <Button size="sm" onClick={() => setShowAddMemberDialog(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Ajouter un membre
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* === Membres actifs === */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <User className="h-3.5 w-3.5" />
+              Membres actifs ({(wsDetail?.members_count ?? 0)})
+            </h4>
+
+            {/* Owner row */}
+            {wsDetail ? (
+              <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
                   </div>
+                  <div>
+                    <p className="font-medium">{wsDetail.owner_name || 'Propriétaire'}</p>
+                    <p className="text-xs text-gray-400">Propriétaire</p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Propriétaire
+                </Badge>
+              </div>
+            ) : null}
+
+            {/* Members list */}
+            {(wsDetail?.members ?? []).map((member) => (
+              <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-500">
+                      {(member.user_name || member.user_email || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{member.user_name || member.user_email}</p>
+                    {member.user_email && member.user_name && (
+                      <p className="text-xs text-gray-400">{member.user_email}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={member.role}
+                    onValueChange={(v: string) => updateMemberRole(member.id, v)}
+                  >
+                    <SelectTrigger className="w-32 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">
+                        <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-red-500" /> Admin</span>
+                      </SelectItem>
+                      <SelectItem value="member">
+                        <span className="flex items-center gap-1"><User className="h-3 w-3 text-blue-500" /> Membre</span>
+                      </SelectItem>
+                      <SelectItem value="viewer">
+                        <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-gray-400" /> Lecteur</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => removeInvite(invite.id)}
+                    className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                    onClick={() => openResetPw(member)}
+                    title="Réinitialiser le mot de passe"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => removeMember(member.id)}
+                    title="Retirer"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+
+            {(!wsDetail || !wsDetail.members || wsDetail.members.length === 0) && (
+              <div className="text-center py-4 text-gray-400 text-sm">
+                Aucun membre ajouté
+              </div>
+            )}
+          </div>
+
+          {/* === Divider === */}
+          <div className="border-t" />
+
+          {/* === Emails autorisés === */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5" />
+              Emails autorisés ({invites.length})
+            </h4>
+            <p className="text-xs text-gray-400">
+              Ces utilisateurs seront automatiquement ajoutés au workspace lors de leur connexion.
+            </p>
+
+            {invites.length === 0 ? (
+              <div className="text-center py-4 text-gray-400 text-sm">
+                Aucun email autorisé
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {invites.map((invite) => (
+                  <div
+                    key={invite.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                        <Mail className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{invite.email}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Badge variant="outline" className={roleLabels[invite.role]?.color || ''}>
+                            {roleLabels[invite.role]?.icon}
+                            <span className="ml-1">{roleLabels[invite.role]?.label || invite.role}</span>
+                          </Badge>
+                          {invite.claimed ? (
+                            <span className="flex items-center gap-1 text-green-600">
+                              <Check className="h-3 w-3" />
+                              Utilisé
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-orange-500">
+                              <Clock className="h-3 w-3" />
+                              En attente
+                            </span>
+                          )}
+                          <span className="text-gray-400">
+                            {format(new Date(invite.created_at), 'dd MMM yyyy', { locale: fr })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => removeInvite(invite.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Add Dialog */}
+      {/* Add Member Dialog */}
+      <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-600" />
+              Ajouter un membre
+            </DialogTitle>
+            <DialogDescription>
+              Invitez un utilisateur existant ou créez un nouveau compte.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                placeholder="utilisateur@email.com"
+                value={memberEmail}
+                onChange={(e) => setMemberEmail(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rôle</Label>
+              <Select value={memberRole} onValueChange={(v: any) => setMemberRole(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-red-500" /> Admin</div>
+                  </SelectItem>
+                  <SelectItem value="member">
+                    <div className="flex items-center gap-2"><User className="h-4 w-4 text-blue-500" /> Membre</div>
+                  </SelectItem>
+                  <SelectItem value="viewer">
+                    <div className="flex items-center gap-2"><Eye className="h-4 w-4 text-gray-500" /> Lecteur</div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Type de compte</Label>
+              <Select value={memberAuthProvider} onValueChange={(v: any) => setMemberAuthProvider(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="credentials">
+                    <div className="flex items-center gap-2"><Lock className="h-4 w-4" /> Email & mot de passe</div>
+                  </SelectItem>
+                  <SelectItem value="google">
+                    <div className="flex items-center gap-2"><Mail className="h-4 w-4" /> Compte Google (SSO)</div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-400">
+                {memberAuthProvider === 'google'
+                  ? "L'utilisateur se connectera via Google Sign-In."
+                  : "L'utilisateur se connectera avec un email et un mot de passe."}
+              </p>
+            </div>
+            {memberAuthProvider === 'credentials' && (
+              <div className="space-y-2">
+                <Label>Mot de passe temporaire</Label>
+                <Input
+                  type="password"
+                  placeholder="Min. 6 caractères"
+                  value={memberPassword}
+                  onChange={(e) => setMemberPassword(e.target.value)}
+                />
+              </div>
+            )}
+            {memberError && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {memberError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMemberDialog(false)}>Annuler</Button>
+            <Button onClick={addMember} disabled={!memberEmail.trim() || addingMember}>
+              {addingMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+              Ajouter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showResetPwDialog} onOpenChange={(open) => {
+        if (!open) { setShowResetPwDialog(false); setGeneratedPw(null); setResetPwError(null); }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-amber-600" />
+              Réinitialiser le mot de passe
+            </DialogTitle>
+            <DialogDescription>
+              {generatedPw
+                ? "Le nouveau mot de passe a été généré. Transmettez-le à l'utilisateur."
+                : `Générer un nouveau mot de passe pour ${resetTarget?.user_name || resetTarget?.user_email || 'cet utilisateur'} ?`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!generatedPw && !resetPwError && (
+            <p className="text-sm text-gray-500 py-2">
+              Un mot de passe aléatoire sera généré. L'utilisateur devra l'utiliser pour se reconnecter.
+            </p>
+          )}
+
+          {generatedPw && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4">
+                <p className="text-xs text-amber-600 mb-1 font-medium">Nouveau mot de passe :</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-lg font-mono font-bold text-amber-800 dark:text-amber-300 select-all">
+                    {generatedPw}
+                  </code>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={copyPw}>
+                    {pwCopied ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Ce mot de passe ne sera plus affiché après fermeture.
+              </p>
+            </div>
+          )}
+
+          {resetPwError && (
+            <p className="text-sm text-red-500 flex items-center gap-1">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {resetPwError}
+            </p>
+          )}
+
+          <DialogFooter>
+            {!generatedPw ? (
+              <>
+                <Button variant="outline" onClick={() => setShowResetPwDialog(false)}>Annuler</Button>
+                <Button onClick={confirmResetPw} disabled={resettingPw} className="bg-amber-600 hover:bg-amber-700 text-white">
+                  {resettingPw ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                  Générer un nouveau mot de passe
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setShowResetPwDialog(false)}>Fermer</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Invite Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent>
           <DialogHeader>

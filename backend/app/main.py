@@ -87,6 +87,12 @@ from app.api.subscription import router as subscription_router
 from app.api.billing import router as billing_router
 
 # ============================================================================
+# BANKING - Connexions bancaires - Radar Business
+# ============================================================================
+from app.api.banking import router as banking_router
+from app.api.revolut import router as revolut_router
+
+# ============================================================================
 # UNIFIED ASSETS API - Single source of truth for all assets
 # ============================================================================
 from app.api.assets import router as unified_assets_router
@@ -314,6 +320,12 @@ app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
 # BILLING - Quotes (Devis) & Invoices (Factures) - Radar Business
 # ============================================================================
 app.include_router(billing_router, prefix="/api/v1/billing", tags=["Billing"])
+
+# ============================================================================
+# BANKING - Connexions bancaires - Radar Business
+# ============================================================================
+app.include_router(banking_router, prefix="/api/v1", tags=["Banking"])
+app.include_router(revolut_router, prefix="/api/v1", tags=["Revolut"])
 
 # ============================================================================
 # UNIFIED ASSETS API - Single source of truth

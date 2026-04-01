@@ -108,6 +108,8 @@ class WorkspaceMemberCreate(BaseModel):
     """Add a member to workspace"""
     user_email: str = Field(..., description="Email of user to invite")
     role: WorkspaceRole = WorkspaceRole.MEMBER
+    auth_provider: Optional[str] = Field(None, description="Account type: 'credentials' or 'google'. Used when auto-creating user.")
+    password: Optional[str] = Field(None, description="Temporary password (required when auth_provider='credentials' and user does not exist)")
 
 
 class WorkspaceMemberUpdate(BaseModel):
