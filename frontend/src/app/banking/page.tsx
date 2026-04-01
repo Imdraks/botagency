@@ -562,9 +562,9 @@ function ConnectionDetailView({
               </p>
             </div>
             <div>
-              <span className="text-gray-400">Portée</span>
-              <p className="font-medium text-gray-700 dark:text-gray-300">
-                {connection.active_consent.scope?.join(", ") || "—"}
+              <span className="text-gray-400">Statut</span>
+              <p className="font-medium text-gray-700 dark:text-gray-300 capitalize">
+                {connection.active_consent.status}
               </p>
             </div>
           </div>
