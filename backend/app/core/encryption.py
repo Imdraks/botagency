@@ -14,8 +14,8 @@ def _get_encryption_key() -> bytes:
     Derive a Fernet-compatible key from SECRET_KEY.
     Fernet requires a 32-byte base64-encoded key.
     """
-    # Use SHA256 to derive a 32-byte key from SECRET_KEY
-    key_bytes = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+    # Use SHA256 to derive a 32-byte key from secret_key
+    key_bytes = hashlib.sha256(settings.secret_key.encode()).digest()
     # Fernet needs base64-encoded key
     return base64.urlsafe_b64encode(key_bytes)
 
