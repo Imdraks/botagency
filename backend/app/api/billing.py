@@ -893,8 +893,8 @@ async def generate_quote_pdf(
         pagesize=A4,
         rightMargin=15*mm,
         leftMargin=15*mm,
-        topMargin=15*mm,
-        bottomMargin=20*mm
+        topMargin=10*mm,
+        bottomMargin=12*mm
     )
     
     styles = getSampleStyleSheet()
@@ -919,7 +919,7 @@ async def generate_quote_pdf(
     )
     total_big_style = ParagraphStyle(
         'TotalBig', parent=styles['Normal'],
-        fontSize=28, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT
+        fontSize=20, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT
     )
     total_label_style = ParagraphStyle(
         'TotalLabel', parent=styles['Normal'],
@@ -927,7 +927,7 @@ async def generate_quote_pdf(
     )
     section_title_style = ParagraphStyle(
         'SectionTitle', parent=styles['Normal'],
-        fontSize=16, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR
+        fontSize=13, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR
     )
     ref_style = ParagraphStyle(
         'RefStyle', parent=styles['Normal'],
@@ -1012,7 +1012,7 @@ async def generate_quote_pdf(
         ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
     ]))
     elements.append(header_table)
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 4*mm))
     
     # ========== DEVIS TITLE + REFERENCE ==========
     title_ref_data = [[
@@ -1025,7 +1025,7 @@ async def generate_quote_pdf(
         ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
     ]))
     elements.append(title_ref_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # ========== ADDRESSES: Delivery + Client ==========
     # Build client info
@@ -1103,7 +1103,7 @@ async def generate_quote_pdf(
     # ========== CUSTOM MESSAGE ==========
     if quote.description:
         elements.append(Paragraph(quote.description, message_style))
-        elements.append(Spacer(1, 5*mm))
+        elements.append(Spacer(1, 3*mm))
     
     # ========== DATES ROW ==========
     issue_date_str = quote.issue_date.strftime('%d/%m/%Y') if quote.issue_date else '-'
@@ -1120,12 +1120,12 @@ async def generate_quote_pdf(
     dates_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG),
-        ('TOPPADDING', (0, 0), (-1, -1), 4*mm),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm),
+        ('TOPPADDING', (0, 0), (-1, -1), 2*mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2*mm),
         ('LEFTPADDING', (0, 0), (-1, -1), 3*mm),
     ]))
     elements.append(dates_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # ========== ITEMS TABLE ==========
     # Header style with teal background
@@ -1204,11 +1204,11 @@ async def generate_quote_pdf(
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     elements.append(totals_table)
-    elements.append(Spacer(1, 10*mm))
+    elements.append(Spacer(1, 4*mm))
     
     # ========== PAYMENT INFO ==========
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     payment_info = workspace.payment_info if workspace and workspace.payment_info else {}
     iban = payment_info.get('iban', 'FRXX XXXX XXXX XXXX XXXX')
@@ -1257,15 +1257,12 @@ async def generate_quote_pdf(
         ]))
         elements.append(client_bank_table)
     
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # ========== NOTES ==========
     if quote.notes:
         elements.append(Paragraph(quote.notes, message_style))
-        elements.append(Spacer(1, 3*mm))
-    
-    elements.append(Paragraph("Si vous avez des questions ou des commentaires à propos de ce devis, n'hésitez pas à me contacter.<br/>À très vite.", message_style))
-    elements.append(Spacer(1, 5*mm))
+        elements.append(Spacer(1, 2*mm))
     
     # ========== LEGAL FOOTER ==========
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
@@ -1299,12 +1296,12 @@ async def generate_quote_pdf(
         if workspace.vat_number and not workspace.tva_franchise:
             reg_parts.append(f"TVA: {workspace.vat_number}")
     elements.append(Paragraph("  •  ".join(reg_parts) if reg_parts else "", footer_style))
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 4*mm))
 
     # ========== SIGNATURE ==========
     sig_style = ParagraphStyle('SigStyle', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT)
     sig_data = [[
-        [Paragraph("<b>Bon pour accord</b>", sig_style), Paragraph("Date et signature du client :", ParagraphStyle('SigLabel', fontSize=8, textColor=GRAY_TEXT)), Spacer(1, 20*mm)],
+        [Paragraph("<b>Bon pour accord</b>", sig_style), Paragraph("Date et signature du client :", ParagraphStyle('SigLabel', fontSize=8, textColor=GRAY_TEXT)), Spacer(1, 12*mm)],
         [Paragraph("", sig_style)]
     ]]
     sig_table = Table(sig_data, colWidths=[90*mm, 85*mm])
@@ -1367,7 +1364,7 @@ async def upload_quote_pdf_to_drive(
     
     # Generate PDF (same code as above but simplified)
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=15*mm, leftMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=15*mm, leftMargin=15*mm, topMargin=10*mm, bottomMargin=12*mm)
     styles = getSampleStyleSheet()
     elements = []
     
@@ -1388,9 +1385,9 @@ async def upload_quote_pdf_to_drive(
     
     # Styles
     company_info_style = ParagraphStyle('CompanyInfo', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT, leading=11)
-    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=28, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
+    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=20, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
     total_label_style = ParagraphStyle('TotalLabel', parent=styles['Normal'], fontSize=9, textColor=GRAY_TEXT, alignment=TA_RIGHT)
-    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=16, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
+    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=13, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
     ref_style = ParagraphStyle('RefStyle', parent=styles['Normal'], fontSize=10, textColor=GRAY_TEXT, alignment=TA_RIGHT)
     address_title_style = ParagraphStyle('AddressTitle', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
     address_style = ParagraphStyle('Address', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT, fontName='Helvetica-Bold', leading=12)
@@ -1418,14 +1415,14 @@ async def upload_quote_pdf_to_drive(
     header_table = Table(header_data, colWidths=[120*mm, 55*mm])
     header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
     elements.append(header_table)
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 4*mm))
     
     # Title
     title_data = [[Paragraph("Devis", section_title_style), Paragraph(f"#{quote.reference}", ref_style)]]
     title_table = Table(title_data, colWidths=[90*mm, 85*mm])
     title_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
     elements.append(title_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # Client info
     client_lines = []
@@ -1442,7 +1439,7 @@ async def upload_quote_pdf_to_drive(
     address_table = Table(address_data, colWidths=[90*mm, 85*mm])
     address_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
     elements.append(address_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # Dates
     issue_str = quote.issue_date.strftime('%d/%m/%Y') if quote.issue_date else '-'
@@ -1453,9 +1450,9 @@ async def upload_quote_pdf_to_drive(
         [Paragraph("Validité", date_label_style), Paragraph(validity_str, date_value_style)],
     ]]
     dates_table = Table(dates_data, colWidths=[60*mm, 60*mm, 55*mm])
-    dates_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG), ('TOPPADDING', (0, 0), (-1, -1), 4*mm), ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm)]))
+    dates_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG), ('TOPPADDING', (0, 0), (-1, -1), 2*mm), ('BOTTOMPADDING', (0, 0), (-1, -1), 2*mm)]))
     elements.append(dates_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # Items table
     items_header = ["N°", "Article", "Qté", "Prix HT", "TVA", "Total HT"]
@@ -1479,7 +1476,7 @@ async def upload_quote_pdf_to_drive(
     totals_table = Table(totals_data, colWidths=[12*mm, 75*mm, 18*mm, 28*mm, 18*mm, 28*mm])
     totals_table.setStyle(TableStyle([('ALIGN', (-2, 0), (-1, -1), 'RIGHT'), ('FONTNAME', (-2, -1), (-1, -1), 'Helvetica-Bold')]))
     elements.append(totals_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
     
     # Client banking info (if available)
     if quote.billing_client and quote.billing_client.iban_encrypted:
@@ -1526,11 +1523,11 @@ async def upload_quote_pdf_to_drive(
         if workspace.vat_number and not workspace.tva_franchise:
             reg_parts.append(f"TVA: {workspace.vat_number}")
     elements.append(Paragraph("  •  ".join(reg_parts) if reg_parts else "", footer_style))
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 4*mm))
 
     sig_style = ParagraphStyle('SigStyle', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT)
     sig_data = [[
-        [Paragraph("<b>Bon pour accord</b>", sig_style), Paragraph("Date et signature du client :", ParagraphStyle('SigLabel', fontSize=8, textColor=GRAY_TEXT)), Spacer(1, 20*mm)],
+        [Paragraph("<b>Bon pour accord</b>", sig_style), Paragraph("Date et signature du client :", ParagraphStyle('SigLabel', fontSize=8, textColor=GRAY_TEXT)), Spacer(1, 12*mm)],
         [Paragraph("", sig_style)]
     ]]
     sig_table = Table(sig_data, colWidths=[90*mm, 85*mm])
@@ -1925,7 +1922,7 @@ async def generate_invoice_pdf(
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
         rightMargin=15*mm, leftMargin=15*mm,
-        topMargin=15*mm, bottomMargin=20*mm
+        topMargin=10*mm, bottomMargin=12*mm
     )
 
     styles = getSampleStyleSheet()
@@ -1942,9 +1939,9 @@ async def generate_invoice_pdf(
 
     # Styles
     company_info_style = ParagraphStyle('CompanyInfo', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT, leading=11)
-    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=28, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
+    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=20, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
     total_label_style = ParagraphStyle('TotalLabel', parent=styles['Normal'], fontSize=9, textColor=GRAY_TEXT, alignment=TA_RIGHT)
-    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=16, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
+    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=13, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
     ref_style = ParagraphStyle('RefStyle', parent=styles['Normal'], fontSize=10, textColor=GRAY_TEXT, alignment=TA_RIGHT)
     address_title_style = ParagraphStyle('AddressTitle', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
     address_style = ParagraphStyle('Address', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT, fontName='Helvetica-Bold', leading=12)
@@ -1997,14 +1994,14 @@ async def generate_invoice_pdf(
     header_table = Table(header_data, colWidths=[120*mm, 55*mm])
     header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
     elements.append(header_table)
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 4*mm))
 
     # ========== FACTURE TITLE + REFERENCE ==========
     title_data = [[Paragraph("Facture", section_title_style), Paragraph(f"#{invoice.reference}", ref_style)]]
     title_table = Table(title_data, colWidths=[90*mm, 85*mm])
     title_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
     elements.append(title_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # ========== CLIENT INFO ==========
     client_lines = []
@@ -2062,7 +2059,7 @@ async def generate_invoice_pdf(
     # ========== DESCRIPTION ==========
     if invoice.description:
         elements.append(Paragraph(invoice.description, message_style))
-        elements.append(Spacer(1, 5*mm))
+        elements.append(Spacer(1, 3*mm))
 
     # ========== DATES ROW ==========
     issue_date_str = invoice.issue_date.strftime('%d/%m/%Y') if invoice.issue_date else '-'
@@ -2079,12 +2076,12 @@ async def generate_invoice_pdf(
     dates_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG),
-        ('TOPPADDING', (0, 0), (-1, -1), 4*mm),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm),
+        ('TOPPADDING', (0, 0), (-1, -1), 2*mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2*mm),
         ('LEFTPADDING', (0, 0), (-1, -1), 3*mm),
     ]))
     elements.append(dates_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # ========== ITEMS TABLE ==========
     items_header = ["N°", "ARTICLE", "QUANTITÉ", "PRIX UNITÉ HT", "TVA", "MONTANT HT", "MONTANT TTC"]
@@ -2095,11 +2092,8 @@ async def generate_invoice_pdf(
         item_ttc = float(item.line_total) + item_tax
         table_data.append([
             str(idx),
-            [
-                Paragraph(f"<b>{item.description}</b>", ParagraphStyle('ItemName', fontSize=9, fontName='Helvetica-Bold')),
-                Paragraph(item.description if len(item.description) > 30 else "Description du service", ParagraphStyle('ItemDesc', fontSize=8, textColor=GRAY_TEXT))
-            ],
-            f"{int(item.quantity)}\n{item.unit or 'Unité(s)'}",
+            item.description,
+            f"{int(item.quantity)} {item.unit or 'Unité(s)'}",
             f"{float(item.unit_price):,.0f} €".replace(',', ' '),
             f"{int(tax_rate)}%",
             f"{float(item.line_total):,.0f} €".replace(',', ' '),
@@ -2152,11 +2146,11 @@ async def generate_invoice_pdf(
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     elements.append(totals_table)
-    elements.append(Spacer(1, 10*mm))
+    elements.append(Spacer(1, 4*mm))
 
     # ========== PAYMENT INFO ==========
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     payment_info = workspace.payment_info if workspace and workspace.payment_info else {}
     iban = payment_info.get('iban', '')
@@ -2183,7 +2177,7 @@ async def generate_invoice_pdf(
         elements.append(Paragraph(invoice.notes, message_style))
         elements.append(Spacer(1, 3*mm))
 
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # ========== LEGAL FOOTER ==========
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR))
@@ -2281,7 +2275,7 @@ async def upload_invoice_pdf_to_drive(
     remaining = total - amount_paid
 
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=15*mm, leftMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=15*mm, leftMargin=15*mm, topMargin=10*mm, bottomMargin=12*mm)
     styles = getSampleStyleSheet()
     elements = []
 
@@ -2292,9 +2286,9 @@ async def upload_invoice_pdf_to_drive(
     BORDER_COLOR = colors.HexColor('#E5E7EB')
 
     company_info_style = ParagraphStyle('CompanyInfo', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT, leading=11)
-    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=28, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
+    total_big_style = ParagraphStyle('TotalBig', parent=styles['Normal'], fontSize=20, fontName='Helvetica-Bold', textColor=DARK_TEXT, alignment=TA_RIGHT)
     total_label_style = ParagraphStyle('TotalLabel', parent=styles['Normal'], fontSize=9, textColor=GRAY_TEXT, alignment=TA_RIGHT)
-    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=16, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
+    section_title_style = ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=13, fontName='Helvetica-Bold', textColor=PRIMARY_COLOR)
     ref_style = ParagraphStyle('RefStyle', parent=styles['Normal'], fontSize=10, textColor=GRAY_TEXT, alignment=TA_RIGHT)
     address_title_style = ParagraphStyle('AddressTitle', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
     address_style = ParagraphStyle('Address', parent=styles['Normal'], fontSize=9, textColor=DARK_TEXT, fontName='Helvetica-Bold', leading=12)
@@ -2323,14 +2317,14 @@ async def upload_invoice_pdf_to_drive(
     header_table = Table(header_data, colWidths=[120*mm, 55*mm])
     header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
     elements.append(header_table)
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 4*mm))
 
     # Title
     title_data = [[Paragraph("Facture", section_title_style), Paragraph(f"#{invoice.reference}", ref_style)]]
     title_table = Table(title_data, colWidths=[90*mm, 85*mm])
     title_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('ALIGN', (1, 0), (1, 0), 'RIGHT')]))
     elements.append(title_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # Client info
     client_lines = []
@@ -2358,7 +2352,7 @@ async def upload_invoice_pdf_to_drive(
     address_table = Table(address_data, colWidths=[90*mm, 85*mm])
     address_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
     elements.append(address_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # Dates
     issue_str = invoice.issue_date.strftime('%d/%m/%Y') if invoice.issue_date else '-'
@@ -2370,9 +2364,9 @@ async def upload_invoice_pdf_to_drive(
         [Paragraph("Statut", date_label_style), Paragraph(invoice.status.value.upper(), date_value_style)],
     ]]
     dates_table = Table(dates_data, colWidths=[45*mm, 45*mm, 45*mm, 40*mm])
-    dates_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG), ('TOPPADDING', (0, 0), (-1, -1), 4*mm), ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm), ('LEFTPADDING', (0, 0), (-1, -1), 3*mm)]))
+    dates_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG), ('TOPPADDING', (0, 0), (-1, -1), 2*mm), ('BOTTOMPADDING', (0, 0), (-1, -1), 2*mm), ('LEFTPADDING', (0, 0), (-1, -1), 3*mm)]))
     elements.append(dates_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # Items table
     items_header = ["N°", "ARTICLE", "QTÉ", "PRIX HT", "TVA", "MONTANT HT", "MONTANT TTC"]
@@ -2411,7 +2405,7 @@ async def upload_invoice_pdf_to_drive(
     totals_table = Table(totals_data, colWidths=[10*mm, 55*mm, 22*mm, 28*mm, 15*mm, 25*mm, 25*mm])
     totals_table.setStyle(TableStyle([('ALIGN', (-2, 0), (-1, -1), 'RIGHT'), ('FONTNAME', (-2, -1), (-1, -1), 'Helvetica-Bold'), ('FONTSIZE', (-2, -1), (-1, -1), 11)]))
     elements.append(totals_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 3*mm))
 
     # Payment info
     payment_info = workspace.payment_info if workspace and workspace.payment_info else {}
