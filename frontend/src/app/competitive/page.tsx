@@ -46,6 +46,7 @@ import {
   Search,
 } from "lucide-react";
 import { competitiveApi } from "@/lib/api";
+import { AppLayout, ProtectedRoute } from "@/components/layout";
 
 // Types
 interface Competitor {
@@ -238,10 +239,12 @@ export default function CompetitivePage() {
   };
 
   return (
+    <ProtectedRoute>
+    <AppLayout>
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">🎯 Veille Compétitive</h1>
+          <h1 className="text-3xl font-bold">Veille Compétitive</h1>
           <p className="text-muted-foreground">
             Surveillez vos concurrents et analysez le marché
           </p>
@@ -729,5 +732,7 @@ export default function CompetitivePage() {
         </TabsContent>
       </Tabs>
     </div>
+    </AppLayout>
+    </ProtectedRoute>
   );
 }
