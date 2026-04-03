@@ -1548,23 +1548,28 @@ async def upload_quote_pdf_to_drive(
             except Exception:
                 pass  # Ignore if file doesn't exist
         
-        # Find or create Devis folder
+        # Find or create Radar/Business/Devis folder
         folder_id = quote.drive_folder_id
         if not folder_id:
-            # Try to find Radar folder first
-            radar_folder = await google_service.find_folder_by_name("Radar")
-            if radar_folder:
-                # Find or create Devis subfolder
-                devis_folder = await google_service.find_folder_by_name("Devis", radar_folder["id"])
-                if devis_folder:
-                    folder_id = devis_folder["id"]
-                else:
-                    devis_folder = await google_service.create_folder("Devis", radar_folder["id"])
-                    folder_id = devis_folder["id"]
+            # Try DriveFolderMap first
+            from app.db.models.drive_folder_map import DriveFolderMap, DriveFolderType
+            folder_map = db.query(DriveFolderMap).filter(
+                DriveFolderMap.workspace_id == workspace_id,
+                DriveFolderMap.folder_type == DriveFolderType.BUSINESS_QUOTES.value
+            ).first()
+            if folder_map:
+                folder_id = folder_map.drive_folder_id
             else:
-                # Create Radar folder
-                radar_folder = await google_service.create_folder("Radar")
-                devis_folder = await google_service.create_folder("Devis", radar_folder["id"])
+                # Fallback: create Radar/Business/Devis manually
+                radar_folder = await google_service.find_folder_by_name("Radar")
+                if not radar_folder:
+                    radar_folder = await google_service.create_folder("Radar")
+                business_folder = await google_service.find_folder_by_name("Business", radar_folder["id"])
+                if not business_folder:
+                    business_folder = await google_service.create_folder("Business", radar_folder["id"])
+                devis_folder = await google_service.find_folder_by_name("Devis", business_folder["id"])
+                if not devis_folder:
+                    devis_folder = await google_service.create_folder("Devis", business_folder["id"])
                 folder_id = devis_folder["id"]
             
             quote.drive_folder_id = folder_id
@@ -2464,20 +2469,28 @@ async def upload_invoice_pdf_to_drive(
             except Exception:
                 pass
 
-        # Find or create Radar/Factures folder
+        # Find or create Radar/Business/Factures folder
         folder_id = invoice.drive_folder_id
         if not folder_id:
-            radar_folder = await google_service.find_folder_by_name("Radar")
-            if radar_folder:
-                factures_folder = await google_service.find_folder_by_name("Factures", radar_folder["id"])
-                if factures_folder:
-                    folder_id = factures_folder["id"]
-                else:
-                    factures_folder = await google_service.create_folder("Factures", radar_folder["id"])
-                    folder_id = factures_folder["id"]
+            # Try DriveFolderMap first
+            from app.db.models.drive_folder_map import DriveFolderMap, DriveFolderType
+            folder_map = db.query(DriveFolderMap).filter(
+                DriveFolderMap.workspace_id == workspace_id,
+                DriveFolderMap.folder_type == DriveFolderType.BUSINESS_INVOICES.value
+            ).first()
+            if folder_map:
+                folder_id = folder_map.drive_folder_id
             else:
-                radar_folder = await google_service.create_folder("Radar")
-                factures_folder = await google_service.create_folder("Factures", radar_folder["id"])
+                # Fallback: create Radar/Business/Factures manually
+                radar_folder = await google_service.find_folder_by_name("Radar")
+                if not radar_folder:
+                    radar_folder = await google_service.create_folder("Radar")
+                business_folder = await google_service.find_folder_by_name("Business", radar_folder["id"])
+                if not business_folder:
+                    business_folder = await google_service.create_folder("Business", radar_folder["id"])
+                factures_folder = await google_service.find_folder_by_name("Factures", business_folder["id"])
+                if not factures_folder:
+                    factures_folder = await google_service.create_folder("Factures", business_folder["id"])
                 folder_id = factures_folder["id"]
             invoice.drive_folder_id = folder_id
 
