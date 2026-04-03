@@ -1337,7 +1337,7 @@ async def upload_quote_pdf_to_drive(
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from app.services.google_workspace import GoogleWorkspaceService
-    from app.db.models.sso import SSOAccount
+    from app.db.models.account import Account
     
     quote = db.query(Quote).options(
         joinedload(Quote.billing_client),
@@ -1351,9 +1351,9 @@ async def upload_quote_pdf_to_drive(
         raise HTTPException(status_code=404, detail="Devis non trouvé")
     
     # Get user's Google account
-    google_account = db.query(SSOAccount).filter(
-        SSOAccount.user_id == current_user.id,
-        SSOAccount.provider == "google"
+    google_account = db.query(Account).filter(
+        Account.user_id == current_user.id,
+        Account.provider == "google"
     ).first()
     
     if not google_account:
@@ -2240,7 +2240,7 @@ async def upload_invoice_pdf_to_drive(
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from app.services.google_workspace import GoogleWorkspaceService
-    from app.db.models.sso import SSOAccount
+    from app.db.models.account import Account
 
     invoice = db.query(Invoice).options(
         joinedload(Invoice.billing_client),
@@ -2254,9 +2254,9 @@ async def upload_invoice_pdf_to_drive(
         raise HTTPException(status_code=404, detail="Facture non trouvée")
 
     # Check Google account
-    google_account = db.query(SSOAccount).filter(
-        SSOAccount.user_id == current_user.id,
-        SSOAccount.provider == "google"
+    google_account = db.query(Account).filter(
+        Account.user_id == current_user.id,
+        Account.provider == "google"
     ).first()
 
     if not google_account:
