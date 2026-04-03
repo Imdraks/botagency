@@ -39,7 +39,7 @@ const plans = [
     color: "orange",
     features: [
       "Tout de Standard +",
-      "Connexion Revolut Business",
+      "Connexion bancaire",
       "Intelligence IA complète",
       "Utilisateurs illimités",
       "API & intégrations",

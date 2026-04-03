@@ -27,12 +27,12 @@ const integrations = [
   },
   {
     icon: Landmark,
-    name: "Revolut Business",
-    description: "Connexion OAuth sécurisée. Suivi des transactions et rapprochement bancaire.",
+    name: "Banques",
+    description: "Connexion sécurisée à vos comptes bancaires. Suivi des transactions et rapprochement automatique.",
     features: [
       "Transactions en temps réel",
       "Rapprochement factures",
-      "Multi-comptes",
+      "Multi-comptes & multi-banques",
     ],
     color: "from-purple-500 to-indigo-500",
   },
@@ -121,7 +121,7 @@ export function Integrations() {
                     <div className="h-16 w-16 bg-purple-100 rounded-xl flex items-center justify-center">
                       <Landmark className="h-8 w-8 text-purple-600" />
                     </div>
-                    <span className="text-xs text-gray-600">Revolut</span>
+                    <span className="text-xs text-gray-600">Banques</span>
                   </div>
                 </div>
 

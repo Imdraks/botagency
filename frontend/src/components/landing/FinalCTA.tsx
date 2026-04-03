@@ -59,7 +59,7 @@ export function FinalCTA() {
 
           {/* Trust note */}
           <p className="mt-8 text-sm text-gray-500">
-            Plateforme privée • Google Workspace + Revolut • Hébergement RGPD France
+            Plateforme privée • Google Workspace + Banques • Hébergement RGPD France
           </p>
         </div>
       </div>

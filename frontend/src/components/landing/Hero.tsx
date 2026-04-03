@@ -82,7 +82,7 @@ export function Hero() {
             <div className="flex flex-wrap items-center gap-4 mt-10 justify-center lg:justify-start text-sm text-gray-500">
               <span>Devis & Factures conformes</span>
               <span className="text-gray-300">•</span>
-              <span>Google Workspace + Revolut</span>
+              <span>Google Workspace + Banques</span>
               <span className="text-gray-300">•</span>
               <span>Analytics & IA</span>
               <span className="text-gray-300">•</span>

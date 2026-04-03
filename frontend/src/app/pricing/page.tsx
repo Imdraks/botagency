@@ -96,6 +96,7 @@ const PACKS = [
       "CRM (clients/contacts)",
       "Pipeline (lead → devis → facture)",
       "Templates devis/factures",
+      "Connexion bancaire",
       "Suivi paiements",
       "Exports compta",
       "Collaboration & permissions",
@@ -813,6 +814,13 @@ export default function PricingPage() {
                     </tr>
                     <tr className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-700 font-medium">Suivi des paiements</td>
+                      <td className="px-4 py-4 text-center"><div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto"><span className="text-gray-400 text-xs">—</span></div></td>
+                      <td className="px-4 py-4 text-center"><div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto"><span className="text-gray-400 text-xs">—</span></div></td>
+                      <td className="px-4 py-4 text-center bg-purple-50/30"><div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto"><span className="text-gray-400 text-xs">—</span></div></td>
+                      <td className="px-4 py-4 text-center"><div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mx-auto"><Check className="w-4 h-4 text-green-600" /></div></td>
+                    </tr>
+                    <tr className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-gray-700 font-medium">Connexion bancaire</td>
                       <td className="px-4 py-4 text-center"><div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto"><span className="text-gray-400 text-xs">—</span></div></td>
                       <td className="px-4 py-4 text-center"><div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto"><span className="text-gray-400 text-xs">—</span></div></td>
                       <td className="px-4 py-4 text-center bg-purple-50/30"><div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto"><span className="text-gray-400 text-xs">—</span></div></td>

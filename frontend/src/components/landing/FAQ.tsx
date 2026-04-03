@@ -32,7 +32,7 @@ const faqs = [
   {
     question: "Comment fonctionne la connexion bancaire ?",
     answer:
-      "Radar se connecte à Revolut Business via OAuth2 sécurisé. Vous visualisez vos transactions en temps réel et pouvez les rapprocher avec vos factures. Aucun identifiant bancaire n'est stocké sur nos serveurs.",
+      "Radar se connecte à vos banques via API sécurisée. Vous visualisez vos transactions en temps réel et pouvez les rapprocher avec vos factures. Aucun identifiant bancaire n'est stocké sur nos serveurs.",
   },
   {
     question: "Comment gérer les rôles et permissions ?",

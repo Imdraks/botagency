@@ -30,7 +30,7 @@ export function LandingFooter() {
               <span className="text-2xl font-bold text-gray-900">Radar</span>
             </Link>
             <p className="text-gray-600 max-w-sm mb-6">
-              Le cockpit pour piloter votre agence. Pipeline, projets, facturation, analytics — unifié avec Google Workspace et Revolut.
+              Le cockpit pour piloter votre agence. Pipeline, projets, facturation, analytics — unifié avec Google Workspace et vos banques.
             </p>
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <span>🇫🇷 Made in France</span>

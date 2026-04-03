@@ -50,7 +50,7 @@ const features = [
   {
     icon: Landmark,
     title: "Transactions",
-    description: "Connectez votre compte Revolut Business. Suivi des paiements et rapprochement bancaire.",
+    description: "Connectez vos comptes bancaires. Suivi des paiements et rapprochement automatique.",
   },
 ];
 
