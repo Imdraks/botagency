@@ -1552,10 +1552,10 @@ async def upload_quote_pdf_to_drive(
         folder_id = quote.drive_folder_id
         if not folder_id:
             # Try to find Radar folder first
-            radar_folder = await google_service.find_folder("Radar")
+            radar_folder = await google_service.find_folder_by_name("Radar")
             if radar_folder:
                 # Find or create Devis subfolder
-                devis_folder = await google_service.find_folder("Devis", radar_folder["id"])
+                devis_folder = await google_service.find_folder_by_name("Devis", radar_folder["id"])
                 if devis_folder:
                     folder_id = devis_folder["id"]
                 else:
@@ -2467,9 +2467,9 @@ async def upload_invoice_pdf_to_drive(
         # Find or create Radar/Factures folder
         folder_id = invoice.drive_folder_id
         if not folder_id:
-            radar_folder = await google_service.find_folder("Radar")
+            radar_folder = await google_service.find_folder_by_name("Radar")
             if radar_folder:
-                factures_folder = await google_service.find_folder("Factures", radar_folder["id"])
+                factures_folder = await google_service.find_folder_by_name("Factures", radar_folder["id"])
                 if factures_folder:
                     folder_id = factures_folder["id"]
                 else:

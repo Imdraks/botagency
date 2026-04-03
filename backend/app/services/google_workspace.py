@@ -382,7 +382,7 @@ class GoogleWorkspaceService:
         
         # Use resumable upload for larger files
         async with httpx.AsyncClient() as client:
-            access_token = await self._ensure_token()
+            access_token = await self.get_access_token()
             
             # Step 1: Initiate resumable upload
             init_response = await client.post(
