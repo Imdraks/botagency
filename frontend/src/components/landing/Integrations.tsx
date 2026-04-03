@@ -78,11 +78,6 @@ export function Integrations() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-lg font-semibold text-gray-900">{integration.name}</h3>
-                        {integration.comingSoon && (
-                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-                            Bientôt
-                          </span>
-                        )}
                       </div>
                       <p className="text-gray-600 text-sm mb-3">{integration.description}</p>
                       <div className="flex flex-wrap gap-2">
