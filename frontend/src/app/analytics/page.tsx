@@ -25,6 +25,12 @@ import {
   Clock,
   Trophy,
   Loader2,
+  AlertTriangle,
+  Lightbulb,
+  Activity,
+  Download,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import { analyticsApi } from "@/lib/api";
 
@@ -115,6 +121,66 @@ interface HeatmapData {
   total_value: number;
 }
 
+interface Signal {
+  type: string;
+  priority: string;
+  icon: string;
+  title: string;
+  description: string;
+  opportunity_id: number | null;
+  metadata: Record<string, unknown>;
+}
+
+interface SignalsData {
+  count: number;
+  signals: Signal[];
+  summary: {
+    stale: number;
+    deadline_risk: number;
+    high_value_untouched: number;
+  };
+  updated_at: string;
+}
+
+interface Insight {
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+  metric: string;
+  category: string;
+}
+
+interface InsightsData {
+  insights: Insight[];
+  updated_at: string;
+}
+
+interface PredictionPeriod {
+  period: string;
+  days: number;
+  total_opportunities: number;
+  total_value: number;
+  weighted_value: number;
+  high_probability: number;
+  medium_probability: number;
+  low_probability: number;
+}
+
+interface PredictionsSummaryData {
+  predictions: PredictionPeriod[];
+  top_likely_wins: Array<{
+    id: number;
+    title: string;
+    score: number;
+    probability: number;
+    budget: number | null;
+    deadline: string | null;
+  }>;
+  total_pipeline: number;
+  updated_at: string;
+}
+
 export default function AnalyticsPage() {
   const [timelinePeriod, setTimelinePeriod] = useState<"7d" | "30d" | "90d" | "12m">("30d");
   const [conversionPeriod, setConversionPeriod] = useState<"7d" | "30d" | "90d" | "all">("30d");
@@ -146,6 +212,22 @@ export default function AnalyticsPage() {
     queryFn: analyticsApi.getDeadlineHeatmap,
   });
 
+  const { data: signals } = useQuery<SignalsData>({
+    queryKey: ["analytics", "signals"],
+    queryFn: analyticsApi.getSignals,
+    refetchInterval: 120000,
+  });
+
+  const { data: insights } = useQuery<InsightsData>({
+    queryKey: ["analytics", "insights"],
+    queryFn: analyticsApi.getInsights,
+  });
+
+  const { data: predictionsSummary } = useQuery<PredictionsSummaryData>({
+    queryKey: ["analytics", "predictions-summary"],
+    queryFn: analyticsApi.getPredictionsSummary,
+  });
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -172,14 +254,28 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-3xl font-bold">📊 Analytics</h1>
           <p className="text-muted-foreground">
-            Tableaux de bord et métriques avancées
+            Tableaux de bord, signaux et prédictions
           </p>
         </div>
-        {kpis && (
-          <Badge variant="outline" className="text-xs">
-            Mis à jour: {new Date(kpis.updated_at).toLocaleTimeString("fr-FR")}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {kpis && (
+            <Badge variant="outline" className="text-xs">
+              Mis à jour: {new Date(kpis.updated_at).toLocaleTimeString("fr-FR")}
+            </Badge>
+          )}
+          <a href="/advanced-features/export/opportunities" target="_blank">
+            <Button variant="outline" size="sm" className="gap-1">
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+          </a>
+          <a href="/advanced-features/reports/weekly" target="_blank">
+            <Button variant="outline" size="sm" className="gap-1">
+              <FileText className="h-4 w-4" />
+              Rapport
+            </Button>
+          </a>
+        </div>
       </div>
 
       {/* KPIs Cards */}
@@ -520,6 +616,194 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ============================================================ */}
+      {/* SIGNAUX FAIBLES & ALERTES */}
+      {/* ============================================================ */}
+      {signals && signals.count > 0 && (
+        <Card className="border-orange-200 bg-orange-50/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              Signaux faibles
+              <Badge variant="destructive" className="ml-2">{signals.count}</Badge>
+            </CardTitle>
+            <CardDescription>
+              Anomalies et risques détectés automatiquement — {signals.summary.stale} stagnante(s),{" "}
+              {signals.summary.deadline_risk} deadline(s) à risque,{" "}
+              {signals.summary.high_value_untouched} opportunité(s) haute valeur non traitée(s)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {signals.signals.map((signal, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-start gap-3 p-3 rounded-lg border ${
+                    signal.priority === "critical"
+                      ? "border-red-300 bg-red-50"
+                      : signal.priority === "high"
+                      ? "border-orange-300 bg-orange-50"
+                      : "border-yellow-200 bg-yellow-50"
+                  }`}
+                >
+                  <span className="text-xl">{signal.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{signal.title}</p>
+                      <Badge
+                        variant={signal.priority === "critical" ? "destructive" : "outline"}
+                        className="text-xs shrink-0"
+                      >
+                        {signal.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-1">
+                      {signal.description}
+                    </p>
+                    {signal.opportunity_id && (
+                      <a
+                        href={`/opportunities/${signal.opportunity_id}`}
+                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                      >
+                        Voir <ChevronRight className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ============================================================ */}
+      {/* PRÉDICTIONS 30/60/90 JOURS */}
+      {/* ============================================================ */}
+      {predictionsSummary && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-purple-600" />
+              Prédictions pipeline
+            </CardTitle>
+            <CardDescription>
+              Estimation du pipeline sur 30, 60 et 90 jours — {predictionsSummary.total_pipeline} opportunités actives
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {predictionsSummary.predictions.map((pred) => (
+                <div key={pred.period} className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-bold text-lg text-purple-900">{pred.period}</p>
+                    <Badge variant="outline">{pred.total_opportunities} opps</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Valeur totale</span>
+                      <span className="font-medium">{formatCurrency(pred.total_value)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Valeur pondérée</span>
+                      <span className="font-bold text-purple-700">{formatCurrency(pred.weighted_value)}</span>
+                    </div>
+                    <div className="flex gap-1 mt-2">
+                      {pred.high_probability > 0 && (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          {pred.high_probability} fort
+                        </Badge>
+                      )}
+                      {pred.medium_probability > 0 && (
+                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                          {pred.medium_probability} moyen
+                        </Badge>
+                      )}
+                      {pred.low_probability > 0 && (
+                        <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
+                          {pred.low_probability} faible
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {predictionsSummary.top_likely_wins.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-3">🎯 Meilleures chances de gain</p>
+                <div className="space-y-2">
+                  {predictionsSummary.top_likely_wins.map((opp) => (
+                    <a
+                      key={opp.id}
+                      href={`/opportunities/${opp.id}`}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-700 font-bold text-sm shrink-0">
+                          {opp.probability}%
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{opp.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Score: {opp.score}
+                            {opp.deadline && ` • Deadline: ${new Date(opp.deadline).toLocaleDateString("fr-FR")}`}
+                          </p>
+                        </div>
+                      </div>
+                      {opp.budget && (
+                        <span className="text-sm font-medium text-green-700 shrink-0 ml-2">
+                          {formatCurrency(opp.budget)}
+                        </span>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ============================================================ */}
+      {/* INSIGHTS AUTOMATIQUES */}
+      {/* ============================================================ */}
+      {insights && insights.insights.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-yellow-600" />
+              Insights
+            </CardTitle>
+            <CardDescription>Analyse automatique de vos données</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {insights.insights.map((insight, idx) => (
+                <div key={idx} className="p-4 rounded-lg border bg-card hover:shadow-sm transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">{insight.icon}</span>
+                    <p className="font-medium text-sm">{insight.title}</p>
+                  </div>
+                  <p
+                    className="text-sm text-muted-foreground"
+                    dangerouslySetInnerHTML={{
+                      __html: insight.description
+                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+                    }}
+                  />
+                  <div className="mt-3">
+                    <Badge variant="secondary" className="text-xs">
+                      {insight.metric}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

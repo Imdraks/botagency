@@ -1029,6 +1029,21 @@ export const analyticsApi = {
     const response = await api.get("/analytics/top-performers", { params: { period } });
     return response.data;
   },
+
+  getSignals: async () => {
+    const response = await api.get("/analytics/signals");
+    return response.data;
+  },
+
+  getInsights: async () => {
+    const response = await api.get("/analytics/insights");
+    return response.data;
+  },
+
+  getPredictionsSummary: async () => {
+    const response = await api.get("/analytics/predictions-summary");
+    return response.data;
+  },
 };
 
 // Competitive Intelligence API

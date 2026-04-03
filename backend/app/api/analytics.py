@@ -561,3 +561,414 @@ def get_top_performers(
     
     cache_set(cache_key, result, CACHE_TTL)
     return result
+
+
+# ============================================================================
+# SIGNAUX FAIBLES & ALERTES
+# ============================================================================
+
+@router.get("/signals")
+def get_weak_signals(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Détection de signaux faibles :
+    - Opportunités stagnantes (pas de mise à jour depuis 14+ jours)
+    - Deadlines imminentes sans action
+    - Chutes de score
+    - Opportunités à fort budget non traitées
+    - Tendances négatives
+    """
+    cache_key = f"analytics:signals:{current_user.id}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    now = datetime.utcnow()
+    signals = []
+
+    active_statuses = [
+        OpportunityStatus.NEW,
+        OpportunityStatus.CONTACTED,
+        OpportunityStatus.IN_PROGRESS,
+    ]
+
+    active_opps = db.query(Opportunity).filter(
+        Opportunity.status.in_(active_statuses)
+    ).all()
+
+    # 1. Opportunités stagnantes (14+ jours sans update)
+    stale_threshold = now - timedelta(days=14)
+    stale_opps = [
+        o for o in active_opps
+        if o.updated_at and o.updated_at < stale_threshold
+    ]
+    for opp in stale_opps[:5]:
+        days_stale = (now - opp.updated_at).days
+        signals.append({
+            "type": "stale",
+            "priority": "high" if days_stale > 21 else "medium",
+            "icon": "⏳",
+            "title": f"Stagnante depuis {days_stale}j",
+            "description": opp.title[:80],
+            "opportunity_id": opp.id,
+            "metadata": {"days_stale": days_stale, "status": opp.status.value},
+        })
+
+    # 2. Deadlines imminentes sans action (J-3 et encore NEW)
+    deadline_soon = now + timedelta(days=3)
+    urgent_no_action = [
+        o for o in active_opps
+        if o.deadline_at
+        and o.deadline_at <= deadline_soon
+        and o.deadline_at >= now
+        and o.status == OpportunityStatus.NEW
+    ]
+    for opp in urgent_no_action[:5]:
+        days_left = max(0, (opp.deadline_at - now).days)
+        signals.append({
+            "type": "deadline_risk",
+            "priority": "critical" if days_left <= 1 else "high",
+            "icon": "🚨",
+            "title": f"Deadline J-{days_left} sans action",
+            "description": opp.title[:80],
+            "opportunity_id": opp.id,
+            "metadata": {"days_left": days_left, "deadline": opp.deadline_at.isoformat()},
+        })
+
+    # 3. Opportunités à fort budget non traitées (score >= 60, budget > 10k, status NEW)
+    high_value_untouched = [
+        o for o in active_opps
+        if o.status == OpportunityStatus.NEW
+        and o.budget_amount
+        and float(o.budget_amount) >= 10000
+        and o.score
+        and o.score >= 60
+    ]
+    for opp in sorted(high_value_untouched, key=lambda o: float(o.budget_amount or 0), reverse=True)[:5]:
+        signals.append({
+            "type": "high_value_untouched",
+            "priority": "high",
+            "icon": "💰",
+            "title": f"Fort potentiel non traité ({int(opp.budget_amount)}€)",
+            "description": opp.title[:80],
+            "opportunity_id": opp.id,
+            "metadata": {"budget": float(opp.budget_amount), "score": opp.score},
+        })
+
+    # 4. Volume en baisse (comparer les 7 derniers jours vs les 7 d'avant)
+    recent_7d = db.query(Opportunity).filter(
+        Opportunity.created_at >= now - timedelta(days=7)
+    ).count()
+    prev_7d = db.query(Opportunity).filter(
+        and_(
+            Opportunity.created_at >= now - timedelta(days=14),
+            Opportunity.created_at < now - timedelta(days=7),
+        )
+    ).count()
+    if prev_7d > 0 and recent_7d < prev_7d * 0.5:
+        drop_pct = round((1 - recent_7d / prev_7d) * 100)
+        signals.append({
+            "type": "volume_drop",
+            "priority": "medium",
+            "icon": "📉",
+            "title": f"Volume en baisse de {drop_pct}%",
+            "description": f"{recent_7d} nouvelles vs {prev_7d} la semaine précédente",
+            "opportunity_id": None,
+            "metadata": {"recent": recent_7d, "previous": prev_7d, "drop_pct": drop_pct},
+        })
+
+    # 5. Taux de perte élevé récent
+    last_30d_decided = db.query(Opportunity).filter(
+        and_(
+            Opportunity.updated_at >= now - timedelta(days=30),
+            Opportunity.status.in_([OpportunityStatus.WON, OpportunityStatus.LOST]),
+        )
+    ).all()
+    if len(last_30d_decided) >= 5:
+        lost_count = len([o for o in last_30d_decided if o.status == OpportunityStatus.LOST])
+        loss_rate = round(lost_count / len(last_30d_decided) * 100)
+        if loss_rate > 70:
+            signals.append({
+                "type": "high_loss_rate",
+                "priority": "high",
+                "icon": "⚠️",
+                "title": f"Taux de perte élevé : {loss_rate}%",
+                "description": f"{lost_count} perdues sur {len(last_30d_decided)} décidées (30j)",
+                "opportunity_id": None,
+                "metadata": {"loss_rate": loss_rate, "lost": lost_count, "total": len(last_30d_decided)},
+            })
+
+    # Sort by priority
+    priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    signals.sort(key=lambda s: priority_order.get(s["priority"], 9))
+
+    result = {
+        "count": len(signals),
+        "signals": signals,
+        "summary": {
+            "stale": len(stale_opps),
+            "deadline_risk": len(urgent_no_action),
+            "high_value_untouched": len(high_value_untouched),
+        },
+        "updated_at": now.isoformat(),
+    }
+
+    cache_set(cache_key, result, 120)  # 2 minutes cache
+    return result
+
+
+# ============================================================================
+# INSIGHTS AUTOMATIQUES
+# ============================================================================
+
+@router.get("/insights")
+def get_automated_insights(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Génère des insights automatiques basés sur l'analyse des données :
+    - Meilleure source de conversion
+    - Catégorie la plus rentable
+    - Jour/période optimale
+    - Recommandations d'action
+    """
+    cache_key = f"analytics:insights:{current_user.id}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    now = datetime.utcnow()
+    insights = []
+
+    # Get all opportunities for deep analysis
+    all_opps = db.query(Opportunity).all()
+    recent_opps = [o for o in all_opps if o.created_at and o.created_at >= now - timedelta(days=90)]
+
+    if not recent_opps:
+        return {"insights": [], "updated_at": now.isoformat()}
+
+    # 1. Best converting source
+    source_stats = defaultdict(lambda: {"won": 0, "total_decided": 0, "value": 0})
+    for opp in recent_opps:
+        source = opp.source_name or "unknown"
+        if opp.status in [OpportunityStatus.WON, OpportunityStatus.LOST]:
+            source_stats[source]["total_decided"] += 1
+            if opp.status == OpportunityStatus.WON:
+                source_stats[source]["won"] += 1
+                if opp.budget_amount:
+                    source_stats[source]["value"] += float(opp.budget_amount)
+
+    best_source = None
+    best_rate = 0
+    for source, stats in source_stats.items():
+        if stats["total_decided"] >= 3:
+            rate = stats["won"] / stats["total_decided"]
+            if rate > best_rate:
+                best_rate = rate
+                best_source = source
+
+    if best_source and best_rate > 0:
+        insights.append({
+            "type": "best_source",
+            "icon": "🎯",
+            "title": "Source la plus performante",
+            "description": f"**{best_source}** convertit à {round(best_rate * 100)}% — "
+                          f"concentrez vos efforts de veille dessus.",
+            "metric": f"{round(best_rate * 100)}%",
+            "category": "conversion",
+        })
+
+    # 2. Most profitable category
+    cat_revenue = defaultdict(lambda: {"value": 0, "count": 0})
+    for opp in recent_opps:
+        if opp.status == OpportunityStatus.WON and opp.budget_amount:
+            cat = opp.category.value if opp.category else "other"
+            cat_revenue[cat]["value"] += float(opp.budget_amount)
+            cat_revenue[cat]["count"] += 1
+
+    if cat_revenue:
+        best_cat = max(cat_revenue.items(), key=lambda x: x[1]["value"])
+        insights.append({
+            "type": "best_category",
+            "icon": "💎",
+            "title": "Catégorie la plus rentable",
+            "description": f"**{best_cat[0].capitalize()}** génère {round(best_cat[1]['value'])}€ "
+                          f"sur {best_cat[1]['count']} projets gagnés.",
+            "metric": f"{round(best_cat[1]['value'])}€",
+            "category": "revenue",
+        })
+
+    # 3. Average time to win
+    won_opps = [o for o in recent_opps if o.status == OpportunityStatus.WON and o.created_at and o.updated_at]
+    if len(won_opps) >= 3:
+        avg_days = sum((o.updated_at - o.created_at).days for o in won_opps) / len(won_opps)
+        insights.append({
+            "type": "avg_cycle",
+            "icon": "⏱️",
+            "title": "Cycle de vente moyen",
+            "description": f"Il faut en moyenne **{round(avg_days)} jours** entre la détection et le gain. "
+                          f"Basé sur {len(won_opps)} projets gagnés.",
+            "metric": f"{round(avg_days)}j",
+            "category": "performance",
+        })
+
+    # 4. Score vs outcome correlation
+    won_scores = [o.score for o in recent_opps if o.status == OpportunityStatus.WON and o.score]
+    lost_scores = [o.score for o in recent_opps if o.status == OpportunityStatus.LOST and o.score]
+    if won_scores and lost_scores:
+        avg_won = sum(won_scores) / len(won_scores)
+        avg_lost = sum(lost_scores) / len(lost_scores)
+        if avg_won > avg_lost:
+            insights.append({
+                "type": "score_correlation",
+                "icon": "📊",
+                "title": "Le scoring est fiable",
+                "description": f"Score moyen des gagnées : **{round(avg_won)}** vs perdues : **{round(avg_lost)}**. "
+                              f"Fiez-vous au scoring pour prioriser.",
+                "metric": f"+{round(avg_won - avg_lost)}pts",
+                "category": "scoring",
+            })
+
+    # 5. Pipeline health
+    active_count = len([o for o in all_opps if o.status in [
+        OpportunityStatus.NEW, OpportunityStatus.CONTACTED, OpportunityStatus.IN_PROGRESS
+    ]])
+    pipeline_value = sum(
+        float(o.budget_amount) for o in all_opps
+        if o.status in [OpportunityStatus.NEW, OpportunityStatus.CONTACTED, OpportunityStatus.IN_PROGRESS]
+        and o.budget_amount
+    )
+    if active_count > 0:
+        insights.append({
+            "type": "pipeline_health",
+            "icon": "🔄",
+            "title": "Pipeline actif",
+            "description": f"**{active_count} opportunités** en cours pour un total de "
+                          f"**{round(pipeline_value)}€** en pipeline.",
+            "metric": f"{active_count}",
+            "category": "pipeline",
+        })
+
+    result = {
+        "insights": insights,
+        "updated_at": now.isoformat(),
+    }
+
+    cache_set(cache_key, result, CACHE_TTL)
+    return result
+
+
+# ============================================================================
+# PRÉDICTIONS PIPELINE 30/60/90 JOURS
+# ============================================================================
+
+@router.get("/predictions-summary")
+def get_predictions_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Prédictions du pipeline sur 30, 60 et 90 jours :
+    - Nombre d'opportunités attendues par période
+    - Valeur estimée
+    - Projets à forte probabilité de gain
+    """
+    cache_key = f"analytics:predictions:{current_user.id}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    now = datetime.utcnow()
+
+    active_statuses = [
+        OpportunityStatus.NEW,
+        OpportunityStatus.CONTACTED,
+        OpportunityStatus.IN_PROGRESS,
+    ]
+
+    active_opps = db.query(Opportunity).filter(
+        Opportunity.status.in_(active_statuses)
+    ).all()
+
+    periods = [
+        {"label": "30j", "days": 30},
+        {"label": "60j", "days": 60},
+        {"label": "90j", "days": 90},
+    ]
+
+    predictions = []
+
+    for period in periods:
+        cutoff = now + timedelta(days=period["days"])
+
+        # Opportunités avec deadline dans cette période
+        period_opps = [
+            o for o in active_opps
+            if o.deadline_at and o.deadline_at <= cutoff
+        ]
+
+        # Estimer probabilité de gain basée sur le score
+        high_prob = []  # score >= 70
+        med_prob = []   # score >= 40
+        low_prob = []   # score < 40
+
+        total_value = 0
+        weighted_value = 0
+
+        for opp in period_opps:
+            score = opp.score or 0
+            budget = float(opp.budget_amount) if opp.budget_amount else 0
+            total_value += budget
+
+            if score >= 70:
+                high_prob.append(opp.id)
+                weighted_value += budget * 0.75
+            elif score >= 40:
+                med_prob.append(opp.id)
+                weighted_value += budget * 0.40
+            else:
+                low_prob.append(opp.id)
+                weighted_value += budget * 0.15
+
+        predictions.append({
+            "period": period["label"],
+            "days": period["days"],
+            "total_opportunities": len(period_opps),
+            "total_value": round(total_value, 2),
+            "weighted_value": round(weighted_value, 2),
+            "high_probability": len(high_prob),
+            "medium_probability": len(med_prob),
+            "low_probability": len(low_prob),
+        })
+
+    # Top 5 most likely to close (highest score among active with deadline)
+    scored_opps = [
+        o for o in active_opps
+        if o.score and o.deadline_at and o.deadline_at >= now
+    ]
+    scored_opps.sort(key=lambda o: o.score, reverse=True)
+
+    top_likely = []
+    for opp in scored_opps[:5]:
+        prob = min(95, max(10, opp.score * 1.1))  # Rough probability from score
+        top_likely.append({
+            "id": opp.id,
+            "title": opp.title[:80],
+            "score": opp.score,
+            "probability": round(prob),
+            "budget": float(opp.budget_amount) if opp.budget_amount else None,
+            "deadline": opp.deadline_at.isoformat() if opp.deadline_at else None,
+        })
+
+    result = {
+        "predictions": predictions,
+        "top_likely_wins": top_likely,
+        "total_pipeline": len(active_opps),
+        "updated_at": now.isoformat(),
+    }
+
+    cache_set(cache_key, result, CACHE_TTL)
+    return result
