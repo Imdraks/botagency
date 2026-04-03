@@ -17,12 +17,12 @@ import {
 export const metadata = {
   title: "Radar - Le cockpit pour piloter votre agence",
   description:
-    "Pipeline, projets, production, assets, calendrier — unifié avec Google Workspace. La plateforme tout-en-un pour les agences.",
-  keywords: ["agence", "gestion de projet", "pipeline", "CRM", "Google Workspace", "production"],
+    "Pipeline, projets, facturation, analytics — unifié avec Google Workspace et Revolut. La plateforme tout-en-un pour les agences.",
+  keywords: ["agence", "gestion de projet", "pipeline", "CRM", "facturation", "devis", "Google Workspace", "analytics"],
   openGraph: {
     title: "Radar - Le cockpit pour piloter votre agence",
     description:
-      "Pipeline, projets, production, assets, calendrier — unifié avec Google Workspace.",
+      "Pipeline, projets, facturation, analytics — unifié avec Google Workspace et Revolut.",
     type: "website",
     locale: "fr_FR",
     siteName: "Radar",

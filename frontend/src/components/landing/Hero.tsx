@@ -45,10 +45,10 @@ export function Hero() {
 
             {/* Subheadline - Pain → Solution */}
             <p className="text-lg sm:text-xl text-gray-600 mb-4 max-w-xl mx-auto lg:mx-0">
-              Centralisez pipeline, projets, production et assets.
+              Centralisez pipeline, projets, facturation et analytics.
             </p>
             <p className="text-lg sm:text-xl text-gray-900 font-medium mb-4 max-w-xl mx-auto lg:mx-0">
-              Fin des infos éparpillées entre Drive, Notion et messages.
+              Fin des infos éparpillées entre Drive, Notion et Excel.
             </p>
             {/* Filtre naturel */}
             <p className="text-sm text-gray-500 mb-8 max-w-xl mx-auto lg:mx-0">
@@ -80,9 +80,11 @@ export function Hero() {
 
             {/* Trust badges - Micro-ligne de confiance */}
             <div className="flex flex-wrap items-center gap-4 mt-10 justify-center lg:justify-start text-sm text-gray-500">
-              <span>Pensé pour les agences</span>
+              <span>Devis & Factures conformes</span>
               <span className="text-gray-300">•</span>
-              <span>Intégré à Google Workspace</span>
+              <span>Google Workspace + Revolut</span>
+              <span className="text-gray-300">•</span>
+              <span>Analytics & IA</span>
               <span className="text-gray-300">•</span>
               <span>RGPD</span>
             </div>
@@ -131,8 +133,8 @@ export function Hero() {
                     <div className="text-lg font-bold text-orange-500">3</div>
                   </div>
                   <div className="bg-white rounded-lg p-2 border border-gray-100">
-                    <div className="text-[10px] text-gray-500">Leads chauds</div>
-                    <div className="text-lg font-bold text-green-500">5</div>
+                    <div className="text-[10px] text-gray-500">Factures</div>
+                    <div className="text-lg font-bold text-purple-500">12</div>
                   </div>
                   <div className="bg-white rounded-lg p-2 border border-gray-100">
                     <div className="text-[10px] text-gray-500">CA du mois</div>

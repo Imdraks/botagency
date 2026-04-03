@@ -29,9 +29,9 @@ export function FinalCTA() {
 
           {/* Subheadline */}
           <p className="text-lg text-gray-600 mb-10 max-w-xl mx-auto">
-            Pipeline, projets, production, assets, calendrier — tout au même endroit.
+            Pipeline, projets, facturation, analytics, Drive — tout au même endroit.
             <br />
-            Accès sur création d'espace ou invitation.
+            Accès sur création d&apos;espace ou invitation.
           </p>
 
           {/* CTA Buttons */}
@@ -59,7 +59,7 @@ export function FinalCTA() {
 
           {/* Trust note */}
           <p className="mt-8 text-sm text-gray-500">
-            Plateforme privée • Intégration Google Workspace • Hébergement RGPD Europe
+            Plateforme privée • Google Workspace + Revolut • Hébergement RGPD France
           </p>
         </div>
       </div>

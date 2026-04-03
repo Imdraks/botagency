@@ -1,16 +1,16 @@
 "use client";
 
-import { Check, FolderOpen, Calendar, Mail, ArrowRight } from "lucide-react";
+import { Check, FolderOpen, Calendar, Landmark, ArrowRight } from "lucide-react";
 
 const integrations = [
   {
     icon: FolderOpen,
     name: "Google Drive",
-    description: "Création automatique d'arborescence projet. Templates Docs & Sheets prêts à l'emploi.",
+    description: "Création automatique d'arborescence projet. Sauvegarde des devis et factures en PDF.",
     features: [
       "Dossier par client et projet",
       "Templates de documents",
-      "Accès équipe synchronisé",
+      "PDF devis & factures",
     ],
     color: "from-blue-500 to-blue-600",
   },
@@ -26,16 +26,15 @@ const integrations = [
     color: "from-green-500 to-emerald-500",
   },
   {
-    icon: Mail,
-    name: "Gmail",
-    description: "Centralisation des échanges clients (bientôt disponible).",
+    icon: Landmark,
+    name: "Revolut Business",
+    description: "Connexion OAuth sécurisée. Suivi des transactions et rapprochement bancaire.",
     features: [
-      "Historique emails",
-      "Fils de discussion",
-      "Recherche unifiée",
+      "Transactions en temps réel",
+      "Rapprochement factures",
+      "Multi-comptes",
     ],
-    color: "from-red-500 to-orange-500",
-    comingSoon: true,
+    color: "from-purple-500 to-indigo-500",
   },
 ];
 
@@ -124,10 +123,10 @@ export function Integrations() {
                     <span className="text-xs text-gray-600">Calendar</span>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <div className="h-16 w-16 bg-red-100 rounded-xl flex items-center justify-center">
-                      <Mail className="h-8 w-8 text-red-600" />
+                    <div className="h-16 w-16 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <Landmark className="h-8 w-8 text-purple-600" />
                     </div>
-                    <span className="text-xs text-gray-600">Gmail</span>
+                    <span className="text-xs text-gray-600">Revolut</span>
                   </div>
                 </div>
 

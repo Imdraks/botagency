@@ -17,17 +17,22 @@ const faqs = [
   {
     question: "Qu'est-ce qui est synchronisé avec Google Workspace ?",
     answer:
-      "Radar se connecte à Google Drive pour créer automatiquement l'arborescence de vos projets (dossiers, sous-dossiers, templates). Il synchronise également vos deadlines et rendez-vous avec Google Calendar.",
+      "Radar se connecte à Google Drive pour créer automatiquement l'arborescence de vos projets et sauvegarder vos devis et factures en PDF. Il synchronise également vos deadlines et rendez-vous avec Google Calendar.",
   },
   {
-    question: "Comment sont organisés les fichiers sur Google Drive ?",
+    question: "Comment fonctionne la facturation ?",
     answer:
-      "Quand vous créez un projet, Radar génère automatiquement une structure de dossiers : Client > Projet > (Briefs, Livrables, Assets, etc.). Vous pouvez personnaliser les templates de documents.",
+      "Vous pouvez créer des devis et factures directement dans Radar. Les PDF sont générés aux normes françaises (mentions légales, TVA, RCS). Ils sont automatiquement sauvegardés sur votre Google Drive dans un dossier dédié.",
   },
   {
-    question: "Comment fonctionne le scoring des leads ?",
+    question: "Comment fonctionne le scoring IA des leads ?",
     answer:
-      "Le scoring analyse plusieurs critères : budget estimé, deadline, correspondance avec vos services, localisation, etc. Radar attribue un score de 0 à 100 pour prioriser vos opportunités.",
+      "Le scoring analyse plusieurs critères : budget estimé, deadline, correspondance avec vos services, localisation, etc. Radar attribue un score de 0 à 100 pour prioriser vos opportunités. Le dashboard analytics vous montre les taux de conversion et tendances.",
+  },
+  {
+    question: "Comment fonctionne la connexion bancaire ?",
+    answer:
+      "Radar se connecte à Revolut Business via OAuth2 sécurisé. Vous visualisez vos transactions en temps réel et pouvez les rapprocher avec vos factures. Aucun identifiant bancaire n'est stocké sur nos serveurs.",
   },
   {
     question: "Comment gérer les rôles et permissions ?",

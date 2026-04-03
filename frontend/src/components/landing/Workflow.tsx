@@ -1,41 +1,41 @@
 "use client";
 
-import { Target, Sparkles, Rocket, CheckCircle2, Send } from "lucide-react";
+import { Target, Sparkles, Rocket, FileText, Send } from "lucide-react";
 
 const steps = [
   {
     step: "01",
     icon: Target,
     title: "Capturer",
-    description: "Centralisez vos leads depuis toutes vos sources : formulaires, emails, recommandations.",
+    description: "Centralisez vos leads depuis toutes vos sources. Scoring IA automatique de 0 à 100.",
     color: "from-blue-500 to-cyan-500",
   },
   {
     step: "02",
     icon: Sparkles,
     title: "Qualifier",
-    description: "Scorez automatiquement vos opportunités. Focus sur les meilleurs prospects.",
+    description: "Analytics avancés : taux de conversion, top performers, heatmap des deadlines.",
     color: "from-purple-500 to-pink-500",
   },
   {
     step: "03",
     icon: Rocket,
     title: "Convertir",
-    description: "Transformez vos deals en projets clients en un clic. Toutes les infos suivent.",
+    description: "Transformez vos deals en projets. Créez le devis en un clic, envoyez le PDF.",
     color: "from-orange-500 to-red-500",
   },
   {
     step: "04",
-    icon: CheckCircle2,
-    title: "Produire",
-    description: "Gérez vos livrables, cycles de validation et versions. Rien ne se perd.",
+    icon: FileText,
+    title: "Facturer",
+    description: "Générez vos factures conformes. Sauvegarde Drive automatique. Suivi des paiements.",
     color: "from-green-500 to-emerald-500",
   },
   {
     step: "05",
     icon: Send,
     title: "Livrer",
-    description: "Assets centralisés, fichiers Google Drive organisés. Livraison propre et traçée.",
+    description: "Assets centralisés, arborescence Drive automatique. Livraison propre et traçée.",
     color: "from-indigo-500 to-purple-500",
   },
 ];

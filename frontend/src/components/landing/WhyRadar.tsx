@@ -1,27 +1,27 @@
 "use client";
 
-import { Layers, FolderTree, FileSpreadsheet, Shield } from "lucide-react";
+import { Layers, FileText, BarChart3, Shield } from "lucide-react";
 
 const reasons = [
   {
     icon: Layers,
-    title: "1 outil = 5 workflows unifiés",
-    description: "Pipeline, projets, production, assets, calendrier. Tout au même endroit.",
+    title: "Tout-en-un pour les agences",
+    description: "Pipeline, projets, facturation, analytics, Drive — plus besoin de jongler entre 10 outils.",
   },
   {
-    icon: FolderTree,
-    title: "Arborescence Drive automatique",
-    description: "Chaque projet crée automatiquement sa structure de dossiers dans Google Drive.",
+    icon: FileText,
+    title: "Devis & Factures conformes",
+    description: "Génération PDF aux normes françaises. Sauvegarde automatique sur Google Drive.",
   },
   {
-    icon: FileSpreadsheet,
-    title: "Templates Docs & Sheets intégrés",
-    description: "Devis, briefs, plannings. Templates prêts à l'emploi, synchronisés avec vos projets.",
+    icon: BarChart3,
+    title: "Analytics & IA intégrés",
+    description: "Scoring IA des leads, dashboard de performance, heatmap des deadlines, top performers.",
   },
   {
     icon: Shield,
-    title: "RGPD & hébergement Europe",
-    description: "Données hébergées en France. Rôles et permissions granulaires par équipe.",
+    title: "RGPD & hébergement France",
+    description: "Données hébergées en France. Rôles et permissions granulaires. Audit trail complet.",
   },
 ];
 
