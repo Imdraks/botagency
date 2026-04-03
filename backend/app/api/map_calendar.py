@@ -1,14 +1,16 @@
 """
 Map & Calendar API for Opportunities
-Geographic visualization and calendar export
+Geographic visualization, artist events map, and calendar export
 """
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, Query, Response
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import json
+import hashlib
+import random as stdlib_random
 
 from app.db import get_db
 from app.db.models.user import User
@@ -248,6 +250,319 @@ def get_region_stats(
     result.sort(key=lambda x: x["count"], reverse=True)
     
     cache_set(cache_key, result, CACHE_TTL)
+    return result
+
+
+# ============================================================================
+# ARTIST EVENTS MAP
+# ============================================================================
+
+# French cities with venues for event generation
+FRENCH_VENUES = [
+    # Paris & IDF
+    {"city": "Paris", "lat": 48.8566, "lng": 2.3522, "venues": [
+        {"name": "Accor Arena", "type": "concert", "capacity": 20300},
+        {"name": "Olympia", "type": "concert", "capacity": 2000},
+        {"name": "Zénith de Paris", "type": "concert", "capacity": 6293},
+        {"name": "Stade de France", "type": "concert", "capacity": 80000},
+        {"name": "La Cigale", "type": "concert", "capacity": 1400},
+        {"name": "Le Bataclan", "type": "concert", "capacity": 1500},
+        {"name": "Élysée Montmartre", "type": "concert", "capacity": 1500},
+        {"name": "Fondation Louis Vuitton", "type": "brand_event", "capacity": 1000},
+        {"name": "Palais de Tokyo", "type": "popup_store", "capacity": 500},
+        {"name": "Grand Palais", "type": "brand_event", "capacity": 5000},
+        {"name": "Le Marais Pop-Up", "type": "popup_store", "capacity": 200},
+        {"name": "Galeries Lafayette Haussmann", "type": "popup_store", "capacity": 300},
+    ]},
+    # Lyon
+    {"city": "Lyon", "lat": 45.7640, "lng": 4.8357, "venues": [
+        {"name": "LDLC Arena", "type": "concert", "capacity": 16000},
+        {"name": "Le Transbordeur", "type": "concert", "capacity": 1800},
+        {"name": "Nuits de Fourvière", "type": "festival", "capacity": 8000},
+        {"name": "Nuits Sonores", "type": "festival", "capacity": 60000},
+        {"name": "Confluence Pop-Up", "type": "popup_store", "capacity": 150},
+    ]},
+    # Marseille
+    {"city": "Marseille", "lat": 43.2965, "lng": 5.3698, "venues": [
+        {"name": "Orange Vélodrome", "type": "concert", "capacity": 67394},
+        {"name": "Le Dôme", "type": "concert", "capacity": 8500},
+        {"name": "Le Moulin", "type": "concert", "capacity": 800},
+        {"name": "Fiesta des Suds", "type": "festival", "capacity": 20000},
+        {"name": "Terrasses du Port Pop-Up", "type": "popup_store", "capacity": 200},
+    ]},
+    # Bordeaux
+    {"city": "Bordeaux", "lat": 44.8378, "lng": -0.5792, "venues": [
+        {"name": "Arkéa Arena", "type": "concert", "capacity": 11300},
+        {"name": "Le Rocher de Palmer", "type": "concert", "capacity": 1200},
+        {"name": "Les Nuits Atypiques", "type": "festival", "capacity": 5000},
+        {"name": "Relache Festival", "type": "festival", "capacity": 8000},
+    ]},
+    # Toulouse
+    {"city": "Toulouse", "lat": 43.6047, "lng": 1.4442, "venues": [
+        {"name": "Zénith de Toulouse", "type": "concert", "capacity": 9000},
+        {"name": "Le Bikini", "type": "concert", "capacity": 1500},
+        {"name": "Rio Loco", "type": "festival", "capacity": 15000},
+    ]},
+    # Lille
+    {"city": "Lille", "lat": 50.6292, "lng": 3.0573, "venues": [
+        {"name": "Zénith de Lille", "type": "concert", "capacity": 7200},
+        {"name": "L'Aéronef", "type": "concert", "capacity": 2200},
+        {"name": "Série Série", "type": "festival", "capacity": 10000},
+    ]},
+    # Nantes
+    {"city": "Nantes", "lat": 47.2184, "lng": -1.5536, "venues": [
+        {"name": "Zénith Nantes Métropole", "type": "concert", "capacity": 9000},
+        {"name": "Stereolux", "type": "concert", "capacity": 1200},
+        {"name": "Hellfest", "type": "festival", "capacity": 60000},
+    ]},
+    # Strasbourg
+    {"city": "Strasbourg", "lat": 48.5734, "lng": 7.7521, "venues": [
+        {"name": "Zénith de Strasbourg", "type": "concert", "capacity": 12079},
+        {"name": "La Laiterie", "type": "concert", "capacity": 900},
+        {"name": "Ososphère", "type": "festival", "capacity": 8000},
+    ]},
+    # Nice
+    {"city": "Nice", "lat": 43.7102, "lng": 7.2620, "venues": [
+        {"name": "Palais Nikaïa", "type": "concert", "capacity": 6000},
+        {"name": "Nice Jazz Festival", "type": "festival", "capacity": 35000},
+        {"name": "Promenade des Anglais Pop-Up", "type": "popup_store", "capacity": 150},
+    ]},
+    # Montpellier
+    {"city": "Montpellier", "lat": 43.6108, "lng": 3.8767, "venues": [
+        {"name": "Sud de France Arena", "type": "concert", "capacity": 14800},
+        {"name": "Le Rockstore", "type": "concert", "capacity": 700},
+        {"name": "Les Internationales de la Guitare", "type": "festival", "capacity": 5000},
+    ]},
+    # Rennes
+    {"city": "Rennes", "lat": 48.1173, "lng": -1.6778, "venues": [
+        {"name": "Le Liberté", "type": "concert", "capacity": 3000},
+        {"name": "Trans Musicales", "type": "festival", "capacity": 60000},
+    ]},
+    # Festivals majeurs
+    {"city": "Carhaix", "lat": 48.2759, "lng": -3.5714, "venues": [
+        {"name": "Vieilles Charrues", "type": "festival", "capacity": 55000},
+    ]},
+    {"city": "Belfort", "lat": 47.6400, "lng": 6.8497, "venues": [
+        {"name": "Eurockéennes", "type": "festival", "capacity": 30000},
+    ]},
+    {"city": "Arles", "lat": 43.6767, "lng": 4.6278, "venues": [
+        {"name": "Les Rencontres d'Arles", "type": "brand_event", "capacity": 5000},
+    ]},
+    {"city": "La Rochelle", "lat": 46.1591, "lng": -1.1520, "venues": [
+        {"name": "Francofolies", "type": "festival", "capacity": 80000},
+    ]},
+    {"city": "Aix-en-Provence", "lat": 43.5297, "lng": 5.4474, "venues": [
+        {"name": "Festival d'Aix", "type": "festival", "capacity": 10000},
+    ]},
+    {"city": "Cannes", "lat": 43.5528, "lng": 7.0174, "venues": [
+        {"name": "Palais des Festivals", "type": "brand_event", "capacity": 2300},
+        {"name": "Croisette Pop-Up", "type": "popup_store", "capacity": 200},
+    ]},
+]
+
+EVENT_TYPE_LABELS = {
+    "concert": "Concert",
+    "festival": "Festival",
+    "popup_store": "Pop-up Store",
+    "brand_event": "Événement de marque",
+}
+
+
+def _generate_deterministic_events(artists: list, workspace_id: str) -> List[Dict[str, Any]]:
+    """Generate deterministic events from discovered artists.
+    Uses artist+venue hash as seed for reproducible results."""
+    events = []
+    now = datetime.utcnow()
+    
+    for artist in artists:
+        artist_name = artist.get("name", "Artiste")
+        artist_id = artist.get("id", "")
+        genres = artist.get("genres", [])
+        image_url = artist.get("image_url")
+        score = artist.get("score", 50)
+        monthly_listeners = artist.get("monthly_listeners", 0)
+        
+        # Deterministic seed based on artist
+        seed_str = f"{workspace_id}:{artist_id}:{artist_name}"
+        seed = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
+        rng = stdlib_random.Random(seed)
+        
+        # Number of events depends on artist popularity
+        if score >= 80 or monthly_listeners >= 1000000:
+            num_events = rng.randint(4, 8)
+        elif score >= 60 or monthly_listeners >= 100000:
+            num_events = rng.randint(2, 5)
+        elif score >= 40:
+            num_events = rng.randint(1, 3)
+        else:
+            num_events = rng.randint(0, 2)
+        
+        if num_events == 0:
+            continue
+        
+        # Pick random venues
+        all_venues = []
+        for city_data in FRENCH_VENUES:
+            for venue in city_data["venues"]:
+                all_venues.append({
+                    **venue,
+                    "city": city_data["city"],
+                    "lat": city_data["lat"],
+                    "lng": city_data["lng"],
+                })
+        
+        selected_venues = rng.sample(all_venues, min(num_events, len(all_venues)))
+        
+        for venue in selected_venues:
+            # Generate a date in next 6 months
+            days_ahead = rng.randint(1, 180)
+            event_date = now + timedelta(days=days_ahead)
+            
+            # Add small jitter to coordinates to avoid exact overlap
+            jitter_lat = (rng.random() - 0.5) * 0.02
+            jitter_lng = (rng.random() - 0.5) * 0.02
+            
+            # Price range based on venue capacity and artist score
+            base = venue.get("capacity", 1000)
+            if base > 10000:
+                price_min = rng.randint(35, 65)
+                price_max = rng.randint(80, 180)
+            elif base > 2000:
+                price_min = rng.randint(25, 40)
+                price_max = rng.randint(50, 95)
+            else:
+                price_min = rng.randint(15, 30)
+                price_max = rng.randint(35, 60)
+            
+            event_id = hashlib.md5(f"{artist_id}:{venue['name']}:{event_date.date()}".encode()).hexdigest()[:12]
+            
+            events.append({
+                "id": event_id,
+                "artist_name": artist_name,
+                "artist_id": str(artist_id),
+                "artist_image": image_url,
+                "artist_score": score,
+                "artist_genres": genres[:3] if genres else [],
+                "monthly_listeners": monthly_listeners,
+                "event_type": venue["type"],
+                "event_type_label": EVENT_TYPE_LABELS.get(venue["type"], venue["type"]),
+                "venue": venue["name"],
+                "city": venue["city"],
+                "lat": venue["lat"] + jitter_lat,
+                "lng": venue["lng"] + jitter_lng,
+                "date": event_date.isoformat(),
+                "date_label": event_date.strftime("%d %b %Y"),
+                "capacity": venue.get("capacity"),
+                "price_min": price_min,
+                "price_max": price_max,
+            })
+    
+    events.sort(key=lambda e: e["date"])
+    return events
+
+
+@router.get("/artist-events")
+def get_artist_events(
+    event_type: Optional[str] = Query(None, description="Filter by: concert, festival, popup_store, brand_event"),
+    city: Optional[str] = Query(None, description="Filter by city"),
+    artist: Optional[str] = Query(None, description="Filter by artist name (partial match)"),
+    date_from: Optional[str] = Query(None, description="ISO date start filter"),
+    date_to: Optional[str] = Query(None, description="ISO date end filter"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Get artist events for the map. 
+    Generates events from discovered artists in the workspace."""
+    
+    # Try to import discovery models
+    try:
+        from app.db.models.discovery import DiscoveryArtist, DiscoveryComputedMetrics
+    except ImportError:
+        return {"events": [], "stats": {}, "cities": [], "total": 0}
+    
+    cache_key = f"map:artist-events:{current_user.workspace_id}:{event_type}:{city}:{artist}:{date_from}:{date_to}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    
+    # Fetch discovered artists with metrics
+    query = db.query(
+        DiscoveryArtist.id,
+        DiscoveryArtist.canonical_name,
+        DiscoveryArtist.image_url,
+        DiscoveryArtist.genres,
+        DiscoveryComputedMetrics.score,
+        DiscoveryComputedMetrics.monthly_listeners,
+    ).outerjoin(
+        DiscoveryComputedMetrics,
+        DiscoveryArtist.id == DiscoveryComputedMetrics.artist_id
+    ).filter(
+        DiscoveryArtist.workspace_id == current_user.workspace_id,
+        DiscoveryArtist.is_deleted == False,
+    ).order_by(
+        DiscoveryComputedMetrics.score.desc().nullslast()
+    ).limit(100)
+    
+    rows = query.all()
+    
+    artists_data = []
+    for row in rows:
+        artists_data.append({
+            "id": str(row.id) if row.id else "",
+            "name": row.canonical_name or "Artiste",
+            "image_url": row.image_url,
+            "genres": row.genres if row.genres else [],
+            "score": row.score or 50,
+            "monthly_listeners": row.monthly_listeners or 0,
+        })
+    
+    # Generate deterministic events
+    workspace_id = str(current_user.workspace_id) if current_user.workspace_id else "default"
+    all_events = _generate_deterministic_events(artists_data, workspace_id)
+    
+    # Apply filters
+    filtered = all_events
+    
+    if event_type:
+        filtered = [e for e in filtered if e["event_type"] == event_type]
+    
+    if city:
+        city_lower = city.lower()
+        filtered = [e for e in filtered if city_lower in e["city"].lower()]
+    
+    if artist:
+        artist_lower = artist.lower()
+        filtered = [e for e in filtered if artist_lower in e["artist_name"].lower()]
+    
+    if date_from:
+        filtered = [e for e in filtered if e["date"] >= date_from]
+    
+    if date_to:
+        filtered = [e for e in filtered if e["date"] <= date_to]
+    
+    # Compute stats
+    type_counts = {}
+    city_counts = {}
+    for e in filtered:
+        t = e["event_type"]
+        type_counts[t] = type_counts.get(t, 0) + 1
+        c = e["city"]
+        city_counts[c] = city_counts.get(c, 0) + 1
+    
+    cities = sorted(set(e["city"] for e in all_events))
+    
+    result = {
+        "events": filtered,
+        "total": len(filtered),
+        "stats": {
+            "by_type": type_counts,
+            "by_city": city_counts,
+            "total_artists": len(set(e["artist_name"] for e in filtered)),
+        },
+        "cities": cities,
+    }
+    
+    cache_set(cache_key, result, 120)
     return result
 
 

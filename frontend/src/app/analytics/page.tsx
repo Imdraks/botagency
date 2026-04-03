@@ -33,6 +33,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { analyticsApi } from "@/lib/api";
+import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 
 // Types
 interface TimelineData {
@@ -249,10 +250,12 @@ export default function AnalyticsPage() {
   };
 
   return (
+    <ProtectedRoute>
+    <AppLayoutWithOnboarding>
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">📊 Analytics</h1>
+          <h1 className="text-3xl font-bold">Analytics</h1>
           <p className="text-muted-foreground">
             Tableaux de bord, signaux et prédictions
           </p>
@@ -805,5 +808,7 @@ export default function AnalyticsPage() {
         </Card>
       )}
     </div>
+    </AppLayoutWithOnboarding>
+    </ProtectedRoute>
   );
 }
