@@ -62,6 +62,12 @@ export function NotificationCenter() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   
+  // Refs to avoid recreating connectWebSocket on every render
+  const userRef = useRef(user);
+  userRef.current = user;
+  const queryClientRef = useRef(queryClient);
+  queryClientRef.current = queryClient;
+  
   // Get token from localStorage
   const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
@@ -88,7 +94,7 @@ export function NotificationCenter() {
     if (wsDisabled.current) return;
     
     const token = getToken();
-    if (!token || !user) return;
+    if (!token || !userRef.current) return;
 
     // Check if token is expired - don't attempt connection with expired token
     if (isTokenExpired(token)) {
@@ -96,7 +102,7 @@ export function NotificationCenter() {
     }
 
     // Avoid creating multiple connections (React StrictMode double-mount)
-    if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.CONNECTING || wsRef.current.readyState === WebSocket.OPEN)) {
       return;
     }
 
@@ -140,7 +146,7 @@ export function NotificationCenter() {
 
             // Refresh opportunities list
             if (data.notification_type === "new_opportunity") {
-              queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+              queryClientRef.current.invalidateQueries({ queryKey: ["opportunities"] });
             }
           }
         } catch {
@@ -176,7 +182,8 @@ export function NotificationCenter() {
       // Silently ignore WebSocket creation errors - WS may not be available
       wsDisabled.current = true;
     }
-  }, [user, queryClient]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Connect on mount
   useEffect(() => {
