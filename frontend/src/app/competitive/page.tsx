@@ -161,7 +161,7 @@ interface MarketShareData {
   insights: string[];
 }
 
-export default function CompetitivePage() {
+function CompetitiveContent() {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newCompetitor, setNewCompetitor] = useState({ name: "", keywords: "" });
@@ -239,8 +239,6 @@ export default function CompetitivePage() {
   };
 
   return (
-    <ProtectedRoute>
-    <AppLayout>
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -732,7 +730,15 @@ export default function CompetitivePage() {
         </TabsContent>
       </Tabs>
     </div>
-    </AppLayout>
+  );
+}
+
+export default function CompetitivePage() {
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <CompetitiveContent />
+      </AppLayout>
     </ProtectedRoute>
   );
 }
