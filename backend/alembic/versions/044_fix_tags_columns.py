@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
-revision = '020_fix_tags_columns'
-down_revision = '019_agency_cockpit'
+revision = '044_fix_tags_columns'
+down_revision = '043_merge_heads'
 branch_labels = None
 depends_on = None
 
