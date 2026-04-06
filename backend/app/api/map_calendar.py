@@ -15,7 +15,7 @@ import random as stdlib_random
 from app.db import get_db
 from app.db.models.user import User
 from app.db.models.opportunity import Opportunity, OpportunityStatus
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_user_workspace_id
 from app.core.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/map", tags=["map"])
@@ -470,6 +470,7 @@ def get_artist_events(
     date_to: Optional[str] = Query(None, description="ISO date end filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
 ) -> Dict[str, Any]:
     """Get artist events for the map. 
     Generates events from discovered artists in the workspace."""
@@ -480,7 +481,7 @@ def get_artist_events(
     except ImportError:
         return {"events": [], "stats": {}, "cities": [], "total": 0}
     
-    cache_key = f"map:artist-events:{current_user.workspace_id}:{event_type}:{city}:{artist}:{date_from}:{date_to}"
+    cache_key = f"map:artist-events:{workspace_id}:{event_type}:{city}:{artist}:{date_from}:{date_to}"
     cached = cache_get(cache_key)
     if cached:
         return cached
@@ -497,7 +498,7 @@ def get_artist_events(
         DiscoveryComputedMetrics,
         DiscoveryArtist.id == DiscoveryComputedMetrics.artist_id
     ).filter(
-        DiscoveryArtist.workspace_id == current_user.workspace_id,
+        DiscoveryArtist.workspace_id == workspace_id,
         DiscoveryArtist.is_deleted == False,
     ).order_by(
         DiscoveryComputedMetrics.score.desc().nullslast()
@@ -517,8 +518,8 @@ def get_artist_events(
         })
     
     # Generate deterministic events
-    workspace_id = str(current_user.workspace_id) if current_user.workspace_id else "default"
-    all_events = _generate_deterministic_events(artists_data, workspace_id)
+    ws_id_str = str(workspace_id)
+    all_events = _generate_deterministic_events(artists_data, ws_id_str)
     
     # Apply filters
     filtered = all_events
