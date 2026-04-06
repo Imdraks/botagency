@@ -61,7 +61,7 @@ class ArtistReason(BaseModel):
 
 class ArtistCardResponse(BaseModel):
     """Response format for artist cards in feed."""
-    id: int
+    id: Any
     name: str
     image_url: Optional[str] = None
     timing_bucket: Optional[str] = None
@@ -246,7 +246,7 @@ async def get_discovery_feed(
         
         card = ArtistCardResponse(
             id=artist.id,
-            name=artist.name,
+            name=artist.canonical_name,
             image_url=artist.image_url,
             timing_bucket=metrics.timing_bucket if metrics else None,
             timing_label=timing_labels.get(metrics.timing_bucket) if metrics else None,
@@ -651,7 +651,7 @@ async def list_all_artists(
         query = query.filter(DiscoveryArtist.normalized_name.ilike(search_pattern))
     
     results = query.order_by(
-        DiscoveryArtist.name
+        DiscoveryArtist.canonical_name
     ).offset(offset).limit(limit).all()
     
     artists = []
@@ -667,7 +667,7 @@ async def list_all_artists(
         
         card = ArtistCardResponse(
             id=artist.id,
-            name=artist.name,
+            name=artist.canonical_name,
             image_url=artist.image_url,
             timing_bucket=metrics.timing_bucket if metrics else None,
             score=metrics.score if metrics else 0,

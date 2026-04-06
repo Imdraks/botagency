@@ -38,10 +38,12 @@ class OpportunityStatus(str, PyEnum):
     NEW = "NEW"
     REVIEW = "REVIEW"
     QUALIFIED = "QUALIFIED"
+    CONTACTED = "CONTACTED"
     IN_PROGRESS = "IN_PROGRESS"
     SUBMITTED = "SUBMITTED"
     WON = "WON"
     LOST = "LOST"
+    CANCELLED = "CANCELLED"
     ARCHIVED = "ARCHIVED"
 
 

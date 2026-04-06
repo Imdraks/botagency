@@ -216,6 +216,12 @@ class PredictionsEngine:
             return {
                 "period_days": period_days,
                 "total_opportunities": 0,
+                "by_status": {},
+                "average_score": 0.0,
+                "score_distribution": {"low": 0, "medium": 0, "high": 0},
+                "growth_rate": 0.0,
+                "predicted_next_period": 0,
+                "recommendations": [],
                 "trends": {},
                 "predictions": {}
             }
