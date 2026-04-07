@@ -233,7 +233,7 @@ async def get_discovery_feed(
             if not metrics or metrics.recommendation not in rec_list:
                 continue
         
-        is_stale = artist.last_enriched_at and artist.last_enriched_at < stale_threshold
+        is_stale = bool(artist.last_enriched_at and artist.last_enriched_at < stale_threshold)
         
         # Get timing label
         timing_labels = {
@@ -560,7 +560,7 @@ async def get_artist_detail(
     
     # Check if stale
     stale_threshold = datetime.utcnow() - timedelta(hours=24)
-    is_stale = artist.last_enriched_at and artist.last_enriched_at < stale_threshold
+    is_stale = bool(artist.last_enriched_at and artist.last_enriched_at < stale_threshold)
     
     return ArtistDetailResponse(
         id=artist.id,
@@ -663,7 +663,7 @@ async def list_all_artists(
             DiscoveryComputedMetrics.artist_id == artist.id,
         ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
         
-        is_stale = artist.last_enriched_at and artist.last_enriched_at < stale_threshold
+        is_stale = bool(artist.last_enriched_at and artist.last_enriched_at < stale_threshold)
         
         card = ArtistCardResponse(
             id=artist.id,
