@@ -525,8 +525,8 @@ def step_compute(db: Session, job: DiscoveryEnrichmentJob, viberate_ok: bool, sp
     ).order_by(DiscoverySnapshot.fetched_at.desc()).first()
     
     # Extract data
-    vib_data = viberate_snapshot.raw_payload if viberate_snapshot else {}
-    spot_data = spotify_snapshot.raw_payload if spotify_snapshot else {}
+    vib_data = (viberate_snapshot.raw_payload if viberate_snapshot else None) or {}
+    spot_data = (spotify_snapshot.raw_payload if spotify_snapshot else None) or {}
     
     # Calculate metrics
     monthly_listeners = vib_data.get("monthly_listeners", 0) or 0
