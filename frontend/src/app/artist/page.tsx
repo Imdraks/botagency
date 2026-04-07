@@ -263,8 +263,8 @@ function GoogleSearchBar({
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
       <div className={`
-        relative bg-white dark:bg-gray-900 rounded-2xl shadow-lg transition-all duration-300
-        ${isFocused ? "shadow-xl ring-2 ring-purple-500/20" : "hover:shadow-xl"}
+        relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 overflow-hidden
+        ${isFocused ? "ring-2 ring-purple-500/20" : ""}
       `}>
         <div className="flex items-center px-5 py-4">
           {isLoading ? (
@@ -309,6 +309,13 @@ function GoogleSearchBar({
             <span className="text-xs text-gray-400">
               Appuyez sur Entrée pour lancer l'analyse
             </span>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            <div className="h-full bg-purple-500 animate-loading rounded-full" 
+                 style={{ width: '40%' }} />
           </div>
         )}
       </div>

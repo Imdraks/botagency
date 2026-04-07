@@ -121,6 +121,11 @@ module.exports = {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
+        "loading": {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(150%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -135,6 +140,7 @@ module.exports = {
         "pulse-soft": "pulse-soft 2s infinite",
         "shimmer": "shimmer 2s infinite linear",
         "spin-slow": "spin-slow 3s linear infinite",
+        "loading": "loading 1.5s ease-in-out infinite",
       },
     },
   },
