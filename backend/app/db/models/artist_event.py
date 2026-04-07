@@ -77,6 +77,18 @@ class ArtistEvent(Base):
 
     def to_map_dict(self) -> dict:
         """Serialize for the map API response."""
+        lat = self.lat
+        lng = self.lng
+        # Geocoding fallback for events missing coordinates
+        if not lat or not lng:
+            try:
+                from app.api.map_calendar import get_coordinates_for_location
+                coords = get_coordinates_for_location(self.city)
+                if coords:
+                    lat = coords["lat"]
+                    lng = coords["lng"]
+            except Exception:
+                pass
         return {
             "id": str(self.id),
             "artist_name": self.artist_name,
@@ -98,8 +110,8 @@ class ArtistEvent(Base):
             "venue": self.venue,
             "city": self.city or "",
             "country": self.country or "FR",
-            "lat": self.lat,
-            "lng": self.lng,
+            "lat": lat,
+            "lng": lng,
             "date": self.event_date.isoformat() if self.event_date else None,
             "date_label": self.event_date.strftime("%d %b %Y") if self.event_date else "",
             "price_min": self.price_min,

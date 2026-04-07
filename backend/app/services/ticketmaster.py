@@ -300,7 +300,7 @@ class TicketmasterService:
             best = sorted(images, key=lambda i: i.get("width", 0), reverse=True)
             event_image = best[0].get("url") if best else None
 
-        return {
+        result = {
             "external_id": ev.get("id"),
             "artist_name": artist_name or ev.get("name", "Événement"),
             "event_name": ev.get("name", ""),
@@ -319,3 +319,18 @@ class TicketmasterService:
             "genre_classification": genre_classification,
             "raw_data": ev,
         }
+
+        # Geocoding fallback: resolve lat/lng from city name when missing
+        if not result.get("lat") or not result.get("lng"):
+            city = result.get("city")
+            if city:
+                try:
+                    from app.api.map_calendar import get_coordinates_for_location
+                    coords = get_coordinates_for_location(city)
+                    if coords:
+                        result["lat"] = coords["lat"]
+                        result["lng"] = coords["lng"]
+                except Exception:
+                    pass
+
+        return result

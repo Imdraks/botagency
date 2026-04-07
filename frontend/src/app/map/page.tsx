@@ -333,7 +333,7 @@ function MapContent() {
 
   const filteredEvents = useMemo(() => {
     if (!data?.events) return [];
-    return data.events.filter((e) => activeTypes.has(e.event_type));
+    return data.events.filter((e) => activeTypes.has(e.event_type) && e.lat && e.lng && (e.lat !== 0 || e.lng !== 0));
   }, [data?.events, activeTypes]);
 
   const hasFilters =
