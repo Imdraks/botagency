@@ -311,7 +311,7 @@ async def search_artist(
                 detail={
                     "code": "ALREADY_EXISTS",
                     "message": f"Artiste '{request.query}' déjà dans la base (enrichi il y a moins de 24h)",
-                    "artist_id": existing.id,
+                    "artist_id": str(existing.id),
                 }
             )
     
