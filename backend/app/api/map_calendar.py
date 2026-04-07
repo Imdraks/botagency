@@ -468,6 +468,7 @@ def get_artist_events(
     artist: Optional[str] = Query(None, description="Filter by artist name (partial match)"),
     date_from: Optional[str] = Query(None, description="ISO date start filter"),
     date_to: Optional[str] = Query(None, description="ISO date end filter"),
+    score_min: Optional[int] = Query(None, description="Minimum artist score (0-100)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_user_workspace_id),
@@ -475,7 +476,7 @@ def get_artist_events(
     """Get artist events for the map.
     Returns real events from Ticketmaster (if synced), fallback to generated events."""
 
-    cache_key = f"map:artist-events:{workspace_id}:{event_type}:{city}:{artist}:{date_from}:{date_to}"
+    cache_key = f"map:artist-events:{workspace_id}:{event_type}:{city}:{artist}:{date_from}:{date_to}:{score_min}"
     cached = cache_get(cache_key)
     if cached:
         return cached
@@ -503,9 +504,59 @@ def get_artist_events(
         q = q.order_by(ArtistEvent.event_date.asc()).limit(500)
         rows = q.all()
 
+        if score_min is not None:
+            q = q.filter(ArtistEvent.artist_score >= score_min)
+
+        q = q.order_by(ArtistEvent.event_date.asc()).limit(500)
+        rows = q.all()
+
         if rows:
             # Real events exist — use them
             filtered = [r.to_map_dict() for r in rows]
+
+            # Enrich with fee estimates & contact status from discovery tables
+            try:
+                from app.db.models.discovery import DiscoveryArtist as DA, DiscoveryComputedMetrics as DCM
+                artist_ids = list({r.artist_id for r in rows if r.artist_id})
+                if artist_ids:
+                    enrichment_rows = (
+                        db.query(
+                            DA.id,
+                            DCM.fee_estimate_min,
+                            DCM.fee_estimate_max,
+                            DA.instagram_url,
+                            DA.spotify_artist_id,
+                        )
+                        .outerjoin(DCM, DA.id == DCM.artist_id)
+                        .filter(DA.id.in_(artist_ids))
+                        .all()
+                    )
+                    enrichment_map = {
+                        str(r.id): {
+                            "fee_estimate_min": int(r.fee_estimate_min) if r.fee_estimate_min else None,
+                            "fee_estimate_max": int(r.fee_estimate_max) if r.fee_estimate_max else None,
+                            "has_contact": bool(r.instagram_url or r.spotify_artist_id),
+                        }
+                        for r in enrichment_rows
+                    }
+                    for ev in filtered:
+                        aid = ev.get("artist_id")
+                        if aid and aid in enrichment_map:
+                            ev.update(enrichment_map[aid])
+                        else:
+                            ev["fee_estimate_min"] = None
+                            ev["fee_estimate_max"] = None
+                            ev["has_contact"] = False
+                else:
+                    for ev in filtered:
+                        ev["fee_estimate_min"] = None
+                        ev["fee_estimate_max"] = None
+                        ev["has_contact"] = False
+            except Exception:
+                for ev in filtered:
+                    ev["fee_estimate_min"] = None
+                    ev["fee_estimate_max"] = None
+                    ev["has_contact"] = False
 
             # Also get all cities for the filter dropdown
             all_cities_q = (

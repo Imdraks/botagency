@@ -51,6 +51,9 @@ interface ArtistEvent {
   capacity: number | null;
   price_min: number;
   price_max: number;
+  fee_estimate_min?: number | null;
+  fee_estimate_max?: number | null;
+  has_contact?: boolean;
 }
 
 interface EventsResponse {
@@ -71,6 +74,9 @@ const eventsMapApi = {
     event_type?: string;
     city?: string;
     artist?: string;
+    score_min?: number;
+    date_from?: string;
+    date_to?: string;
   }): Promise<EventsResponse> => {
     const token = localStorage.getItem("token");
     const queryParams = new URLSearchParams();
@@ -79,6 +85,10 @@ const eventsMapApi = {
     if (params.city && params.city !== "all")
       queryParams.append("city", params.city);
     if (params.artist) queryParams.append("artist", params.artist);
+    if (params.score_min !== undefined && params.score_min > 0)
+      queryParams.append("score_min", String(params.score_min));
+    if (params.date_from) queryParams.append("date_from", params.date_from);
+    if (params.date_to) queryParams.append("date_to", params.date_to);
 
     const response = await fetch(
       `/api/v1/map/artist-events?${queryParams}`,
@@ -190,6 +200,18 @@ function EventCard({
     eventDate > new Date() &&
     eventDate < new Date(Date.now() + 30 * 86400000);
 
+  const scoreColor =
+    event.artist_score >= 70
+      ? "bg-green-100 text-green-700"
+      : event.artist_score >= 40
+      ? "bg-amber-100 text-amber-700"
+      : "bg-gray-100 text-gray-600";
+
+  const feeLabel =
+    event.fee_estimate_min && event.fee_estimate_max
+      ? `${Math.round(event.fee_estimate_min / 1000)}–${Math.round(event.fee_estimate_max / 1000)}k€`
+      : null;
+
   return (
     <button
       onClick={() => onSelect(event)}
@@ -220,7 +242,7 @@ function EventCard({
           <p className="text-xs text-muted-foreground truncate">
             {event.venue}
           </p>
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <Badge
               variant="secondary"
               className={`text-[10px] px-1.5 py-0 ${config.lightBg} ${config.textColor}`}
@@ -228,6 +250,21 @@ function EventCard({
               <Icon className="h-3 w-3 mr-0.5" />
               {config.label}
             </Badge>
+            {event.artist_score > 0 && (
+              <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${scoreColor}`}>
+                {event.artist_score}
+              </Badge>
+            )}
+            {feeLabel && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {feeLabel}
+              </Badge>
+            )}
+            {event.has_contact === false && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-orange-300 text-orange-600">
+                Contact ?
+              </Badge>
+            )}
             {isUpcoming && (
               <Badge
                 variant="secondary"
@@ -251,18 +288,31 @@ function MapContent() {
   const [eventType, setEventType] = useState("all");
   const [city, setCity] = useState("all");
   const [artistSearch, setArtistSearch] = useState("");
+  const [scoreMin, setScoreMin] = useState(0);
+  const [period, setPeriod] = useState("all");
   const [selectedEvent, setSelectedEvent] = useState<ArtistEvent | null>(null);
   const [activeTypes, setActiveTypes] = useState<Set<string>>(
     new Set(["concert", "festival", "popup_store", "brand_event"])
   );
 
+  const periodDates = useMemo(() => {
+    if (period === "all") return {};
+    const now = new Date();
+    const from = now.toISOString().slice(0, 10);
+    const days = period === "7d" ? 7 : period === "30d" ? 30 : period === "90d" ? 90 : 365;
+    const to = new Date(now.getTime() + days * 86400000).toISOString().slice(0, 10);
+    return { date_from: from, date_to: to };
+  }, [period]);
+
   const { data, isLoading, refetch } = useQuery<EventsResponse>({
-    queryKey: ["map", "artist-events", eventType, city, artistSearch],
+    queryKey: ["map", "artist-events", eventType, city, artistSearch, scoreMin, period],
     queryFn: () =>
       eventsMapApi.getEvents({
         event_type: eventType !== "all" ? eventType : undefined,
         city: city !== "all" ? city : undefined,
         artist: artistSearch || undefined,
+        score_min: scoreMin > 0 ? scoreMin : undefined,
+        ...periodDates,
       }),
   });
 
@@ -284,7 +334,7 @@ function MapContent() {
   }, [data?.events, activeTypes]);
 
   const hasFilters =
-    eventType !== "all" || city !== "all" || artistSearch.length > 0;
+    eventType !== "all" || city !== "all" || artistSearch.length > 0 || scoreMin > 0 || period !== "all";
 
   return (
     <div className="space-y-4">
@@ -374,6 +424,30 @@ function MapContent() {
           </SelectContent>
         </Select>
 
+        <Select value={String(scoreMin)} onValueChange={(v) => setScoreMin(Number(v))}>
+          <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectValue placeholder="Score min" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">Tous les scores</SelectItem>
+            <SelectItem value="30">Score ≥ 30</SelectItem>
+            <SelectItem value="50">Score ≥ 50</SelectItem>
+            <SelectItem value="70">Score ≥ 70</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="h-8 w-[120px] text-xs">
+            <SelectValue placeholder="Période" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toute période</SelectItem>
+            <SelectItem value="7d">7 prochains jours</SelectItem>
+            <SelectItem value="30d">30 prochains jours</SelectItem>
+            <SelectItem value="90d">3 prochains mois</SelectItem>
+          </SelectContent>
+        </Select>
+
         {hasFilters && (
           <Button
             variant="ghost"
@@ -383,6 +457,8 @@ function MapContent() {
               setEventType("all");
               setCity("all");
               setArtistSearch("");
+              setScoreMin(0);
+              setPeriod("all");
             }}
           >
             <X className="h-3 w-3 mr-1" />
@@ -535,6 +611,22 @@ function MapContent() {
                       </span>
                       <span className="font-medium">
                         {formatListeners(selectedEvent.monthly_listeners)}
+                      </span>
+                    </div>
+                  )}
+                  {selectedEvent.fee_estimate_min && selectedEvent.fee_estimate_max && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">Cachet estimé</span>
+                      <span className="font-medium">
+                        {Math.round(selectedEvent.fee_estimate_min / 1000)}–{Math.round(selectedEvent.fee_estimate_max / 1000)}k€
+                      </span>
+                    </div>
+                  )}
+                  {selectedEvent.has_contact !== undefined && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">Contact</span>
+                      <span className={`text-xs font-medium ${selectedEvent.has_contact ? "text-green-600" : "text-orange-500"}`}>
+                        {selectedEvent.has_contact ? "✓ Trouvé" : "✗ Manquant"}
                       </span>
                     </div>
                   )}
