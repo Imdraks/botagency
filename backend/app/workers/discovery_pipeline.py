@@ -73,6 +73,60 @@ def extract_spotify_artist_id(url_or_id: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
+def _resolve_spotify_id_by_name(name: str) -> Optional[Dict[str, Any]]:
+    """Search Spotify API to resolve artist name → Spotify ID + metadata."""
+    try:
+        import spotipy
+        from spotipy.oauth2 import SpotifyClientCredentials
+        
+        if not settings.spotify_client_id or not settings.spotify_client_secret:
+            logger.warning("Spotify credentials not configured for name resolution")
+            return None
+        
+        auth = SpotifyClientCredentials(
+            client_id=settings.spotify_client_id,
+            client_secret=settings.spotify_client_secret,
+        )
+        sp = spotipy.Spotify(auth_manager=auth, requests_timeout=10)
+        results = sp.search(q=f'artist:"{name}"', type='artist', limit=5)
+        
+        items = results.get("artists", {}).get("items", [])
+        if not items:
+            # Retry without quotes for partial matches
+            results = sp.search(q=name, type='artist', limit=5)
+            items = results.get("artists", {}).get("items", [])
+        
+        if not items:
+            logger.warning(f"No Spotify results for '{name}'")
+            return None
+        
+        # Pick best match (exact name match first, then most popular)
+        best = None
+        name_lower = name.lower().strip()
+        for item in items:
+            if item.get("name", "").lower().strip() == name_lower:
+                best = item
+                break
+        if not best:
+            best = max(items, key=lambda x: x.get("popularity", 0))
+        
+        images = best.get("images", [])
+        image_url = images[0]["url"] if images else None
+        
+        logger.info(f"Spotify resolved '{name}' → {best['name']} (ID: {best['id']}, pop: {best.get('popularity')})")
+        return {
+            "spotify_artist_id": best["id"],
+            "canonical_name": best["name"],
+            "genres": best.get("genres", []),
+            "image_url": image_url,
+            "popularity": best.get("popularity", 0),
+            "followers_total": best.get("followers", {}).get("total", 0),
+        }
+    except Exception as e:
+        logger.error(f"Spotify name resolution failed for '{name}': {e}")
+        return None
+
+
 # ============================================================================
 # MAIN PIPELINE TASK
 # ============================================================================
@@ -215,13 +269,33 @@ def step_match(db: Session, job: DiscoveryEnrichmentJob) -> UUID:
         spotify_artist_id = extract_spotify_artist_id(input_value)
         if not spotify_artist_id:
             raise ValueError(f"Invalid Spotify URL/ID: {input_value}")
-        # We'll get the name from Spotify API later, use ID as placeholder
-        canonical_name = f"spotify:{spotify_artist_id}"
-        normalized_name = spotify_artist_id.lower()
+        # Resolve name from Spotify API
+        try:
+            import spotipy
+            from spotipy.oauth2 import SpotifyClientCredentials
+            auth = SpotifyClientCredentials(
+                client_id=settings.spotify_client_id,
+                client_secret=settings.spotify_client_secret,
+            )
+            sp = spotipy.Spotify(auth_manager=auth, requests_timeout=10)
+            sp_artist = sp.artist(spotify_artist_id)
+            canonical_name = sp_artist.get("name", f"spotify:{spotify_artist_id}")
+            normalized_name = normalize_artist_name(canonical_name)
+            logger.info(f"Spotify URL resolved to: {canonical_name} ({spotify_artist_id})")
+        except Exception as e:
+            logger.warning(f"Could not resolve Spotify ID {spotify_artist_id}: {e}")
+            canonical_name = f"spotify:{spotify_artist_id}"
+            normalized_name = spotify_artist_id.lower()
         
     elif input_type == "NAME":
         canonical_name = input_value.strip()
         normalized_name = normalize_artist_name(canonical_name)
+        # Resolve Spotify ID from name
+        sp_info = _resolve_spotify_id_by_name(canonical_name)
+        if sp_info:
+            spotify_artist_id = sp_info["spotify_artist_id"]
+            canonical_name = sp_info["canonical_name"]
+            normalized_name = normalize_artist_name(canonical_name)
     else:
         raise ValueError(f"Unknown input type: {input_type}")
     
@@ -394,6 +468,7 @@ def step_viberate(db: Session, job: DiscoveryEnrichmentJob) -> bool:
 def step_spotify(db: Session, job: DiscoveryEnrichmentJob) -> bool:
     """
     Step 3: Fetch and parse Spotify data.
+    Uses spotipy directly for richer data (artist + top tracks).
     
     Returns: True if successful, False if failed/partial
     """
@@ -434,27 +509,52 @@ def step_spotify(db: Session, job: DiscoveryEnrichmentJob) -> bool:
         return True
     
     try:
-        # Initialize Spotify provider
-        config = EnrichmentConfig()
-        spotify = SpotifyProvider(
-            config,
-            spotify_client_id=settings.spotify_client_id or "",
-            spotify_client_secret=settings.spotify_client_secret or "",
-            cache_client=None
+        import spotipy
+        from spotipy.oauth2 import SpotifyClientCredentials
+        
+        auth = SpotifyClientCredentials(
+            client_id=settings.spotify_client_id or "",
+            client_secret=settings.spotify_client_secret or "",
         )
+        sp = spotipy.Spotify(auth_manager=auth, requests_timeout=10)
         
-        # Fetch data (sync wrapper for async)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Fetch artist profile
+        sp_artist = sp.artist(artist.spotify_artist_id)
+        
+        # Fetch top tracks for market data
         try:
-            spotify_data = loop.run_until_complete(
-                spotify.fetch(artist.spotify_artist_id)
-            )
-        finally:
-            loop.close()
+            top_tracks = sp.artist_top_tracks(artist.spotify_artist_id, country="FR")
+            tracks_data = [
+                {
+                    "name": t.get("name"),
+                    "popularity": t.get("popularity", 0),
+                    "duration_ms": t.get("duration_ms"),
+                    "album": t.get("album", {}).get("name"),
+                    "release_date": t.get("album", {}).get("release_date"),
+                }
+                for t in (top_tracks.get("tracks", []) or [])
+            ]
+        except Exception:
+            tracks_data = []
         
-        if not spotify_data:
-            raise ValueError("Empty response from Spotify")
+        # Build rich payload
+        images = sp_artist.get("images", [])
+        image_url = images[0]["url"] if images else None
+        followers_total = sp_artist.get("followers", {}).get("total", 0)
+        popularity = sp_artist.get("popularity", 0)
+        genres = sp_artist.get("genres", [])
+        
+        spotify_data = {
+            "genres": genres,
+            "followers_total": followers_total,
+            "popularity": popularity,
+            "image_url": image_url,
+            "name": sp_artist.get("name"),
+            "top_tracks": tracks_data,
+            # Estimate monthly listeners from popularity + followers
+            # (Spotify doesn't expose monthly_listeners via API)
+            "estimated_monthly_listeners": _estimate_monthly_listeners(popularity, followers_total),
+        }
         
         # Store snapshot
         snapshot = DiscoverySnapshot(
@@ -468,12 +568,17 @@ def step_spotify(db: Session, job: DiscoveryEnrichmentJob) -> bool:
         db.add(snapshot)
         
         # Update artist with Spotify data
-        if spotify_data.get("genres"):
-            artist.genres = spotify_data["genres"]
+        if genres:
+            artist.genres = genres
+        if image_url and not artist.image_url:
+            artist.image_url = image_url
+        if sp_artist.get("name") and artist.canonical_name.startswith("spotify:"):
+            artist.canonical_name = sp_artist["name"]
+            artist.normalized_name = normalize_artist_name(sp_artist["name"])
         
         db.commit()
         
-        logger.info(f"Spotify fetch successful for {artist.id}")
+        logger.info(f"Spotify fetch successful for {artist.id}: {followers_total} followers, pop={popularity}")
         return True
         
     except Exception as e:
@@ -491,6 +596,39 @@ def step_spotify(db: Session, job: DiscoveryEnrichmentJob) -> bool:
         db.add(snapshot)
         db.commit()
         return False
+
+
+def _estimate_monthly_listeners(popularity: int, followers: int) -> int:
+    """
+    Estimate monthly listeners from Spotify popularity score and follower count.
+    Spotify doesn't expose monthly_listeners via API, so we approximate.
+    popularity 0-100 maps roughly: 0→0, 30→5K, 50→50K, 70→500K, 90→5M
+    """
+    if popularity >= 90:
+        base = 5_000_000
+    elif popularity >= 80:
+        base = 1_000_000
+    elif popularity >= 70:
+        base = 500_000
+    elif popularity >= 60:
+        base = 100_000
+    elif popularity >= 50:
+        base = 50_000
+    elif popularity >= 40:
+        base = 20_000
+    elif popularity >= 30:
+        base = 5_000
+    elif popularity >= 20:
+        base = 1_000
+    else:
+        base = 500
+    
+    # Adjust with follower ratio
+    if followers > 0:
+        ratio = min(followers / max(base, 1), 3.0)
+        base = int(base * max(ratio, 0.5))
+    
+    return base
 
 
 # ============================================================================
@@ -528,12 +666,30 @@ def step_compute(db: Session, job: DiscoveryEnrichmentJob, viberate_ok: bool, sp
     vib_data = (viberate_snapshot.raw_payload if viberate_snapshot else None) or {}
     spot_data = (spotify_snapshot.raw_payload if spotify_snapshot else None) or {}
     
-    # Calculate metrics
-    monthly_listeners = vib_data.get("monthly_listeners", 0) or 0
+    # Calculate metrics — merge Viberate + Spotify data
+    # Monthly listeners: prefer Viberate (exact), fallback to Spotify estimate
+    raw_ml = vib_data.get("monthly_listeners", 0)
+    if isinstance(raw_ml, dict):
+        monthly_listeners = raw_ml.get("value", 0) or 0
+    else:
+        monthly_listeners = raw_ml or 0
+    if not monthly_listeners and spot_data.get("estimated_monthly_listeners"):
+        monthly_listeners = spot_data["estimated_monthly_listeners"]
+    
     spotify_followers = spot_data.get("followers_total", 0) or 0
+    
+    # Social stats: prefer Viberate scrape, fallback to 0
     instagram_followers = vib_data.get("instagram_followers", 0) or 0
     tiktok_followers = vib_data.get("tiktok_followers", 0) or 0
     youtube_subscribers = vib_data.get("youtube_subscribers", 0) or 0
+    
+    # If Viberate had nested social_stats format
+    if not instagram_followers and isinstance(vib_data.get("social_stats"), dict):
+        ss = vib_data["social_stats"]
+        instagram_followers = ss.get("instagram_followers", 0) or 0
+        tiktok_followers = ss.get("tiktok_followers", 0) or 0
+        youtube_subscribers = ss.get("youtube_subscribers", 0) or 0
+        spotify_followers = spotify_followers or (ss.get("spotify_followers", 0) or 0)
     
     total_social = instagram_followers + tiktok_followers + youtube_subscribers + spotify_followers
     
