@@ -176,7 +176,7 @@ interface JobItem {
   artist_name?: string;
   input_type: string;
   input_value: string;
-  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "PARTIAL";
+  status: "QUEUED" | "RUNNING" | "DONE" | "FAILED" | "PARTIAL";
   current_step: string;
   progress: number;
   error_message?: string;
@@ -321,13 +321,14 @@ function GoogleSearchBar({
 // ============================================================================
 
 function ActiveJobsPanel({ jobs }: { jobs: JobItem[] }) {
-  const activeJobs = jobs.filter(j => j.status === "PENDING" || j.status === "RUNNING");
-  const recentJobs = jobs.filter(j => j.status !== "PENDING" && j.status !== "RUNNING").slice(0, 3);
+  const activeJobs = jobs.filter(j => j.status === "QUEUED" || j.status === "RUNNING");
+  const recentJobs = jobs.filter(j => j.status !== "QUEUED" && j.status !== "RUNNING").slice(0, 3);
   
   if (activeJobs.length === 0 && recentJobs.length === 0) return null;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case "DONE": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case "COMPLETED": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case "PARTIAL": return <CheckCircle2 className="h-4 w-4 text-yellow-500" />;
       case "FAILED": return <XCircle className="h-4 w-4 text-red-500" />;
