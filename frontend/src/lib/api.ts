@@ -1046,6 +1046,18 @@ export const analyticsApi = {
   },
 };
 
+// Market Intelligence API
+export const marketIntelligenceApi = {
+  getFeed: async () => {
+    const response = await api.get("/market-intelligence/feed");
+    return response.data;
+  },
+  getFeeEstimate: async (artistId: string) => {
+    const response = await api.get(`/market-intelligence/fee-estimate/${artistId}`);
+    return response.data;
+  },
+};
+
 // Competitive Intelligence API
 export const competitiveApi = {
   // Competitors management

@@ -58,6 +58,7 @@ from app.api.contact_finder import router as contact_finder_router
 from app.api.advanced_features import router as advanced_features_router
 from app.api.analytics import router as analytics_router
 from app.api.competitive import router as competitive_router
+from app.api.market_intelligence import router as market_intelligence_router
 from app.api.map_calendar import router as map_router, calendar_router
 from app.api.tags_comments import router as tags_router, comments_router, favorites_router
 from app.api.google_calendar import router as google_calendar_router
@@ -289,6 +290,7 @@ app.include_router(contact_finder_router, prefix="/api/v1", tags=["Contact Finde
 app.include_router(advanced_features_router, prefix="/api/v1", tags=["Advanced Features"])
 app.include_router(analytics_router, prefix="/api/v1", tags=["Analytics Dashboard"])
 app.include_router(competitive_router, prefix="/api/v1", tags=["Competitive Intelligence"])
+app.include_router(market_intelligence_router, prefix="/api/v1", tags=["Market Intelligence"])
 app.include_router(map_router, prefix="/api/v1", tags=["Map"])
 app.include_router(calendar_router, prefix="/api/v1", tags=["Calendar"])
 app.include_router(google_calendar_router, prefix="/api/v1", tags=["Google Calendar"])
