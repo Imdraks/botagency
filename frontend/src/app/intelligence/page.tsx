@@ -28,6 +28,9 @@ import {
   ChevronRight,
   Sparkles,
   ArrowUpRight,
+  MessageCircle,
+  Lightbulb,
+  Bell,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { marketIntelligenceApi } from "@/lib/api";
@@ -114,17 +117,17 @@ const PRIORITY_STYLES: Record<string, string> = {
 
 const TYPE_ICONS: Record<string, typeof Flame> = {
   trending_artist: TrendingUp,
-  fee_opportunity: DollarSign,
+  fee_opportunity: Lightbulb,
   book_alert: Flame,
   upcoming_event: Calendar,
   market_saturation: BarChart3,
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  trending_artist: "En hausse",
-  fee_opportunity: "Bon plan",
-  book_alert: "À booker",
-  upcoming_event: "Événement",
+  trending_artist: "Croissance",
+  fee_opportunity: "Opportunité",
+  book_alert: "Recommandation",
+  upcoming_event: "Agenda",
   market_saturation: "Marché",
 };
 
@@ -334,11 +337,15 @@ function IntelligenceContent() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="h-6 w-6 text-indigo-500" />
-          <h1 className="text-2xl font-bold">Market Intelligence</h1>
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold">Radar Intelligence</h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Tendances du marché, alertes prospection et estimations de cachets — en temps réel
+          {(data?.feed?.length || 0) > 0
+            ? `${data?.feed?.length} éléments résumés depuis tes artistes et le marché.`
+            : "Aucun élément pour le moment — les résumés apparaîtront quand tu auras des artistes dans Discovery."}
         </p>
       </div>
 
@@ -368,7 +375,7 @@ function IntelligenceContent() {
             icon={DollarSign}
             label="Cachet moyen"
             value={formatFee(kpis.avg_fee_min, kpis.avg_fee_max)}
-            sub={`${formatK(kpis.fee_range_min)} – ${formatK(kpis.fee_range_max)}€ range`}
+            sub={`${formatK(kpis.fee_range_min)} – ${formatK(kpis.fee_range_max)}€`}
             color="#f59e0b"
           />
           <KpiCard
@@ -380,9 +387,9 @@ function IntelligenceContent() {
           />
           <KpiCard
             icon={Flame}
-            label="Top picks"
+            label="Potentiel élevé"
             value={data?.feed?.filter((f) => f.type === "book_alert").length || 0}
-            sub="À booker maintenant"
+            sub="Recommandation BOOK"
             color="#ef4444"
           />
         </div>
@@ -395,16 +402,16 @@ function IntelligenceContent() {
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="all">
-                Tout ({data?.feed?.length || 0})
+                Résumé ({data?.feed?.length || 0})
               </TabsTrigger>
               <TabsTrigger value="alerts">
-                🔥 Alertes ({data?.feed?.filter((f) => ["book_alert", "trending_artist"].includes(f.type)).length || 0})
+                Mouvements ({data?.feed?.filter((f) => ["book_alert", "trending_artist"].includes(f.type)).length || 0})
               </TabsTrigger>
               <TabsTrigger value="fees">
-                💰 Cachets ({data?.feed?.filter((f) => f.type === "fee_opportunity").length || 0})
+                Cachets ({data?.feed?.filter((f) => f.type === "fee_opportunity").length || 0})
               </TabsTrigger>
               <TabsTrigger value="events">
-                🎫 Events ({data?.feed?.filter((f) => ["upcoming_event", "market_saturation"].includes(f.type)).length || 0})
+                Agenda ({data?.feed?.filter((f) => ["upcoming_event", "market_saturation"].includes(f.type)).length || 0})
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -413,9 +420,9 @@ function IntelligenceContent() {
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
                 <Sparkles className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">Aucune donnée pour le moment</p>
+                <p className="font-medium">Rien à afficher</p>
                 <p className="text-xs mt-1">
-                  Ajoutez des artistes dans Discovery et synchronisez les événements Ticketmaster pour alimenter le feed.
+                  Les résumés apparaîtront automatiquement à partir des artistes que tu suis dans Discovery.
                 </p>
               </CardContent>
             </Card>

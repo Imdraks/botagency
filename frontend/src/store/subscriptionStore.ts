@@ -29,7 +29,7 @@ export type Feature =
   // Talents
   | 'artists' | 'profiles' | 'discovery' | 'comparison' | 'map' | 'spotify_search'
   // Intelligence
-  | 'analytics' | 'competitor_watch' | 'ai_predictions'
+  | 'analytics' | 'competitor_watch' | 'ai_predictions' | 'market_intelligence'
   // Radar Business
   | 'crm_extended' | 'quotes' | 'invoices' | 'banking'
   // Admin only

@@ -169,7 +169,7 @@ def get_intelligence_feed(
                 "tiktok": a.tiktok_followers or 0,
                 "total": a.total_social_followers or 0,
             },
-            "message": f"📈 {a.canonical_name} en forte croissance (+{round(a.velocity or 0, 1)}%)",
+            "message": f"{a.canonical_name} — croissance de +{round(a.velocity or 0, 1)}% sur la période",
         })
 
     # --- Fee estimation alerts (artists with high score but low fee = good deal) ---
@@ -214,7 +214,7 @@ def get_intelligence_feed(
             "fee_max": a.fee_estimate_max or 0,
             "velocity": round(a.velocity or 0, 2),
             "recommendation": a.recommendation or "WATCHLIST",
-            "message": f"💰 {a.canonical_name} — Score {a.score}, cachet estimé {a.fee_estimate_min or '?'}-{a.fee_estimate_max or '?'}€ (bon rapport qualité/prix)",
+            "message": f"{a.canonical_name} — score {a.score}, cachet estimé {a.fee_estimate_min or '?'}–{a.fee_estimate_max or '?'}€",
         })
 
     # --- High-potential alerts (score > 80, recommendation BOOK) ---
@@ -258,7 +258,7 @@ def get_intelligence_feed(
             "velocity": round(a.velocity or 0, 2),
             "timing": a.timing_bucket or "UNKNOWN",
             "recommendation": "BOOK",
-            "message": f"🔥 {a.canonical_name} — Recommandation BOOK, score {a.score}",
+            "message": f"{a.canonical_name} — score {a.score}, recommandation BOOK",
         })
 
     # --- Upcoming events with price info ---
@@ -294,7 +294,7 @@ def get_intelligence_feed(
                 "event_url": ev.event_url,
                 "promoter": ev.promoter,
                 "source": ev.source,
-                "message": f"🎫 {ev.artist_name} — {ev.event_name} le {ev.event_date.strftime('%d/%m') if ev.event_date else '?'} à {ev.city or '?'}",
+                "message": f"{ev.artist_name} — {ev.event_name}, {ev.event_date.strftime('%d/%m') if ev.event_date else '?'} à {ev.city or '?'}",
             })
     except Exception:
         pass
@@ -330,7 +330,7 @@ def get_intelligence_feed(
                     "event_count": c.event_count,
                     "avg_price_min": round(float(c.avg_price_min or 0)),
                     "avg_price_max": round(float(c.avg_price_max or 0)),
-                    "message": f"📊 {c.city} — {c.event_count} événements à venir, prix moyen {round(float(c.avg_price_min or 0))}-{round(float(c.avg_price_max or 0))}€",
+                    "message": f"{c.city} — {c.event_count} événements à venir, prix moyen {round(float(c.avg_price_min or 0))}–{round(float(c.avg_price_max or 0))}€",
                 })
     except Exception:
         pass

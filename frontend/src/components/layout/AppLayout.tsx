@@ -192,7 +192,7 @@ const navigationSections: NavSection[] = [
     icon: Sparkles,
     packRequired: "intelligence",
     items: [
-      { name: "Market Intel", href: "/intelligence", icon: Compass, feature: "market_intelligence" },
+      { name: "Résumé", href: "/intelligence", icon: Compass, feature: "market_intelligence" },
       { name: "Daily Picks", href: "/shortlist", icon: Sparkles, feature: "daily_picks" },
       { name: "Scoring", href: "/scoring", icon: BarChart3, feature: "scoring" },
       { name: "Profils", href: "/profiles", icon: Sliders, feature: "profiles" },
