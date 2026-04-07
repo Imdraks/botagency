@@ -269,7 +269,7 @@ def step_match(db: Session, job: DiscoveryEnrichmentJob) -> UUID:
         spotify_artist_id = extract_spotify_artist_id(input_value)
         if not spotify_artist_id:
             raise ValueError(f"Invalid Spotify URL/ID: {input_value}")
-        # Resolve name from Spotify API
+        # Resolve name from Spotify API (sp.artist may 403 on free-tier)
         try:
             import spotipy
             from spotipy.oauth2 import SpotifyClientCredentials
@@ -278,8 +278,21 @@ def step_match(db: Session, job: DiscoveryEnrichmentJob) -> UUID:
                 client_secret=settings.spotify_client_secret,
             )
             sp = spotipy.Spotify(auth_manager=auth, requests_timeout=10)
-            sp_artist = sp.artist(spotify_artist_id)
-            canonical_name = sp_artist.get("name", f"spotify:{spotify_artist_id}")
+            try:
+                sp_artist = sp.artist(spotify_artist_id)
+                canonical_name = sp_artist.get("name", f"spotify:{spotify_artist_id}")
+            except spotipy.exceptions.SpotifyException as se:
+                if se.http_status == 403:
+                    # Fallback: search for artist by ID
+                    results = sp.search(q=f'artist:{spotify_artist_id}', type='artist', limit=5)
+                    items = results.get("artists", {}).get("items", [])
+                    match = next((i for i in items if i.get("id") == spotify_artist_id), None)
+                    if match:
+                        canonical_name = match.get("name", f"spotify:{spotify_artist_id}")
+                    else:
+                        canonical_name = f"spotify:{spotify_artist_id}"
+                else:
+                    raise
             normalized_name = normalize_artist_name(canonical_name)
             logger.info(f"Spotify URL resolved to: {canonical_name} ({spotify_artist_id})")
         except Exception as e:
@@ -518,10 +531,33 @@ def step_spotify(db: Session, job: DiscoveryEnrichmentJob) -> bool:
         )
         sp = spotipy.Spotify(auth_manager=auth, requests_timeout=10)
         
-        # Fetch artist profile
-        sp_artist = sp.artist(artist.spotify_artist_id)
+        # Fetch artist profile — sp.artist() may 403 on free-tier apps
+        sp_artist = None
+        try:
+            sp_artist = sp.artist(artist.spotify_artist_id)
+        except spotipy.exceptions.SpotifyException as e:
+            if e.http_status == 403:
+                logger.warning(f"sp.artist() returned 403 for {artist.spotify_artist_id}, using search fallback")
+            else:
+                raise
         
-        # Fetch top tracks for market data
+        # Fallback: use search API (always works on basic quota)
+        if not sp_artist:
+            search_name = artist.canonical_name or artist.normalized_name or artist.spotify_artist_id
+            results = sp.search(q=f'artist:"{search_name}"', type='artist', limit=5)
+            items = results.get("artists", {}).get("items", [])
+            # Find matching artist by ID
+            for item in items:
+                if item.get("id") == artist.spotify_artist_id:
+                    sp_artist = item
+                    break
+            if not sp_artist and items:
+                sp_artist = items[0]
+            if not sp_artist:
+                raise ValueError(f"Could not find Spotify artist {artist.spotify_artist_id} via search fallback")
+        
+        # Fetch top tracks for market data (may also 403)
+        tracks_data = []
         try:
             top_tracks = sp.artist_top_tracks(artist.spotify_artist_id, country="FR")
             tracks_data = [
