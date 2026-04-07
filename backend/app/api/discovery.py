@@ -118,7 +118,7 @@ class QueueResponse(BaseModel):
 
 class ArtistDetailResponse(BaseModel):
     """Full artist detail for expanded view."""
-    id: int
+    id: Any
     name: str
     normalized_name: str
     viberate_id: Optional[str] = None
@@ -325,7 +325,7 @@ async def search_artist(
     if running_job:
         return JobResponse(
             id=str(running_job.id),
-            artist_name=running_job.artist.name if running_job.artist else None,
+            artist_name=running_job.artist.canonical_name if running_job.artist else None,
             input_type=running_job.input_type,
             input_value=running_job.input_value,
             status=running_job.status,
@@ -391,7 +391,7 @@ async def refresh_artist(
     if running_job:
         return JobResponse(
             id=str(running_job.id),
-            artist_name=artist.name,
+            artist_name=artist.canonical_name,
             input_type=running_job.input_type,
             input_value=running_job.input_value,
             status=running_job.status,
@@ -405,7 +405,7 @@ async def refresh_artist(
         workspace_id=workspace_id,
         artist_id=artist_id,
         input_type=InputType.NAME.value,
-        input_value=artist.name,
+        input_value=artist.canonical_name,
         status=JobStatus.QUEUED.value,
         current_step=JobStep.VIBERATE.value,  # Skip MATCH for existing artist
         progress_pct=0,
@@ -420,7 +420,7 @@ async def refresh_artist(
     
     return JobResponse(
         id=str(job.id),
-        artist_name=artist.name,
+        artist_name=artist.canonical_name,
         input_type=job.input_type,
         input_value=job.input_value,
         status=job.status,
@@ -475,7 +475,7 @@ async def get_job_queue(
         
         jobs.append(JobResponse(
             id=str(job.id),
-            artist_name=job.artist.name if job.artist else None,
+            artist_name=job.artist.canonical_name if job.artist else None,
             input_type=job.input_type,
             input_value=job.input_value,
             status=job.status,
@@ -516,7 +516,7 @@ async def get_job_status(
     
     return JobResponse(
         id=str(job.id),
-        artist_name=job.artist.name if job.artist else None,
+        artist_name=job.artist.canonical_name if job.artist else None,
         input_type=job.input_type,
         input_value=job.input_value,
         status=job.status,
@@ -564,13 +564,13 @@ async def get_artist_detail(
     
     return ArtistDetailResponse(
         id=artist.id,
-        name=artist.name,
+        name=artist.canonical_name,
         normalized_name=artist.normalized_name,
-        viberate_id=artist.viberate_id,
-        spotify_id=artist.spotify_id,
+        viberate_id=artist.viberate_url,
+        spotify_id=artist.spotify_artist_id,
         image_url=artist.image_url,
         country=artist.country,
-        city=artist.city,
+        city=None,
         genres=artist.genres or [],
         
         score=metrics.score if metrics else 0,
@@ -593,8 +593,8 @@ async def get_artist_detail(
         created_at=artist.created_at,
         
         is_stale=is_stale,
-        has_spotify=artist.spotify_id is not None,
-        has_viberate=artist.viberate_id is not None,
+        has_spotify=artist.spotify_artist_id is not None,
+        has_viberate=artist.viberate_url is not None,
     )
 
 
@@ -624,7 +624,7 @@ async def delete_artist(
     artist.is_deleted = True
     db.commit()
     
-    return {"status": "OK", "message": f"Artiste '{artist.name}' supprimé"}
+    return {"status": "OK", "message": f"Artiste '{artist.canonical_name}' supprimé"}
 
 
 @router.get("/artists", response_model=List[ArtistCardResponse])
