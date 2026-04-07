@@ -193,6 +193,9 @@ def run_enrichment_pipeline(self, job_id: str) -> Dict[str, Any]:
             db.commit()
             step_compute(db, job, viberate_ok, spotify_ok)
             
+            # Sync to artist_analyses for frontend display
+            _sync_to_artist_analyses(db, job)
+            
             # Mark completed
             partial = not (viberate_ok and spotify_ok)
             job.mark_completed(partial=partial)
@@ -751,6 +754,92 @@ def step_compute(db: Session, job: DiscoveryEnrichmentJob, viberate_ok: bool, sp
     db.commit()
     
     logger.info(f"Computed metrics for artist {artist.id}: score={score}, timing={timing}")
+
+
+def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
+    """
+    Sync discovery results to artist_analyses table for frontend display.
+    """
+    from app.db.models.artist_analysis import ArtistAnalysis
+
+    artist = db.query(DiscoveryArtist).filter(
+        DiscoveryArtist.id == job.artist_id
+    ).first()
+    if not artist:
+        return
+
+    metrics = db.query(DiscoveryComputedMetrics).filter(
+        DiscoveryComputedMetrics.artist_id == artist.id
+    ).order_by(DiscoveryComputedMetrics.computed_at.desc()).first()
+    if not metrics:
+        return
+
+    # Get spotify snapshot for extra data
+    spot_snap = db.query(DiscoverySnapshot).filter(
+        DiscoverySnapshot.artist_id == artist.id,
+        DiscoverySnapshot.source == "SPOTIFY",
+    ).order_by(DiscoverySnapshot.fetched_at.desc()).first()
+    spot_data = (spot_snap.raw_payload if spot_snap else None) or {}
+
+    # Determine market tier
+    ml = metrics.monthly_listeners or 0
+    if ml >= 5_000_000:
+        tier = "superstar"
+    elif ml >= 1_000_000:
+        tier = "major"
+    elif ml >= 200_000:
+        tier = "established"
+    elif ml >= 50_000:
+        tier = "rising"
+    elif ml >= 10_000:
+        tier = "emerging"
+    else:
+        tier = "underground"
+
+    # Check if already exists (update instead of duplicate)
+    existing = db.query(ArtistAnalysis).filter(
+        ArtistAnalysis.workspace_id == artist.workspace_id,
+        ArtistAnalysis.artist_name == artist.canonical_name,
+    ).first()
+
+    if existing:
+        existing.spotify_monthly_listeners = ml
+        existing.instagram_followers = metrics.instagram_followers or 0
+        existing.tiktok_followers = metrics.tiktok_followers or 0
+        existing.youtube_subscribers = metrics.youtube_subscribers or 0
+        existing.total_followers = metrics.total_social_followers or 0
+        existing.fee_min = metrics.fee_estimate_min or 0
+        existing.fee_max = metrics.fee_estimate_max or 0
+        existing.market_tier = tier
+        existing.popularity_score = metrics.score or 0
+        existing.image_url = artist.image_url
+        existing.confidence_score = 0.8 if metrics.data_quality == "HIGH" else 0.5
+        existing.created_at = datetime.utcnow()
+        logger.info(f"Updated artist_analyses for {artist.canonical_name}")
+    else:
+        analysis = ArtistAnalysis(
+            workspace_id=artist.workspace_id,
+            artist_name=artist.canonical_name,
+            genre=", ".join(spot_data.get("genres", [])) if spot_data.get("genres") else None,
+            image_url=artist.image_url,
+            spotify_monthly_listeners=ml,
+            youtube_subscribers=metrics.youtube_subscribers or 0,
+            instagram_followers=metrics.instagram_followers or 0,
+            tiktok_followers=metrics.tiktok_followers or 0,
+            total_followers=metrics.total_social_followers or 0,
+            fee_min=metrics.fee_estimate_min or 0,
+            fee_max=metrics.fee_estimate_max or 0,
+            market_tier=tier,
+            popularity_score=metrics.score or 0,
+            market_trend="stable",
+            confidence_score=0.8 if metrics.data_quality == "HIGH" else 0.5,
+            sources_scanned="spotify,deezer,musicbrainz",
+            created_at=datetime.utcnow(),
+        )
+        db.add(analysis)
+        logger.info(f"Created artist_analyses for {artist.canonical_name}")
+
+    db.commit()
 
 
 # ============================================================================
