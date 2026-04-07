@@ -1058,6 +1058,22 @@ export const marketIntelligenceApi = {
   },
 };
 
+// Analytics V2 API — Tour de contrôle
+export const analyticsV2Api = {
+  getCockpit: async () => {
+    const response = await api.get("/analytics-v2/cockpit");
+    return response.data;
+  },
+  getTerrain: async () => {
+    const response = await api.get("/analytics-v2/terrain");
+    return response.data;
+  },
+  getCompetitiveGaps: async () => {
+    const response = await api.get("/analytics-v2/competitive-gaps");
+    return response.data;
+  },
+};
+
 // Competitive Intelligence API
 export const competitiveApi = {
   // Competitors management

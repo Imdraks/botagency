@@ -1,630 +1,367 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  TrendingUp,
-  Clock,
-  Users,
-  Euro,
-  ArrowRight,
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import {
+  Activity,
+  Calendar,
   Loader2,
+  MapPin,
   RefreshCw,
-  Inbox,
-  FolderKanban,
-  Sparkles,
-  Plus,
-  Building2,
-  Mail,
-  FileText,
-  Zap
-} from 'lucide-react';
-import Link from 'next/link';
-import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
+  TrendingUp,
+  Radio,
+  Target,
+  ArrowRight,
+  Clock,
+  BarChart3,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { format, formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Badge } from "@/components/ui/badge";
+import { AppLayout, ProtectedRoute } from "@/components/layout";
+import { analyticsV2Api } from "@/lib/api";
 
-interface TodoItem {
-  id: number;
-  type: string;
-  title: string;
-  subtitle?: string;
-  due_date?: string;
-  priority?: string;
-  client_name?: string;
-  project_name?: string;
-  link?: string;
+// ── Types ──
+
+interface CockpitData {
+  signals_count: number;
+  kpis: {
+    events_30d: number;
+    artists_moving: number;
+    active_cities: number;
+    qualified_opportunities: number;
+  };
+  movements: {
+    type: string;
+    icon: string;
+    text: string;
+    timestamp: string | null;
+    artist_name?: string;
+    city?: string;
+  }[];
+  upcoming: {
+    artist_name: string;
+    venue: string;
+    city: string;
+    date: string | null;
+    date_label: string;
+    days_until: number;
+    event_type: string;
+  }[];
+  data_quality: {
+    total_artists: number;
+    scored_pct: number;
+    fee_estimated_pct: number;
+    event_coverage_pct: number;
+  };
+  hotspots: {
+    city: string;
+    count: number;
+    lat: number;
+    lng: number;
+  }[];
 }
 
-interface UrgencyItem {
-  id: number;
-  type: string;
-  title: string;
-  subtitle?: string;
-  deadline?: string;
-  days_remaining?: number;
-  client_name?: string;
-  project_name?: string;
-  severity: string;
+// ── Helpers ──
+
+function timeAgo(ts: string | null): string {
+  if (!ts) return "";
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `il y a ${mins}min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `il y a ${hours}h`;
+  return `il y a ${Math.floor(hours / 24)}j`;
 }
 
-interface BusinessItem {
-  id: number;
-  type: string;
-  title: string;
-  subtitle?: string;
-  value?: number;
-  client_name?: string;
-  status?: string;
-  days_waiting?: number;
+const MOVEMENT_ICONS: Record<string, typeof TrendingUp> = {
+  "trending-up": TrendingUp,
+  calendar: Calendar,
+  "map-pin": MapPin,
+};
+
+function urgencyColor(days: number): string {
+  if (days <= 3) return "text-red-600 bg-red-50 dark:bg-red-950/30";
+  if (days <= 7) return "text-orange-600 bg-orange-50 dark:bg-orange-950/30";
+  return "text-muted-foreground bg-muted";
 }
 
-interface InboxItemPreview {
-  id: number;
-  text: string;
-  type: string;
-  created_at: string;
-  age_hours: number;
+// ── Components ──
+
+function SignalPulse({ count }: { count: number }) {
+  return (
+    <div className={`rounded-xl border p-5 ${count > 0 ? "bg-indigo-50 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-800" : "bg-muted/30 border-border"}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${count > 0 ? "bg-indigo-100 dark:bg-indigo-900" : "bg-muted"}`}>
+            <Radio className={`h-5 w-5 ${count > 0 ? "text-indigo-600" : "text-muted-foreground"}`} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Signaux détectés</p>
+            <p className={`text-3xl font-bold ${count > 0 ? "text-indigo-700 dark:text-indigo-400" : "text-muted-foreground"}`}>
+              {count}
+            </p>
+          </div>
+        </div>
+        {count > 0 ? (
+          <p className="text-sm text-indigo-600 dark:text-indigo-400">
+            {count} artiste{count > 1 ? "s" : ""} en mouvement cette semaine
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Le marché est calme — aucun mouvement notable.</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
-interface UserWorkspace {
-  id: number;
-  name: string;
-  role: string;
-  members_count: number;
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  href,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: number;
+  color: string;
+  href?: string;
+}) {
+  const content = (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground">{label}</span>
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+            <Icon className="h-4 w-4" style={{ color }} />
+          </div>
+        </div>
+        <p className="text-2xl font-bold">{value}</p>
+        {href && (
+          <span className="flex items-center gap-1 mt-1 text-xs" style={{ color }}>
+            Voir <ArrowRight className="h-3 w-3" />
+          </span>
+        )}
+      </CardContent>
+    </Card>
+  );
+  return href ? <Link href={href}>{content}</Link> : content;
 }
 
-interface DashboardData {
-  todos: TodoItem[];
-  todos_count: number;
-  urgencies: UrgencyItem[];
-  urgencies_count: number;
-  business: BusinessItem[];
-  business_count: number;
-  active_projects: number;
-  pending_validations: number;
-  hot_leads: number;
-  monthly_revenue: number;
+function MovementTimeline({ movements }: { movements: CockpitData["movements"] }) {
+  if (movements.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        Aucun mouvement récent détecté.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {movements.map((m, i) => {
+        const Icon = MOVEMENT_ICONS[m.icon] || Activity;
+        return (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+          >
+            <div className="h-8 w-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center mt-0.5">
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm leading-snug">{m.text}</p>
+              {m.timestamp && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(m.timestamp)}</p>
+              )}
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+function HotspotsMini({ hotspots }: { hotspots: CockpitData["hotspots"] }) {
+  if (hotspots.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        Aucune zone active détectée.
+      </div>
+    );
+  }
+  const max = Math.max(...hotspots.map((h) => h.count), 1);
+  return (
+    <div className="space-y-2">
+      {hotspots.slice(0, 6).map((h) => (
+        <div key={h.city} className="flex items-center gap-2">
+          <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-sm flex-1 truncate">{h.city}</span>
+          <div className="w-20 h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-indigo-500"
+              style={{ width: `${(h.count / max) * 100}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground w-6 text-right">{h.count}</span>
+        </div>
+      ))}
+      <Link href="/map" className="flex items-center gap-1 text-xs text-indigo-600 hover:underline mt-2">
+        Ouvrir la carte <ArrowRight className="h-3 w-3" />
+      </Link>
+    </div>
+  );
+}
+
+function DataQualityBar({ quality }: { quality: CockpitData["data_quality"] }) {
+  const items = [
+    { label: "Scorés", pct: quality.scored_pct, color: "#6366f1" },
+    { label: "Cachet estimé", pct: quality.fee_estimated_pct, color: "#f59e0b" },
+    { label: "Événement réel", pct: quality.event_coverage_pct, color: "#10b981" },
+  ];
+  return (
+    <div className="rounded-xl border p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-medium">Qualité des données</p>
+        <span className="text-xs text-muted-foreground">{quality.total_artists} artistes</span>
+      </div>
+      <div className="space-y-3">
+        {items.map((it) => (
+          <div key={it.label} className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{it.label}</span>
+              <span className="text-xs font-medium">{it.pct}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${it.pct}%`, backgroundColor: it.color }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main ──
+
+function CockpitContent() {
+  const { data, isLoading, refetch } = useQuery<CockpitData>({
+    queryKey: ["analytics-v2", "cockpit"],
+    queryFn: () => analyticsV2Api.getCockpit(),
+    refetchInterval: 120_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const kpis = data?.kpis;
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Cockpit</h1>
+          <p className="text-sm text-muted-foreground">Tour de contrôle — marché et opportunités</p>
+        </div>
+        <Button onClick={() => refetch()} variant="ghost" size="sm">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Signal pulse */}
+      <SignalPulse count={data?.signals_count || 0} />
+
+      {/* KPIs */}
+      {kpis && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard icon={Calendar} label="Événements (30j)" value={kpis.events_30d} color="#ec4899" href="/map" />
+          <KpiCard icon={TrendingUp} label="Artistes en mouvement" value={kpis.artists_moving} color="#10b981" href="/discovery" />
+          <KpiCard icon={MapPin} label="Zones actives" value={kpis.active_cities} color="#6366f1" href="/map" />
+          <KpiCard icon={Target} label="Opportunités qualifiées" value={kpis.qualified_opportunities} color="#f59e0b" href="/intelligence" />
+        </div>
+      )}
+
+      {/* Main grid: movements + hotspots */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Mouvements récents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MovementTimeline movements={data?.movements || []} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Zones actives</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <HotspotsMini hotspots={data?.hotspots || []} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Upcoming events */}
+      {(data?.upcoming?.length || 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Prochains événements</CardTitle>
+              <Link href="/map" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                Voir tout <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y">
+              {data?.upcoming?.map((ev, i) => (
+                <div key={i} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+                  <div className={`px-2 py-1 rounded text-xs font-bold ${urgencyColor(ev.days_until)}`}>
+                    J-{ev.days_until}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{ev.artist_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {ev.venue} · {ev.city}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium">{ev.date_label}</p>
+                    <Badge variant="outline" className="text-[10px]">{ev.event_type}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Data quality */}
+      {data?.data_quality && <DataQualityBar quality={data.data_quality} />}
+    </div>
+  );
 }
 
 export default function CockpitPage() {
   return (
     <ProtectedRoute>
-      <AppLayoutWithOnboarding>
+      <AppLayout>
         <CockpitContent />
-      </AppLayoutWithOnboarding>
+      </AppLayout>
     </ProtectedRoute>
-  );
-}
-
-function CockpitContent() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [inboxItems, setInboxItems] = useState<InboxItemPreview[]>([]);
-  const [workspaces, setWorkspaces] = useState<UserWorkspace[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboard = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      
-      const dashboardRes = await fetch('/api/v1/agency/dashboard', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      
-      if (!dashboardRes.ok) throw new Error('Failed to fetch dashboard');
-      const dashboardData = await dashboardRes.json();
-      setData(dashboardData);
-      
-      let userWorkspaces: UserWorkspace[] = [];
-      try {
-        const wsRes = await fetch('/api/v1/workspaces', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (wsRes.ok) {
-          const wsData = await wsRes.json();
-          userWorkspaces = wsData.items || [];
-          setWorkspaces(userWorkspaces);
-          
-          if (userWorkspaces.length > 0) {
-            const currentWsId = localStorage.getItem('current_workspace_id');
-            const hasAccess = userWorkspaces.some(ws => ws.id.toString() === currentWsId);
-            if (!hasAccess) {
-              localStorage.setItem('current_workspace_id', userWorkspaces[0].id.toString());
-            }
-          }
-        }
-      } catch (e) {}
-      
-      try {
-        const workspaceId = localStorage.getItem('current_workspace_id');
-        if (workspaceId && userWorkspaces.some(ws => ws.id.toString() === workspaceId)) {
-          const inboxRes = await fetch(`/api/v1/inbox?workspace_id=${workspaceId}&limit=5`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-          if (inboxRes.ok) {
-            const inboxData = await inboxRes.json();
-            setInboxItems(inboxData.items || []);
-          }
-        }
-      } catch (e) {}
-      
-      setError(null);
-    } catch (err) {
-      setError('Erreur de chargement');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <p className="text-gray-500">{error}</p>
-        <Button onClick={fetchDashboard} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Réessayer
-        </Button>
-      </div>
-    );
-  }
-
-  const hasNoTodos = !data || data.todos_count === 0;
-  const hasNoUrgencies = !data || data.urgencies_count === 0;
-  const hasNoBusiness = !data || data.business_count === 0;
-  const allEmpty = hasNoTodos && hasNoUrgencies && hasNoBusiness && inboxItems.length === 0;
-  const pipelineTotal = data?.business.reduce((sum, item) => sum + (item.value || 0), 0) || 0;
-
-  return (
-    <div className="p-6 space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cockpit</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Vue d'ensemble de votre activité</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/inbox">
-            <Button variant="outline" size="sm" className="border-gray-200">
-              <Inbox className="h-4 w-4 mr-2" />
-              Inbox
-              {inboxItems.length > 0 && (
-                <span className="ml-2 bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded-full font-medium">
-                  {inboxItems.length}
-                </span>
-              )}
-            </Button>
-          </Link>
-          <Link href="/projects/new">
-            <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau projet
-            </Button>
-          </Link>
-          <Button onClick={fetchDashboard} variant="ghost" size="sm">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Projets actifs</span>
-            <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-              <FolderKanban className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white">{data?.active_projects || 0}</div>
-          <Link href="/projects" className="flex items-center gap-1 mt-1 text-sm text-purple-600 hover:underline">
-            <span>Voir les projets</span>
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">En attente validation</span>
-            <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
-              <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-orange-500">{data?.pending_validations || 0}</div>
-          {(data?.urgencies_count || 0) > 0 && (
-            <span className="text-sm text-orange-600 font-medium">{data?.urgencies_count} urgents</span>
-          )}
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Leads chauds</span>
-            <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-              <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-green-500">{data?.hot_leads || 0}</div>
-          {pipelineTotal > 0 && (
-            <div className="flex items-center gap-1 mt-1 text-sm">
-              <span className="text-green-600 font-medium">
-                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(pipelineTotal)}
-              </span>
-              <span className="text-gray-400">potentiel</span>
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">CA du mois</span>
-            <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-              <Euro className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white">
-            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(data?.monthly_revenue || 0)}
-          </div>
-          <Link href="/pipeline" className="flex items-center gap-1 mt-1 text-sm text-blue-600 hover:underline">
-            <span>Voir le pipeline</span>
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </motion.div>
-      </div>
-
-      {/* Empty State */}
-      {allEmpty && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-12"
-        >
-          <div className="flex flex-col items-center justify-center text-center">
-            <Sparkles className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Tout est clair ! 🎉
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-              Aucune action urgente pour le moment. C'est le bon moment pour capturer de nouvelles idées ou avancer sur vos projets.
-            </p>
-            <div className="flex gap-3">
-              <Link href="/inbox">
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Capturer une idée
-                </Button>
-              </Link>
-              <Link href="/projects">
-                <Button variant="outline">
-                  <FolderKanban className="h-4 w-4 mr-2" />
-                  Voir les projets
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Main Grid */}
-      {!allEmpty && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Kanban Columns */}
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* À faire */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden"
-            >
-              <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">À faire</span>
-                </div>
-                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full font-medium">
-                  {data?.todos_count || 0}
-                </span>
-              </div>
-              <div className="p-3 space-y-3 max-h-[400px] overflow-y-auto">
-                {hasNoTodos ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Rien pour aujourd'hui</p>
-                  </div>
-                ) : (
-                  data?.todos.slice(0, 5).map((item) => (
-                    <Link
-                      key={`todo-${item.id}-${item.type}`}
-                      href={item.link || '#'}
-                      className={`block p-3 rounded-lg border-l-4 ${
-                        item.priority === 'high' 
-                          ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500' 
-                          : 'bg-gray-50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600'
-                      }`}
-                    >
-                      <div className="font-medium text-gray-900 dark:text-white text-sm mb-1 truncate">
-                        {item.title}
-                      </div>
-                      {item.client_name && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
-                          {item.client_name}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          item.type === 'followup' 
-                            ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300' 
-                            : item.type === 'validation'
-                            ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
-                            : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
-                        }`}>
-                          {item.type === 'followup' ? 'Relance' : item.type === 'validation' ? 'Validation' : 'Tâche'}
-                        </span>
-                        {item.priority === 'high' && (
-                          <span className="text-xs text-red-500 font-medium">Urgent</span>
-                        )}
-                      </div>
-                    </Link>
-                  ))
-                )}
-                {(data?.todos_count || 0) > 5 && (
-                  <Link href="/production" className="block text-center text-sm text-purple-600 hover:underline py-2">
-                    Voir les {data?.todos_count} actions →
-                  </Link>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Urgences */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden"
-            >
-              <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">Urgences</span>
-                </div>
-                <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 px-2 py-1 rounded-full font-medium">
-                  {data?.urgencies_count || 0}
-                </span>
-              </div>
-              <div className="p-3 space-y-3 max-h-[400px] overflow-y-auto">
-                {hasNoUrgencies ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Pas d'urgence</p>
-                  </div>
-                ) : (
-                  data?.urgencies.slice(0, 5).map((item) => (
-                    <div
-                      key={`urgency-${item.id}-${item.type}`}
-                      className={`p-3 rounded-lg border-l-4 ${
-                        item.severity === 'danger' 
-                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500' 
-                          : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500'
-                      }`}
-                    >
-                      <div className="font-medium text-gray-900 dark:text-white text-sm mb-1 truncate">
-                        {item.title}
-                      </div>
-                      {item.client_name && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
-                          {item.client_name}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          item.severity === 'danger'
-                            ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-                            : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
-                        }`}>
-                          {item.type === 'blocked_project' ? 'Bloqué' : 'Deadline'}
-                        </span>
-                        {item.days_remaining !== undefined && (
-                          <span className={`text-xs font-medium ${
-                            item.days_remaining <= 1 ? 'text-red-500' : 'text-orange-500'
-                          }`}>
-                            {item.days_remaining <= 0 ? 'Dépassé' : `J-${item.days_remaining}`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-
-            {/* Activité */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden"
-            >
-              <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">Activité</span>
-                </div>
-                <Link href="/inbox" className="text-xs text-purple-600 font-medium hover:underline">
-                  Voir tout
-                </Link>
-              </div>
-              <div className="p-3 space-y-3 max-h-[400px] overflow-y-auto">
-                {inboxItems.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <Inbox className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Pas d'activité récente</p>
-                  </div>
-                ) : (
-                  inboxItems.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={`/inbox?item=${item.id}`}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center flex-shrink-0">
-                        {item.type === 'email' ? (
-                          <Mail className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        ) : item.type === 'file' ? (
-                          <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        ) : (
-                          <Inbox className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-900 dark:text-white truncate">{item.text}</div>
-                        <div className="text-xs text-gray-400">
-                          {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: fr })}
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Sidebar */}
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.8 }}
-            className="space-y-4"
-          >
-            {/* Pipeline */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Pipeline</h3>
-                <span className="text-sm text-green-600 font-medium">
-                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(pipelineTotal)}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {hasNoBusiness ? (
-                  <div className="text-center py-6 text-gray-400">
-                    <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Pas de deals actifs</p>
-                    <Link href="/pipeline">
-                      <Button variant="link" size="sm" className="mt-2 text-purple-600">
-                        Créer un deal →
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
-                  data?.business.slice(0, 4).map((item) => {
-                    const probability = item.status === 'negotiation' ? 80 : item.status === 'proposal' ? 50 : item.status === 'qualified' ? 30 : 20;
-                    const bgColor = probability >= 70 ? 'bg-green-50 dark:bg-green-900/20' : probability >= 40 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-blue-50 dark:bg-blue-900/20';
-                    const textColor = probability >= 70 ? 'text-green-600' : probability >= 40 ? 'text-yellow-600' : 'text-blue-600';
-                    
-                    return (
-                      <Link
-                        key={`business-${item.id}-${item.type}`}
-                        href={`/pipeline?deal=${item.id}`}
-                        className={`flex items-center justify-between p-3 ${bgColor} rounded-lg hover:opacity-80 transition-opacity`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-900 dark:text-white truncate">{item.title}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {item.client_name} • {probability}%
-                          </div>
-                        </div>
-                        <span className={`font-semibold ${textColor}`}>
-                          {item.value ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(item.value) : '-'}
-                        </span>
-                      </Link>
-                    );
-                  })
-                )}
-                {(data?.business_count || 0) > 4 && (
-                  <Link href="/pipeline" className="block text-center text-sm text-purple-600 hover:underline py-2">
-                    Voir tout le pipeline →
-                  </Link>
-                )}
-              </div>
-            </div>
-
-            {/* Workspace Info */}
-            {workspaces.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Workspace</h3>
-                </div>
-                <div className="space-y-2">
-                  {workspaces.map((ws) => (
-                    <div key={ws.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <span className="text-sm text-gray-900 dark:text-white font-medium">{ws.name}</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {ws.members_count} membre{ws.members_count > 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quick Actions */}
-            <div className="bg-gradient-to-br from-purple-600 to-pink-500 rounded-xl p-4 text-white">
-              <h3 className="font-semibold mb-3">Actions rapides</h3>
-              <div className="space-y-2">
-                <Link href="/inbox" className="flex items-center gap-2 p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
-                  <Plus className="h-4 w-4" />
-                  <span className="text-sm">Capturer une idée</span>
-                </Link>
-                <Link href="/clients/new" className="flex items-center gap-2 p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
-                  <Users className="h-4 w-4" />
-                  <span className="text-sm">Ajouter un client</span>
-                </Link>
-                <Link href="/pipeline/new" className="flex items-center gap-2 p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-sm">Créer un deal</span>
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </div>
   );
 }

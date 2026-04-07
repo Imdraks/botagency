@@ -1,814 +1,497 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  BarChart3,
+  Calendar,
+  Filter,
+  Loader2,
+  MapPin,
+  Music,
+  RefreshCw,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+  ArrowRight,
+  DollarSign,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  TrendingUp,
-  TrendingDown,
-  Calendar,
-  Target,
-  DollarSign,
-  BarChart3,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
-  Trophy,
-  Loader2,
-  AlertTriangle,
-  Lightbulb,
-  Activity,
-  Download,
-  FileText,
-  ChevronRight,
-} from "lucide-react";
-import { analyticsApi } from "@/lib/api";
-import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
+import { AppLayout, ProtectedRoute } from "@/components/layout";
+import { analyticsV2Api } from "@/lib/api";
 
-// Types
-interface TimelineData {
-  period: string;
-  data: Array<{
-    date: string;
-    new: number;
-    won: number;
-    lost: number;
-    total_value: number;
-  }>;
-  trend: number;
-  trend_label: string;
-}
+// ── Types ──
 
-interface ConversionData {
-  period: string;
-  global: {
-    total: number;
-    won: number;
-    lost: number;
-    pending: number;
-    conversion_rate: number;
+interface TerrainData {
+  overview: {
+    total_artists: number;
+    total_events: number;
+    real_events: number;
+    contact_coverage_pct: number;
+    total_budget_estimated: number;
   };
-  by_category: Array<{
-    category: string;
-    total: number;
-    won: number;
-    lost: number;
-    rate: number | null;
-  }>;
-  by_source: Array<{
-    source: string;
-    total: number;
-    won: number;
-    lost: number;
-    rate: number | null;
-  }>;
-}
-
-interface KpisData {
-  today_new: number;
-  week_new: number;
-  week_trend: string;
-  month_value: number;
-  high_score_pending: number;
-  urgent_deadlines: number;
-  avg_score: number;
-  updated_at: string;
-}
-
-interface ComparisonData {
-  current_period: {
-    label: string;
-    count: number;
-    won: number;
-    lost: number;
-    value: number;
-    conversion_rate: number;
-  };
-  previous_period: {
-    label: string;
-    count: number;
-    won: number;
-    lost: number;
-    value: number;
-    conversion_rate: number;
-  };
-  changes: {
-    count: number;
-    value: number;
-    conversion_rate: number;
+  by_genre: { name: string; count: number; avg_score: number }[];
+  by_zone: { city: string; count: number; density: string }[];
+  by_event_type: Record<string, number>;
+  by_source: Record<string, number>;
+  by_fee_tier: Record<string, number>;
+  timeline: { month: string; count: number }[];
+  heatmap: { month: string; label: string; count: number }[];
+  funnel: {
+    detected: number;
+    scored: number;
+    contact_found: number;
+    fee_estimated: number;
+    actionable: number;
   };
 }
 
-interface HeatmapData {
-  data: Array<{
-    month: string;
-    label: string;
-    count: number;
-    value: number;
-    high_priority: number;
-  }>;
-  hottest_month: { label: string; count: number } | null;
-  total_upcoming: number;
-  total_value: number;
+// ── Helpers ──
+
+function formatCurrency(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M€`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k€`;
+  return `${value}€`;
 }
 
-interface Signal {
-  type: string;
-  priority: string;
-  icon: string;
-  title: string;
-  description: string;
-  opportunity_id: number | null;
-  metadata: Record<string, unknown>;
+function densityColor(d: string): string {
+  if (d === "forte") return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+  if (d === "moyenne") return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }
 
-interface SignalsData {
-  count: number;
-  signals: Signal[];
-  summary: {
-    stale: number;
-    deadline_risk: number;
-    high_value_untouched: number;
-  };
-  updated_at: string;
+// ── Kpi overview card ──
+
+function OverviewKpi({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: typeof BarChart3;
+  label: string;
+  value: string | number;
+  sub?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-muted-foreground font-medium">{label}</span>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <p className="text-2xl font-bold">{value}</p>
+        {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
 }
 
-interface Insight {
-  type: string;
-  icon: string;
-  title: string;
-  description: string;
-  metric: string;
-  category: string;
+// ── Horizontal bar list ──
+
+function BarList({
+  items,
+  labelKey,
+  valueKey,
+  scoreKey,
+  maxItems = 10,
+}: {
+  items: Record<string, unknown>[];
+  labelKey: string;
+  valueKey: string;
+  scoreKey?: string;
+  maxItems?: number;
+}) {
+  const sliced = items.slice(0, maxItems);
+  const max = Math.max(...sliced.map((it) => (it[valueKey] as number) || 0), 1);
+  return (
+    <div className="space-y-2">
+      {sliced.map((it, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="w-28 text-sm truncate">{it[labelKey] as string}</span>
+          <div className="flex-1 h-5 rounded bg-muted overflow-hidden relative">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${((it[valueKey] as number) / max) * 100}%` }}
+              transition={{ duration: 0.5, delay: i * 0.04 }}
+              className="h-full rounded bg-indigo-500"
+            />
+          </div>
+          <span className="text-xs font-medium w-8 text-right">{it[valueKey] as number}</span>
+          {scoreKey && (
+            <span className="text-[10px] text-muted-foreground w-10 text-right">
+              ø{(it[scoreKey] as number) || 0}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-interface InsightsData {
-  insights: Insight[];
-  updated_at: string;
+// ── Donut-like stacked bar for event type / source ──
+
+function StackedBar({ data, colorMap }: { data: Record<string, number>; colorMap?: Record<string, string> }) {
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+  const colors = colorMap || {};
+  const defaultColors = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
+  return (
+    <div className="space-y-3">
+      <div className="flex h-4 rounded-full overflow-hidden bg-muted">
+        {entries.map(([key, val], i) => (
+          <div
+            key={key}
+            style={{
+              width: `${(val / total) * 100}%`,
+              backgroundColor: colors[key] || defaultColors[i % defaultColors.length],
+            }}
+            className="h-full transition-all"
+            title={`${key}: ${val}`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {entries.map(([key, val], i) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <div
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: colors[key] || defaultColors[i % defaultColors.length] }}
+            />
+            <span className="text-xs text-muted-foreground">
+              {key} <span className="font-medium text-foreground">{val}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-interface PredictionPeriod {
-  period: string;
-  days: number;
-  total_opportunities: number;
-  total_value: number;
-  weighted_value: number;
-  high_probability: number;
-  medium_probability: number;
-  low_probability: number;
+// ── Activity timeline ──
+
+function ActivityTimeline({ data }: { data: { month: string; count: number }[] }) {
+  if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">Pas de données</p>;
+  const max = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="flex items-end gap-1 h-32">
+      {data.map((d) => (
+        <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
+          <span className="text-[9px] text-muted-foreground font-medium">{d.count || ""}</span>
+          <div className="w-full rounded-t bg-muted relative overflow-hidden" style={{ height: "100%" }}>
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: `${(d.count / max) * 100}%` }}
+              transition={{ duration: 0.5 }}
+              className="absolute bottom-0 w-full rounded-t bg-indigo-500"
+            />
+          </div>
+          <span className="text-[9px] text-muted-foreground">{d.month.slice(5)}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
-interface PredictionsSummaryData {
-  predictions: PredictionPeriod[];
-  top_likely_wins: Array<{
-    id: number;
-    title: string;
-    score: number;
-    probability: number;
-    budget: number | null;
-    deadline: string | null;
-  }>;
-  total_pipeline: number;
-  updated_at: string;
+// ── Calendar heatmap ──
+
+function CalendarHeatmap({ data }: { data: { month: string; label: string; count: number }[] }) {
+  if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">Pas de données</p>;
+  const max = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+      {data.map((d) => {
+        const intensity = d.count / max;
+        const bg =
+          intensity === 0
+            ? "bg-muted"
+            : intensity < 0.25
+            ? "bg-indigo-100 dark:bg-indigo-950/40"
+            : intensity < 0.5
+            ? "bg-indigo-200 dark:bg-indigo-900/50"
+            : intensity < 0.75
+            ? "bg-indigo-400 dark:bg-indigo-700"
+            : "bg-indigo-600 dark:bg-indigo-500";
+        return (
+          <div key={d.month} className={`rounded-lg p-3 text-center ${bg} transition-colors`}>
+            <p className="text-[10px] font-medium">{d.label}</p>
+            <p className="text-lg font-bold">{d.count}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-export default function AnalyticsPage() {
-  const [timelinePeriod, setTimelinePeriod] = useState<"7d" | "30d" | "90d" | "12m">("30d");
-  const [conversionPeriod, setConversionPeriod] = useState<"7d" | "30d" | "90d" | "all">("30d");
+// ── Qualification funnel ──
 
-  // Queries
-  const { data: kpis, isLoading: kpisLoading } = useQuery<KpisData>({
-    queryKey: ["analytics", "kpis"],
-    queryFn: analyticsApi.getKpis,
-    refetchInterval: 60000, // Refresh every minute
+function QualificationFunnel({ funnel }: { funnel: TerrainData["funnel"] }) {
+  const steps = [
+    { label: "Détectés", value: funnel.detected, color: "#6366f1" },
+    { label: "Scorés", value: funnel.scored, color: "#8b5cf6" },
+    { label: "Contact trouvé", value: funnel.contact_found, color: "#a78bfa" },
+    { label: "Cachet estimé", value: funnel.fee_estimated, color: "#c4b5fd" },
+    { label: "Actionnables", value: funnel.actionable, color: "#10b981" },
+  ];
+  const maxVal = funnel.detected || 1;
+  return (
+    <div className="space-y-3">
+      {steps.map((s, i) => (
+        <div key={s.label} className="flex items-center gap-3">
+          <span className="w-28 text-sm text-muted-foreground">{s.label}</span>
+          <div className="flex-1 h-8 rounded bg-muted overflow-hidden relative">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${(s.value / maxVal) * 100}%` }}
+              transition={{ duration: 0.6, delay: i * 0.08 }}
+              className="h-full rounded flex items-center px-2"
+              style={{ backgroundColor: s.color }}
+            >
+              <span className="text-xs text-white font-bold">{s.value}</span>
+            </motion.div>
+          </div>
+          <span className="text-xs text-muted-foreground w-10 text-right">
+            {maxVal > 0 ? Math.round((s.value / maxVal) * 100) : 0}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Fee tier bars ──
+
+function FeeTierBars({ data }: { data: Record<string, number> }) {
+  const ordered = ["< 5k", "5-15k", "15-40k", "40-100k", "> 100k"];
+  const max = Math.max(...Object.values(data), 1);
+  const colors = ["#10b981", "#6366f1", "#8b5cf6", "#ec4899", "#ef4444"];
+  return (
+    <div className="space-y-2">
+      {ordered.map((tier, i) => {
+        const val = data[tier] || 0;
+        return (
+          <div key={tier} className="flex items-center gap-2">
+            <span className="w-16 text-xs text-muted-foreground font-medium">{tier}</span>
+            <div className="flex-1 h-5 rounded bg-muted overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${(val / max) * 100}%` }}
+                transition={{ duration: 0.5, delay: i * 0.05 }}
+                className="h-full rounded"
+                style={{ backgroundColor: colors[i] }}
+              />
+            </div>
+            <span className="text-xs font-medium w-6 text-right">{val}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main ──
+
+function AnalyticsContent() {
+  const { data, isLoading, refetch } = useQuery<TerrainData>({
+    queryKey: ["analytics-v2", "terrain"],
+    queryFn: () => analyticsV2Api.getTerrain(),
+    refetchInterval: 120_000,
   });
 
-  const { data: comparison, isLoading: comparisonLoading } = useQuery<ComparisonData>({
-    queryKey: ["analytics", "comparison"],
-    queryFn: analyticsApi.getComparison,
-  });
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  const { data: timeline, isLoading: timelineLoading } = useQuery<TimelineData>({
-    queryKey: ["analytics", "timeline", timelinePeriod],
-    queryFn: () => analyticsApi.getTimeline(timelinePeriod),
-  });
-
-  const { data: conversion, isLoading: conversionLoading } = useQuery<ConversionData>({
-    queryKey: ["analytics", "conversion", conversionPeriod],
-    queryFn: () => analyticsApi.getConversion(conversionPeriod),
-  });
-
-  const { data: heatmap, isLoading: heatmapLoading } = useQuery<HeatmapData>({
-    queryKey: ["analytics", "heatmap"],
-    queryFn: analyticsApi.getDeadlineHeatmap,
-  });
-
-  const { data: signals } = useQuery<SignalsData>({
-    queryKey: ["analytics", "signals"],
-    queryFn: analyticsApi.getSignals,
-    refetchInterval: 120000,
-  });
-
-  const { data: insights } = useQuery<InsightsData>({
-    queryKey: ["analytics", "insights"],
-    queryFn: analyticsApi.getInsights,
-  });
-
-  const { data: predictionsSummary } = useQuery<PredictionsSummaryData>({
-    queryKey: ["analytics", "predictions-summary"],
-    queryFn: analyticsApi.getPredictionsSummary,
-  });
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const getChangeColor = (value: number) => {
-    if (value > 0) return "text-green-600";
-    if (value < 0) return "text-red-600";
-    return "text-gray-600";
-  };
-
-  const getChangeIcon = (value: number) => {
-    if (value > 0) return <ArrowUpRight className="h-4 w-4" />;
-    if (value < 0) return <ArrowDownRight className="h-4 w-4" />;
-    return null;
-  };
+  const ov = data?.overview;
+  const fn = data?.funnel;
 
   return (
-    <ProtectedRoute>
-    <AppLayoutWithOnboarding>
     <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">
-            Tableaux de bord, signaux et prédictions
-          </p>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-sm text-muted-foreground">Terrain — structure du marché et couverture</p>
         </div>
-        <div className="flex items-center gap-2">
-          {kpis && (
-            <Badge variant="outline" className="text-xs">
-              Mis à jour: {new Date(kpis.updated_at).toLocaleTimeString("fr-FR")}
-            </Badge>
-          )}
-          <a href="/advanced-features/export/opportunities" target="_blank">
-            <Button variant="outline" size="sm" className="gap-1">
-              <Download className="h-4 w-4" />
-              Exporter
-            </Button>
-          </a>
-          <a href="/advanced-features/reports/weekly" target="_blank">
-            <Button variant="outline" size="sm" className="gap-1">
-              <FileText className="h-4 w-4" />
-              Rapport
-            </Button>
-          </a>
-        </div>
+        <Button onClick={() => refetch()} variant="ghost" size="sm">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* KPIs Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Aujourd&apos;hui</p>
-                <p className="text-2xl font-bold">{kpis?.today_new ?? "-"}</p>
-              </div>
-              <Calendar className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Cette semaine</p>
-                <div className="flex items-center gap-1">
-                  <p className="text-2xl font-bold">{kpis?.week_new ?? "-"}</p>
-                  <span className={kpis?.week_trend === "↑" ? "text-green-500" : "text-red-500"}>
-                    {kpis?.week_trend}
-                  </span>
-                </div>
-              </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Valeur du mois</p>
-                <p className="text-2xl font-bold">
-                  {kpis ? formatCurrency(kpis.month_value) : "-"}
-                </p>
-              </div>
-              <DollarSign className="h-8 w-8 text-yellow-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Score &gt;70</p>
-                <p className="text-2xl font-bold">{kpis?.high_score_pending ?? "-"}</p>
-              </div>
-              <Target className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Urgentes (7j)</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {kpis?.urgent_deadlines ?? "-"}
-                </p>
-              </div>
-              <Clock className="h-8 w-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Score moyen</p>
-                <p className="text-2xl font-bold">{kpis?.avg_score ?? "-"}</p>
-              </div>
-              <BarChart3 className="h-8 w-8 text-indigo-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Comparison Card */}
-      {comparison && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Comparaison période
-            </CardTitle>
-            <CardDescription>
-              {comparison.current_period.label} vs {comparison.previous_period.label}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Nouvelles opportunités</p>
-                <p className="text-3xl font-bold">{comparison.current_period.count}</p>
-                <div className={`flex items-center justify-center gap-1 ${getChangeColor(comparison.changes.count)}`}>
-                  {getChangeIcon(comparison.changes.count)}
-                  <span>{comparison.changes.count > 0 ? "+" : ""}{comparison.changes.count}%</span>
-                </div>
-              </div>
-
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Valeur totale</p>
-                <p className="text-3xl font-bold">{formatCurrency(comparison.current_period.value)}</p>
-                <div className={`flex items-center justify-center gap-1 ${getChangeColor(comparison.changes.value)}`}>
-                  {getChangeIcon(comparison.changes.value)}
-                  <span>{comparison.changes.value > 0 ? "+" : ""}{comparison.changes.value}%</span>
-                </div>
-              </div>
-
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Taux de conversion</p>
-                <p className="text-3xl font-bold">{comparison.current_period.conversion_rate}%</p>
-                <div className={`flex items-center justify-center gap-1 ${getChangeColor(comparison.changes.conversion_rate)}`}>
-                  {getChangeIcon(comparison.changes.conversion_rate)}
-                  <span>{comparison.changes.conversion_rate > 0 ? "+" : ""}{comparison.changes.conversion_rate} pts</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Overview KPIs */}
+      {ov && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <OverviewKpi icon={Users} label="Artistes" value={ov.total_artists} />
+          <OverviewKpi icon={Calendar} label="Événements" value={ov.total_events} sub={`${ov.real_events} Ticketmaster`} />
+          <OverviewKpi icon={Target} label="Couverture contact" value={`${ov.contact_coverage_pct}%`} />
+          <OverviewKpi icon={DollarSign} label="Budget estimé" value={formatCurrency(ov.total_budget_estimated)} />
+          <OverviewKpi icon={Zap} label="Actionnables" value={fn?.actionable || 0} sub={`sur ${fn?.detected || 0} détectés`} />
+        </div>
       )}
 
+      {/* Grid: genres + zones */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Timeline Chart */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Évolution temporelle
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Music className="h-4 w-4" /> Répartition par genre
               </CardTitle>
-              <div className="flex gap-1">
-                {(["7d", "30d", "90d", "12m"] as const).map((p) => (
-                  <Button
-                    key={p}
-                    variant={timelinePeriod === p ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTimelinePeriod(p)}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
+              <Link href="/discovery" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                Explorer <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-            {timeline && (
-              <CardDescription className="flex items-center gap-2">
-                Tendance: 
-                <span className={timeline.trend > 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-                  {timeline.trend_label} {timeline.trend > 0 ? "+" : ""}{timeline.trend}%
-                </span>
-              </CardDescription>
-            )}
           </CardHeader>
           <CardContent>
-            {timelineLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : timeline?.data.length ? (
+            {data?.by_genre && data.by_genre.length > 0 ? (
+              <BarList items={data.by_genre} labelKey="name" valueKey="count" scoreKey="avg_score" />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée de genre</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MapPin className="h-4 w-4" /> Répartition par zone
+              </CardTitle>
+              <Link href="/map" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                Carte <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {data?.by_zone && data.by_zone.length > 0 ? (
               <div className="space-y-2">
-                {timeline.data.slice(-10).map((d) => (
-                  <div key={d.date} className="flex items-center gap-2">
-                    <span className="text-xs w-20 text-muted-foreground">{d.date}</span>
-                    <div className="flex-1 h-6 bg-muted rounded overflow-hidden flex">
-                      <div
-                        className="h-full bg-blue-500"
-                        style={{ width: `${(d.new / Math.max(...timeline.data.map(x => x.new), 1)) * 100}%` }}
+                {data.by_zone.map((z) => (
+                  <div key={z.city} className="flex items-center gap-2">
+                    <span className="w-28 text-sm truncate">{z.city}</span>
+                    <div className="flex-1 h-5 rounded bg-muted overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(z.count / Math.max(...data.by_zone.map((x) => x.count), 1)) * 100}%` }}
+                        transition={{ duration: 0.5 }}
+                        className="h-full rounded bg-indigo-500"
                       />
                     </div>
-                    <span className="text-sm font-medium w-8">{d.new}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">Pas de données</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Conversion Rates */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5" />
-                Taux de conversion
-              </CardTitle>
-              <div className="flex gap-1">
-                {(["7d", "30d", "90d", "all"] as const).map((p) => (
-                  <Button
-                    key={p}
-                    variant={conversionPeriod === p ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setConversionPeriod(p)}
-                  >
-                    {p === "all" ? "Tout" : p}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {conversionLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : conversion ? (
-              <div className="space-y-4">
-                {/* Global rate */}
-                <div className="text-center p-4 bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-lg">
-                  <p className="text-4xl font-bold text-green-600">
-                    {conversion.global.conversion_rate}%
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {conversion.global.won} gagnées / {conversion.global.won + conversion.global.lost} décidées
-                  </p>
-                </div>
-
-                {/* By category */}
-                <div>
-                  <p className="text-sm font-medium mb-2">Par catégorie</p>
-                  <div className="space-y-1">
-                    {conversion.by_category.slice(0, 5).map((cat) => (
-                      <div key={cat.category} className="flex items-center justify-between text-sm">
-                        <span className="capitalize">{cat.category}</span>
-                        <span className="font-medium">
-                          {cat.rate !== null ? `${cat.rate}%` : "-"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">Pas de données</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Deadline Heatmap */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Heatmap des deadlines
-            </CardTitle>
-            {heatmap?.hottest_month && (
-              <CardDescription>
-                🔥 Mois le plus chargé: {heatmap.hottest_month.label} ({heatmap.hottest_month.count} opportunités)
-              </CardDescription>
-            )}
-          </CardHeader>
-          <CardContent>
-            {heatmapLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : heatmap?.data.length ? (
-              <div className="grid grid-cols-4 gap-2">
-                {heatmap.data.map((month) => {
-                  const intensity = month.count / Math.max(...heatmap.data.map(m => m.count), 1);
-                  return (
-                    <div
-                      key={month.month}
-                      className="p-3 rounded-lg text-center transition-all hover:scale-105"
-                      style={{
-                        backgroundColor: `rgba(59, 130, 246, ${0.1 + intensity * 0.5})`,
-                      }}
-                    >
-                      <p className="text-xs font-medium">{month.label}</p>
-                      <p className="text-lg font-bold">{month.count}</p>
-                      {month.high_priority > 0 && (
-                        <Badge variant="destructive" className="text-xs mt-1">
-                          {month.high_priority} ⭐
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">Pas de deadlines à venir</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Performers placeholder */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Top performers
-            </CardTitle>
-            <CardDescription>Sources et catégories les plus performantes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="sources">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="sources">Sources</TabsTrigger>
-                <TabsTrigger value="categories">Catégories</TabsTrigger>
-              </TabsList>
-              <TabsContent value="sources" className="space-y-2 mt-4">
-                {conversion?.by_source.slice(0, 5).map((source, idx) => (
-                  <div key={source.source} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-muted-foreground">#{idx + 1}</span>
-                      <span className="font-medium">{source.source}</span>
-                    </div>
-                    <Badge variant={source.rate && source.rate > 50 ? "default" : "secondary"}>
-                      {source.rate !== null ? `${source.rate}%` : "-"}
+                    <span className="text-xs font-medium w-6 text-right">{z.count}</span>
+                    <Badge variant="outline" className={`text-[10px] ${densityColor(z.density)}`}>
+                      {z.density}
                     </Badge>
                   </div>
                 ))}
-              </TabsContent>
-              <TabsContent value="categories" className="space-y-2 mt-4">
-                {conversion?.by_category.slice(0, 5).map((cat, idx) => (
-                  <div key={cat.category} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-muted-foreground">#{idx + 1}</span>
-                      <span className="font-medium capitalize">{cat.category}</span>
-                    </div>
-                    <Badge variant={cat.rate && cat.rate > 50 ? "default" : "secondary"}>
-                      {cat.rate !== null ? `${cat.rate}%` : "-"}
-                    </Badge>
-                  </div>
-                ))}
-              </TabsContent>
-            </Tabs>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée de zone</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* ============================================================ */}
-      {/* SIGNAUX FAIBLES & ALERTES */}
-      {/* ============================================================ */}
-      {signals && signals.count > 0 && (
-        <Card className="border-orange-200 bg-orange-50/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
-              Signaux faibles
-              <Badge variant="destructive" className="ml-2">{signals.count}</Badge>
-            </CardTitle>
-            <CardDescription>
-              Anomalies et risques détectés automatiquement — {signals.summary.stale} stagnante(s),{" "}
-              {signals.summary.deadline_risk} deadline(s) à risque,{" "}
-              {signals.summary.high_value_untouched} opportunité(s) haute valeur non traitée(s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {signals.signals.map((signal, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-start gap-3 p-3 rounded-lg border ${
-                    signal.priority === "critical"
-                      ? "border-red-300 bg-red-50"
-                      : signal.priority === "high"
-                      ? "border-orange-300 bg-orange-50"
-                      : "border-yellow-200 bg-yellow-50"
-                  }`}
-                >
-                  <span className="text-xl">{signal.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{signal.title}</p>
-                      <Badge
-                        variant={signal.priority === "critical" ? "destructive" : "outline"}
-                        className="text-xs shrink-0"
-                      >
-                        {signal.priority}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate mt-1">
-                      {signal.description}
-                    </p>
-                    {signal.opportunity_id && (
-                      <a
-                        href={`/opportunities/${signal.opportunity_id}`}
-                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
-                      >
-                        Voir <ChevronRight className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ============================================================ */}
-      {/* PRÉDICTIONS 30/60/90 JOURS */}
-      {/* ============================================================ */}
-      {predictionsSummary && (
+      {/* Event type & Source */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-purple-600" />
-              Prédictions pipeline
-            </CardTitle>
-            <CardDescription>
-              Estimation du pipeline sur 30, 60 et 90 jours — {predictionsSummary.total_pipeline} opportunités actives
-            </CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Type d'événement</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              {predictionsSummary.predictions.map((pred) => (
-                <div key={pred.period} className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="font-bold text-lg text-purple-900">{pred.period}</p>
-                    <Badge variant="outline">{pred.total_opportunities} opps</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Valeur totale</span>
-                      <span className="font-medium">{formatCurrency(pred.total_value)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Valeur pondérée</span>
-                      <span className="font-bold text-purple-700">{formatCurrency(pred.weighted_value)}</span>
-                    </div>
-                    <div className="flex gap-1 mt-2">
-                      {pred.high_probability > 0 && (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          {pred.high_probability} fort
-                        </Badge>
-                      )}
-                      {pred.medium_probability > 0 && (
-                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                          {pred.medium_probability} moyen
-                        </Badge>
-                      )}
-                      {pred.low_probability > 0 && (
-                        <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
-                          {pred.low_probability} faible
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {predictionsSummary.top_likely_wins.length > 0 && (
-              <div>
-                <p className="text-sm font-medium mb-3">🎯 Meilleures chances de gain</p>
-                <div className="space-y-2">
-                  {predictionsSummary.top_likely_wins.map((opp) => (
-                    <a
-                      key={opp.id}
-                      href={`/opportunities/${opp.id}`}
-                      className="flex items-center justify-between p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-700 font-bold text-sm shrink-0">
-                          {opp.probability}%
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{opp.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Score: {opp.score}
-                            {opp.deadline && ` • Deadline: ${new Date(opp.deadline).toLocaleDateString("fr-FR")}`}
-                          </p>
-                        </div>
-                      </div>
-                      {opp.budget && (
-                        <span className="text-sm font-medium text-green-700 shrink-0 ml-2">
-                          {formatCurrency(opp.budget)}
-                        </span>
-                      )}
-                    </a>
-                  ))}
-                </div>
-              </div>
+            {data?.by_event_type && Object.keys(data.by_event_type).length > 0 ? (
+              <StackedBar data={data.by_event_type} />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">Aucune donnée</p>
             )}
           </CardContent>
         </Card>
-      )}
 
-      {/* ============================================================ */}
-      {/* INSIGHTS AUTOMATIQUES */}
-      {/* ============================================================ */}
-      {insights && insights.insights.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-600" />
-              Insights
-            </CardTitle>
-            <CardDescription>Analyse automatique de vos données</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Source des données</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {insights.insights.map((insight, idx) => (
-                <div key={idx} className="p-4 rounded-lg border bg-card hover:shadow-sm transition-shadow">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl">{insight.icon}</span>
-                    <p className="font-medium text-sm">{insight.title}</p>
-                  </div>
-                  <p
-                    className="text-sm text-muted-foreground"
-                    dangerouslySetInnerHTML={{
-                      __html: insight.description
-                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
-                    }}
-                  />
-                  <div className="mt-3">
-                    <Badge variant="secondary" className="text-xs">
-                      {insight.metric}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+            {data?.by_source && Object.keys(data.by_source).length > 0 ? (
+              <StackedBar data={data.by_source} />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">Aucune donnée</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Fee tiers */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <DollarSign className="h-4 w-4" /> Répartition par cachet estimé
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data?.by_fee_tier ? <FeeTierBars data={data.by_fee_tier} /> : <p className="text-sm text-muted-foreground text-center py-6">Aucune donnée</p>}
+        </CardContent>
+      </Card>
+
+      {/* Activity timeline + calendar heatmap */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" /> Activité (12 derniers mois)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ActivityTimeline data={data?.timeline || []} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> Calendrier à venir
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CalendarHeatmap data={data?.heatmap || []} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Qualification funnel */}
+      {fn && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Filter className="h-4 w-4" /> Entonnoir de qualification
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {fn.actionable} artistes actionnables sur {fn.detected} détectés
+              </p>
             </div>
+          </CardHeader>
+          <CardContent>
+            <QualificationFunnel funnel={fn} />
           </CardContent>
         </Card>
       )}
     </div>
-    </AppLayoutWithOnboarding>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <AnalyticsContent />
+      </AppLayout>
     </ProtectedRoute>
   );
 }

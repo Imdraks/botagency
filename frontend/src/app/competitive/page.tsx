@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -34,21 +36,20 @@ import {
   Eye,
   Plus,
   Trash2,
-  Bell,
   Trophy,
-  DollarSign,
-  PieChart,
   Target,
-  AlertTriangle,
   Users,
-  TrendingUp,
   Loader2,
-  Search,
+  MapPin,
+  Music,
+  Calendar,
+  ArrowRight,
 } from "lucide-react";
-import { competitiveApi } from "@/lib/api";
+import { competitiveApi, analyticsV2Api } from "@/lib/api";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 
-// Types
+// ── Types ──
+
 interface Competitor {
   id: number;
   name: string;
@@ -58,32 +59,6 @@ interface Competitor {
   is_active: boolean;
   mentions_count: number;
   created_at: string;
-}
-
-interface Mention {
-  competitor_id: number;
-  competitor_name: string;
-  keyword_matched: string;
-  opportunity: {
-    id: number;
-    title: string;
-    organization: string;
-    status: string | null;
-    budget: number | null;
-    created_at: string;
-  };
-}
-
-interface MentionsData {
-  period: string;
-  mentions: Mention[];
-  by_competitor: Array<{
-    name: string;
-    count: number;
-    recent: Mention[];
-  }>;
-  total: number;
-  message?: string;
 }
 
 interface Winner {
@@ -103,79 +78,37 @@ interface WinnersData {
   insights: string[];
 }
 
-interface PricingData {
-  global: {
-    count: number;
-    min: number;
-    max: number;
-    avg: number;
-    median: number;
-  };
-  by_category: Array<{
-    category: string;
-    count: number;
-    min: number;
-    max: number;
-    avg: number;
-    median: number;
-    p25: number;
-    p75: number;
-  }>;
-  insights: string[];
+interface GapsData {
+  underserved_zones: {
+    city: string;
+    scored_artists: number;
+    avg_score: number;
+    upcoming_events: number;
+  }[];
+  underrepresented_genres: {
+    genre: string;
+    growing_artists: number;
+    avg_velocity: number;
+    upcoming_events: number;
+  }[];
+  empty_slots: {
+    month: string;
+    city: string;
+  }[];
 }
 
-interface Alert {
-  type: string;
-  priority: string;
-  competitor?: string;
-  message: string;
-  opportunity_id?: number;
-  opportunity_title?: string;
-  created_at: string;
-}
-
-interface AlertsData {
-  alerts: Alert[];
-  total: number;
-  last_check: string;
-  message?: string;
-}
-
-interface MarketShareData {
-  period: string;
-  overall: {
-    count_share: number;
-    value_share: number;
-    won_count: number;
-    total_count: number;
-    won_value: number;
-    total_value: number;
-  };
-  by_category: Array<{
-    category: string;
-    count_share: number;
-    value_share: number;
-    won: number;
-    total: number;
-  }>;
-  insights: string[];
-}
+// ── Main ──
 
 function CompetitiveContent() {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newCompetitor, setNewCompetitor] = useState({ name: "", keywords: "" });
-  const [mentionsPeriod, setMentionsPeriod] = useState<"7d" | "30d" | "90d">("30d");
 
-  // Queries
+  // ── Queries ──
+
   const { data: competitors, isLoading: competitorsLoading } = useQuery<Competitor[]>({
     queryKey: ["competitive", "competitors"],
     queryFn: competitiveApi.getCompetitors,
-  });
-
-  const { data: mentions, isLoading: mentionsLoading } = useQuery<MentionsData>({
-    queryKey: ["competitive", "mentions", mentionsPeriod],
-    queryFn: () => competitiveApi.getMentions(mentionsPeriod),
   });
 
   const { data: winners, isLoading: winnersLoading } = useQuery<WinnersData>({
@@ -183,23 +116,14 @@ function CompetitiveContent() {
     queryFn: () => competitiveApi.getWinnersAnalysis("90d"),
   });
 
-  const { data: pricing, isLoading: pricingLoading } = useQuery<PricingData>({
-    queryKey: ["competitive", "pricing"],
-    queryFn: () => competitiveApi.getPricingBenchmark(),
+  const { data: gaps, isLoading: gapsLoading } = useQuery<GapsData>({
+    queryKey: ["analytics-v2", "competitive-gaps"],
+    queryFn: () => analyticsV2Api.getCompetitiveGaps(),
+    refetchInterval: 120_000,
   });
 
-  const { data: alerts, isLoading: alertsLoading } = useQuery<AlertsData>({
-    queryKey: ["competitive", "alerts"],
-    queryFn: competitiveApi.getAlerts,
-    refetchInterval: 60000,
-  });
+  // ── Mutations ──
 
-  const { data: marketShare, isLoading: marketShareLoading } = useQuery<MarketShareData>({
-    queryKey: ["competitive", "market-share"],
-    queryFn: () => competitiveApi.getMarketShare("90d"),
-  });
-
-  // Mutations
   const addMutation = useMutation({
     mutationFn: competitiveApi.addCompetitor,
     onSuccess: () => {
@@ -216,148 +140,99 @@ function CompetitiveContent() {
     },
   });
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
   const handleAddCompetitor = () => {
     if (!newCompetitor.name.trim()) return;
-    
     const keywords = newCompetitor.keywords
       .split(",")
-      .map(k => k.trim())
-      .filter(k => k.length > 0);
-    
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
     addMutation.mutate({
       name: newCompetitor.name.trim(),
       keywords: keywords.length > 0 ? keywords : [newCompetitor.name.toLowerCase()],
     });
   };
 
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Veille Compétitive</h1>
-          <p className="text-muted-foreground">
-            Surveillez vos concurrents et analysez le marché
+          <h1 className="text-2xl font-bold">Veille Concurrentielle</h1>
+          <p className="text-sm text-muted-foreground">
+            Concurrents, dynamiques du marché et espaces à prendre
           </p>
         </div>
-        {alerts && alerts.total > 0 && (
-          <Badge variant="destructive" className="animate-pulse">
-            {alerts.total} alerte{alerts.total > 1 ? "s" : ""}
-          </Badge>
-        )}
       </div>
 
-      {/* Alerts Banner */}
-      {alerts && alerts.alerts.length > 0 && (
-        <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
-          <CardContent className="pt-4">
-            <div className="flex items-start gap-3">
-              <Bell className="h-5 w-5 text-orange-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium text-orange-700 dark:text-orange-400">
-                  Alertes récentes
-                </p>
-                <div className="space-y-1 mt-2">
-                  {alerts.alerts.slice(0, 3).map((alert, idx) => (
-                    <p key={idx} className="text-sm">
-                      {alert.message}
-                    </p>
-                  ))}
-                </div>
-              </div>
+      {/* Overview KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Concurrents suivis</span>
+              <Eye className="h-4 w-4 text-muted-foreground" />
             </div>
+            <p className="text-2xl font-bold">{competitors?.length ?? 0}</p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Market Share Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Part de marché (volume)</p>
-                <p className="text-3xl font-bold text-blue-600">
-                  {marketShare?.overall.count_share ?? 0}%
-                </p>
-              </div>
-              <PieChart className="h-8 w-8 text-blue-500" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Zones sous-couvertes</span>
+              <MapPin className="h-4 w-4 text-muted-foreground" />
             </div>
+            <p className="text-2xl font-bold text-amber-600">{gaps?.underserved_zones?.length ?? 0}</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Part de marché (valeur)</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {marketShare?.overall.value_share ?? 0}%
-                </p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-500" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Genres en croissance</span>
+              <Music className="h-4 w-4 text-muted-foreground" />
             </div>
+            <p className="text-2xl font-bold text-indigo-600">{gaps?.underrepresented_genres?.length ?? 0}</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Concurrents surveillés</p>
-                <p className="text-3xl font-bold">{competitors?.length ?? 0}</p>
-              </div>
-              <Eye className="h-8 w-8 text-purple-500" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Créneaux vides</span>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Mentions détectées</p>
-                <p className="text-3xl font-bold text-orange-600">{mentions?.total ?? 0}</p>
-              </div>
-              <Search className="h-8 w-8 text-orange-500" />
-            </div>
+            <p className="text-2xl font-bold text-rose-600">{gaps?.empty_slots?.length ?? 0}</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Tabs */}
       <Tabs defaultValue="competitors" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="competitors">Concurrents</TabsTrigger>
-          <TabsTrigger value="mentions">Mentions</TabsTrigger>
-          <TabsTrigger value="winners">Analyse Gagnants</TabsTrigger>
-          <TabsTrigger value="pricing">Benchmark Prix</TabsTrigger>
+          <TabsTrigger value="competitors">Concurrents surveillés</TabsTrigger>
+          <TabsTrigger value="market">Activité du marché</TabsTrigger>
+          <TabsTrigger value="gaps">Espaces à prendre</TabsTrigger>
         </TabsList>
 
-        {/* Competitors Tab */}
+        {/* ── Tab 1: Concurrents ── */}
         <TabsContent value="competitors">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4" />
                     Concurrents surveillés
                   </CardTitle>
-                  <CardDescription>
-                    Ajoutez des concurrents pour surveiller leurs mentions
+                  <CardDescription className="text-xs">
+                    Suivez les acteurs du marché
                   </CardDescription>
                 </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
                       Ajouter
                     </Button>
                   </DialogTrigger>
@@ -365,14 +240,14 @@ function CompetitiveContent() {
                     <DialogHeader>
                       <DialogTitle>Ajouter un concurrent</DialogTitle>
                       <DialogDescription>
-                        Surveillez les mentions de ce concurrent dans les opportunités
+                        Surveillez ce concurrent dans le marché
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div>
-                        <label className="text-sm font-medium">Nom du concurrent</label>
+                        <label className="text-sm font-medium">Nom</label>
                         <Input
-                          placeholder="Ex: Agence XYZ"
+                          placeholder="Ex: Live Nation"
                           value={newCompetitor.name}
                           onChange={(e) => setNewCompetitor({ ...newCompetitor, name: e.target.value })}
                         />
@@ -380,13 +255,11 @@ function CompetitiveContent() {
                       <div>
                         <label className="text-sm font-medium">Mots-clés (optionnel)</label>
                         <Input
-                          placeholder="Ex: xyz, agence-xyz, xyz-events"
+                          placeholder="Ex: livenation, live-nation"
                           value={newCompetitor.keywords}
                           onChange={(e) => setNewCompetitor({ ...newCompetitor, keywords: e.target.value })}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Séparez les mots-clés par des virgules
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">Séparés par virgule</p>
                       </div>
                     </div>
                     <DialogFooter>
@@ -394,11 +267,7 @@ function CompetitiveContent() {
                         Annuler
                       </Button>
                       <Button onClick={handleAddCompetitor} disabled={addMutation.isPending}>
-                        {addMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          "Ajouter"
-                        )}
+                        {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -417,7 +286,7 @@ function CompetitiveContent() {
                       <TableHead>Nom</TableHead>
                       <TableHead>Mots-clés</TableHead>
                       <TableHead>Mentions</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -432,9 +301,7 @@ function CompetitiveContent() {
                               </Badge>
                             ))}
                             {comp.keywords.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{comp.keywords.length - 3}
-                              </Badge>
+                              <Badge variant="outline" className="text-xs">+{comp.keywords.length - 3}</Badge>
                             )}
                           </div>
                         </TableCell>
@@ -458,275 +325,247 @@ function CompetitiveContent() {
                 </Table>
               ) : (
                 <div className="text-center py-8">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Aucun concurrent surveillé
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Ajoutez des concurrents pour commencer la veille
-                  </p>
+                  <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground text-sm">Aucun concurrent surveillé</p>
+                  <p className="text-xs text-muted-foreground">Ajoutez des concurrents pour commencer</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Mentions Tab */}
-        <TabsContent value="mentions">
+        {/* ── Tab 2: Activité du marché ── */}
+        <TabsContent value="market" className="space-y-6">
+          {/* Winners */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="h-5 w-5" />
-                  Mentions détectées
-                </CardTitle>
-                <div className="flex gap-1">
-                  {(["7d", "30d", "90d"] as const).map((p) => (
-                    <Button
-                      key={p}
-                      variant={mentionsPeriod === p ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setMentionsPeriod(p)}
-                    >
-                      {p}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {mentionsLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-              ) : mentions?.mentions.length ? (
-                <div className="space-y-3">
-                  {mentions.mentions.slice(0, 20).map((mention, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-3 bg-muted rounded-lg"
-                    >
-                      <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge>{mention.competitor_name}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            via &quot;{mention.keyword_matched}&quot;
-                          </span>
-                        </div>
-                        <p className="font-medium">{mention.opportunity.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {mention.opportunity.organization}
-                          {mention.opportunity.budget && (
-                            <span> • {formatCurrency(mention.opportunity.budget)}</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    {mentions?.message || "Aucune mention détectée"}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Winners Tab */}
-        <TabsContent value="winners">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
-                Analyse des gagnants
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Trophy className="h-4 w-4" />
+                Qui gagne sur le terrain ?
               </CardTitle>
-              <CardDescription>
-                Qui remporte le plus d&apos;opportunités ?
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {winnersLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-              ) : winners ? (
-                <div className="space-y-6">
-                  {/* Insights */}
-                  {winners.insights.length > 0 && (
-                    <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                      {winners.insights.map((insight, idx) => (
-                        <p key={idx} className="text-sm">{insight}</p>
-                      ))}
-                    </div>
-                  )}
+              ) : winners && winners.top_winners.length > 0 ? (
+                <div className="space-y-2">
+                  {winners.top_winners.slice(0, 8).map((w, i) => (
+                    <motion.div
+                      key={w.organization}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-muted-foreground w-6">#{i + 1}</span>
+                        <div>
+                          <p className="font-medium text-sm">{w.organization}</p>
+                          <div className="flex gap-1 mt-0.5">
+                            {w.categories.slice(0, 2).map((c) => (
+                              <Badge key={c} variant="outline" className="text-[10px]">{c}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">{w.wins} victoires</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(w.total_value)}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-6">Pas assez de données</p>
+              )}
+            </CardContent>
+          </Card>
 
-                  {/* Top Winners */}
-                  <div>
-                    <h3 className="font-medium mb-3">🏆 Top gagnants</h3>
+          {/* Potential competitors to watch */}
+          {winners && winners.potential_competitors.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Concurrents potentiels à surveiller
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {winners.potential_competitors.map((comp) => (
+                    <Badge
+                      key={comp.organization}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-muted text-xs py-1.5"
+                      onClick={() => {
+                        setNewCompetitor({ name: comp.organization, keywords: "" });
+                        setIsAddDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      {comp.organization} ({comp.wins})
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Insights */}
+          {winners && winners.insights.length > 0 && (
+            <Card className="border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/10">
+              <CardContent className="pt-4">
+                <div className="space-y-1">
+                  {winners.insights.map((insight, i) => (
+                    <p key={i} className="text-sm">{insight}</p>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Tab 3: Espaces à prendre ── */}
+        <TabsContent value="gaps" className="space-y-6">
+          {gapsLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Underserved zones */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Zones sous-couvertes
+                    </CardTitle>
+                    <Link href="/map" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                      Carte <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  <CardDescription className="text-xs">
+                    Villes avec des artistes scorés mais peu d&apos;événements prévus
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {gaps?.underserved_zones && gaps.underserved_zones.length > 0 ? (
                     <div className="space-y-2">
-                      {winners.top_winners.slice(0, 10).map((winner, idx) => (
-                        <div
-                          key={winner.organization}
-                          className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                      {gaps.underserved_zones.map((z) => (
+                        <motion.div
+                          key={z.city}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="flex items-center justify-between p-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-800/30"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl font-bold text-muted-foreground">
-                              #{idx + 1}
-                            </span>
+                            <MapPin className="h-4 w-4 text-amber-600" />
                             <div>
-                              <p className="font-medium">{winner.organization}</p>
-                              <div className="flex gap-1 mt-1">
-                                {winner.categories.slice(0, 3).map((cat) => (
-                                  <Badge key={cat} variant="outline" className="text-xs">
-                                    {cat}
-                                  </Badge>
-                                ))}
-                              </div>
+                              <p className="text-sm font-medium">{z.city}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {z.scored_artists} artistes scorés · score moyen {z.avg_score}
+                              </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold">{winner.wins} victoires</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCurrency(winner.total_value)}
-                            </p>
+                            <Badge variant="outline" className="text-amber-700 bg-amber-100 dark:bg-amber-900/30">
+                              {z.upcoming_events} événement{z.upcoming_events !== 1 ? "s" : ""}
+                            </Badge>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
-                  </div>
-
-                  {/* Potential Competitors */}
-                  {winners.potential_competitors.length > 0 && (
-                    <div>
-                      <h3 className="font-medium mb-3 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-orange-500" />
-                        Concurrents potentiels à surveiller
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {winners.potential_competitors.map((comp) => (
-                          <Badge
-                            key={comp.organization}
-                            variant="outline"
-                            className="cursor-pointer hover:bg-muted"
-                            onClick={() => {
-                              setNewCompetitor({ name: comp.organization, keywords: "" });
-                              setIsAddDialogOpen(true);
-                            }}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            {comp.organization} ({comp.wins} wins)
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      Toutes les zones actives sont bien couvertes
+                    </p>
                   )}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Pas assez de données
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </CardContent>
+              </Card>
 
-        {/* Pricing Tab */}
-        <TabsContent value="pricing">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Benchmark des prix
-              </CardTitle>
-              <CardDescription>
-                Analyse des budgets par catégorie
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {pricingLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-              ) : pricing ? (
-                <div className="space-y-6">
-                  {/* Global stats */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Minimum</p>
-                      <p className="text-xl font-bold">{formatCurrency(pricing.global.min)}</p>
-                    </div>
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Médiane</p>
-                      <p className="text-xl font-bold">{formatCurrency(pricing.global.median)}</p>
-                    </div>
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Moyenne</p>
-                      <p className="text-xl font-bold">{formatCurrency(pricing.global.avg)}</p>
-                    </div>
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Maximum</p>
-                      <p className="text-xl font-bold">{formatCurrency(pricing.global.max)}</p>
-                    </div>
-                  </div>
-
-                  {/* Insights */}
-                  {pricing.insights.length > 0 && (
-                    <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-                      {pricing.insights.map((insight, idx) => (
-                        <p key={idx} className="text-sm">{insight}</p>
+              {/* Underrepresented genres */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Music className="h-4 w-4" />
+                    Genres sous-représentés
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Genres avec des artistes en croissance mais peu d&apos;événements
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {gaps?.underrepresented_genres && gaps.underrepresented_genres.length > 0 ? (
+                    <div className="space-y-2">
+                      {gaps.underrepresented_genres.map((g) => (
+                        <motion.div
+                          key={g.genre}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="flex items-center justify-between p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-200/50 dark:border-indigo-800/30"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Music className="h-4 w-4 text-indigo-600" />
+                            <div>
+                              <p className="text-sm font-medium capitalize">{g.genre}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {g.growing_artists} artistes en croissance · vélocité +{g.avg_velocity}%
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className="text-indigo-700 bg-indigo-100 dark:bg-indigo-900/30">
+                              {g.upcoming_events} événement{g.upcoming_events !== 1 ? "s" : ""}
+                            </Badge>
+                          </div>
+                        </motion.div>
                       ))}
                     </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      Tous les genres en croissance sont bien couverts
+                    </p>
                   )}
+                </CardContent>
+              </Card>
 
-                  {/* By category */}
-                  <div>
-                    <h3 className="font-medium mb-3">Par catégorie</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Catégorie</TableHead>
-                          <TableHead className="text-right">Min</TableHead>
-                          <TableHead className="text-right">Médiane</TableHead>
-                          <TableHead className="text-right">Max</TableHead>
-                          <TableHead className="text-right">Nb</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pricing.by_category.map((cat) => (
-                          <TableRow key={cat.category}>
-                            <TableCell className="font-medium capitalize">
-                              {cat.category}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(cat.min)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(cat.median)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(cat.max)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant="secondary">{cat.count}</Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Pas assez de données
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              {/* Empty slots */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Créneaux vides
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Mois sans événements dans des villes actives
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {gaps?.empty_slots && gaps.empty_slots.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {gaps.empty_slots.map((s, i) => (
+                        <Badge
+                          key={`${s.month}-${s.city}-${i}`}
+                          variant="outline"
+                          className="text-xs py-1.5 bg-rose-50 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/30 text-rose-700 dark:text-rose-400"
+                        >
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {s.month} · {s.city}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      Pas de créneau vide détecté
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>
