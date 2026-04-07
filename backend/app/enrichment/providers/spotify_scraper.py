@@ -57,43 +57,50 @@ def scrape_spotify_artist(spotify_id: str) -> Optional[Dict[str, Any]]:
                 locale="en-US",
             )
             page = context.new_page()
-            page.goto(url, timeout=15000, wait_until="domcontentloaded")
-            # Wait briefly for SSR meta tags (they're in the initial HTML)
-            page.wait_for_timeout(1500)
+            page.goto(url, timeout=20000, wait_until="load")
+            # Wait for JS to render the page content
+            page.wait_for_timeout(5000)
+
+            # Extract from rendered DOM (body text)
+            body_text = ""
+            try:
+                body_text = page.inner_text("body")
+            except Exception:
+                pass
 
             content = page.content()
             browser.close()
 
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(content, "lxml")
-
         result: Dict[str, Any] = {"spotify_artist_id": spotify_id}
 
-        # Extract from OG meta tags (server-side rendered)
-        og_title = soup.find("meta", property="og:title")
-        if og_title:
-            result["name"] = og_title.get("content", "").strip()
+        # 1. Extract name from <title> tag: "Niska | Spotify"
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, "lxml")
+        title_tag = soup.find("title")
+        if title_tag:
+            name = title_tag.text.split("|")[0].strip()
+            if name and name not in ("Spotify", "Spotify – Web Player"):
+                result["name"] = name
 
+        # 2. Extract monthly listeners from rendered body text
+        # Pattern: "6,123,786 monthly listeners"
+        if body_text:
+            ml_match = re.search(
+                r"([\d,]+)\s*monthly\s*listener",
+                body_text,
+                re.IGNORECASE,
+            )
+            if ml_match:
+                raw = ml_match.group(1).replace(",", "")
+                try:
+                    result["monthly_listeners"] = int(raw)
+                except ValueError:
+                    pass
+
+        # 3. Try og:image if still available
         og_image = soup.find("meta", property="og:image")
         if og_image:
             result["image_url"] = og_image.get("content", "")
-
-        og_desc = soup.find("meta", property="og:description")
-        if og_desc:
-            desc = og_desc.get("content", "")
-            result["description"] = desc
-            # Parse monthly listeners: "Artist · 6.1M monthly listeners."
-            ml_match = re.search(r"([\d,.]+[KMB]?)\s*monthly\s*listener", desc, re.IGNORECASE)
-            if ml_match:
-                result["monthly_listeners"] = _parse_listener_count(ml_match.group(1))
-
-        # Try to extract from page title as fallback
-        title_tag = soup.find("title")
-        if title_tag and not result.get("name"):
-            # "Niska | Spotify"
-            name = title_tag.text.split("|")[0].strip()
-            if name and name != "Spotify":
-                result["name"] = name
 
         logger.info(f"Scraped Spotify {spotify_id}: name={result.get('name')}, ml={result.get('monthly_listeners')}")
         return result if result.get("name") or result.get("monthly_listeners") else None
