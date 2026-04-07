@@ -63,10 +63,8 @@ def generate_discovery_candidates() -> Dict[str, Any]:
     try:
         logger.info("Starting Discovery Candidate generation...")
         
-        # Get all active workspaces
-        workspaces = db.query(Workspace).filter(
-            Workspace.is_active == True
-        ).all()
+        # Get all workspaces
+        workspaces = db.query(Workspace).all()
         
         total_generated = 0
         workspace_stats = {}
