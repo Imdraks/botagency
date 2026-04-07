@@ -149,4 +149,9 @@ celery_app.conf.beat_schedule = {
         "task": "discovery.cleanup_expired",
         "schedule": crontab(hour="*/6"),
     },
+    # Generate recommendations from artist searches every 2 hours
+    "generate-discovery-recommendations": {
+        "task": "discovery.generate_recommendations",
+        "schedule": crontab(minute="15", hour="*/2"),
+    },
 }

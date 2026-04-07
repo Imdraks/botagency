@@ -102,3 +102,39 @@ def fetch_deezer_artist(artist_id: int) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Deezer fetch failed for artist {artist_id}: {e}")
         return None
+
+
+def fetch_related_artists(artist_id: int, limit: int = 20) -> List[Dict[str, Any]]:
+    """
+    Fetch related/similar artists from Deezer API.
+    Returns list of artist profiles with deezer_id, name, fans, image.
+    """
+    try:
+        r = httpx.get(
+            f"{DEEZER_API}/artist/{artist_id}/related",
+            params={"limit": limit},
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        results = []
+        for item in data.get("data", []):
+            results.append({
+                "deezer_id": item.get("id"),
+                "name": item.get("name"),
+                "deezer_fans": item.get("nb_fan", 0),
+                "image_url": (
+                    item.get("picture_xl")
+                    or item.get("picture_big")
+                    or item.get("picture_medium")
+                ),
+                "deezer_url": item.get("link"),
+            })
+
+        logger.info(f"Deezer related artists for {artist_id}: {len(results)} found")
+        return results
+
+    except Exception as e:
+        logger.error(f"Deezer related artists failed for {artist_id}: {e}")
+        return []

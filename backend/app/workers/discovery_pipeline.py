@@ -197,6 +197,10 @@ def run_enrichment_pipeline(self, job_id: str) -> Dict[str, Any]:
             # Generate discovery candidates immediately for feed display
             _generate_candidates_for_artist(db, job)
             
+            # Trigger recommendation generation for this workspace
+            from app.workers.discovery_scheduler import generate_recommendations_for_workspace
+            generate_recommendations_for_workspace.delay(job.workspace_id)
+            
             # Sync to artist_analyses for frontend display
             _sync_to_artist_analyses(db, job)
             
