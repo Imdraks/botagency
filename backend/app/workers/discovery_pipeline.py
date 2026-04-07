@@ -812,6 +812,7 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
         existing.fee_max = metrics.fee_estimate_max or 0
         existing.market_tier = tier
         existing.popularity_score = metrics.score or 0
+        existing.ai_score = metrics.score or 0
         existing.image_url = artist.image_url
         existing.confidence_score = 0.8 if metrics.data_quality == "HIGH" else 0.5
         existing.created_at = datetime.utcnow()
@@ -831,6 +832,7 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
             fee_max=metrics.fee_estimate_max or 0,
             market_tier=tier,
             popularity_score=metrics.score or 0,
+            ai_score=metrics.score or 0,
             market_trend="stable",
             confidence_score=0.8 if metrics.data_quality == "HIGH" else 0.5,
             sources_scanned="spotify,deezer,musicbrainz",

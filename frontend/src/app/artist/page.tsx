@@ -474,7 +474,7 @@ function ArtistTableRow({
           <div>
             <div className="font-medium flex items-center gap-2">
               {analysis.artist_name}
-              {analysis.ai_score && analysis.ai_score >= 70 && (
+              {analysis.ai_score > 0 && analysis.ai_score >= 70 && (
                 <Brain className="h-3.5 w-3.5 text-purple-500" />
               )}
             </div>
