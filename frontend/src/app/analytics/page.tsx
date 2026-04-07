@@ -12,15 +12,13 @@ import {
   Music,
   RefreshCw,
   Target,
-  TrendingUp,
   Users,
   Zap,
   ArrowRight,
   DollarSign,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { analyticsV2Api } from "@/lib/api";
 
@@ -58,240 +56,9 @@ function formatCurrency(value: number): string {
   return `${value}€`;
 }
 
-function densityColor(d: string): string {
-  if (d === "forte") return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
-  if (d === "moyenne") return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
-}
-
-// ── Kpi overview card ──
-
-function OverviewKpi({
-  icon: Icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: typeof BarChart3;
-  label: string;
-  value: string | number;
-  sub?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground font-medium">{label}</span>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <p className="text-2xl font-bold">{value}</p>
-        {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Horizontal bar list ──
-
-function BarList({
-  items,
-  labelKey,
-  valueKey,
-  scoreKey,
-  maxItems = 10,
-}: {
-  items: Record<string, unknown>[];
-  labelKey: string;
-  valueKey: string;
-  scoreKey?: string;
-  maxItems?: number;
-}) {
-  const sliced = items.slice(0, maxItems);
-  const max = Math.max(...sliced.map((it) => (it[valueKey] as number) || 0), 1);
-  return (
-    <div className="space-y-2">
-      {sliced.map((it, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="w-28 text-sm truncate">{it[labelKey] as string}</span>
-          <div className="flex-1 h-5 rounded bg-muted overflow-hidden relative">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${((it[valueKey] as number) / max) * 100}%` }}
-              transition={{ duration: 0.5, delay: i * 0.04 }}
-              className="h-full rounded bg-indigo-500"
-            />
-          </div>
-          <span className="text-xs font-medium w-8 text-right">{it[valueKey] as number}</span>
-          {scoreKey && (
-            <span className="text-[10px] text-muted-foreground w-10 text-right">
-              ø{(it[scoreKey] as number) || 0}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Donut-like stacked bar for event type / source ──
-
-function StackedBar({ data, colorMap }: { data: Record<string, number>; colorMap?: Record<string, string> }) {
-  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
-  const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
-  const colors = colorMap || {};
-  const defaultColors = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
-  return (
-    <div className="space-y-3">
-      <div className="flex h-4 rounded-full overflow-hidden bg-muted">
-        {entries.map(([key, val], i) => (
-          <div
-            key={key}
-            style={{
-              width: `${(val / total) * 100}%`,
-              backgroundColor: colors[key] || defaultColors[i % defaultColors.length],
-            }}
-            className="h-full transition-all"
-            title={`${key}: ${val}`}
-          />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {entries.map(([key, val], i) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <div
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: colors[key] || defaultColors[i % defaultColors.length] }}
-            />
-            <span className="text-xs text-muted-foreground">
-              {key} <span className="font-medium text-foreground">{val}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Activity timeline ──
-
-function ActivityTimeline({ data }: { data: { month: string; count: number }[] }) {
-  if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">Pas de données</p>;
-  const max = Math.max(...data.map((d) => d.count), 1);
-  return (
-    <div className="flex items-end gap-1 h-32">
-      {data.map((d) => (
-        <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-[9px] text-muted-foreground font-medium">{d.count || ""}</span>
-          <div className="w-full rounded-t bg-muted relative overflow-hidden" style={{ height: "100%" }}>
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: `${(d.count / max) * 100}%` }}
-              transition={{ duration: 0.5 }}
-              className="absolute bottom-0 w-full rounded-t bg-indigo-500"
-            />
-          </div>
-          <span className="text-[9px] text-muted-foreground">{d.month.slice(5)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Calendar heatmap ──
-
-function CalendarHeatmap({ data }: { data: { month: string; label: string; count: number }[] }) {
-  if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">Pas de données</p>;
-  const max = Math.max(...data.map((d) => d.count), 1);
-  return (
-    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-      {data.map((d) => {
-        const intensity = d.count / max;
-        const bg =
-          intensity === 0
-            ? "bg-muted"
-            : intensity < 0.25
-            ? "bg-indigo-100 dark:bg-indigo-950/40"
-            : intensity < 0.5
-            ? "bg-indigo-200 dark:bg-indigo-900/50"
-            : intensity < 0.75
-            ? "bg-indigo-400 dark:bg-indigo-700"
-            : "bg-indigo-600 dark:bg-indigo-500";
-        return (
-          <div key={d.month} className={`rounded-lg p-3 text-center ${bg} transition-colors`}>
-            <p className="text-[10px] font-medium">{d.label}</p>
-            <p className="text-lg font-bold">{d.count}</p>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Qualification funnel ──
-
-function QualificationFunnel({ funnel }: { funnel: TerrainData["funnel"] }) {
-  const steps = [
-    { label: "Détectés", value: funnel.detected, color: "#6366f1" },
-    { label: "Scorés", value: funnel.scored, color: "#8b5cf6" },
-    { label: "Contact trouvé", value: funnel.contact_found, color: "#a78bfa" },
-    { label: "Cachet estimé", value: funnel.fee_estimated, color: "#c4b5fd" },
-    { label: "Actionnables", value: funnel.actionable, color: "#10b981" },
-  ];
-  const maxVal = funnel.detected || 1;
-  return (
-    <div className="space-y-3">
-      {steps.map((s, i) => (
-        <div key={s.label} className="flex items-center gap-3">
-          <span className="w-28 text-sm text-muted-foreground">{s.label}</span>
-          <div className="flex-1 h-8 rounded bg-muted overflow-hidden relative">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${(s.value / maxVal) * 100}%` }}
-              transition={{ duration: 0.6, delay: i * 0.08 }}
-              className="h-full rounded flex items-center px-2"
-              style={{ backgroundColor: s.color }}
-            >
-              <span className="text-xs text-white font-bold">{s.value}</span>
-            </motion.div>
-          </div>
-          <span className="text-xs text-muted-foreground w-10 text-right">
-            {maxVal > 0 ? Math.round((s.value / maxVal) * 100) : 0}%
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Fee tier bars ──
-
-function FeeTierBars({ data }: { data: Record<string, number> }) {
-  const ordered = ["< 5k", "5-15k", "15-40k", "40-100k", "> 100k"];
-  const max = Math.max(...Object.values(data), 1);
-  const colors = ["#10b981", "#6366f1", "#8b5cf6", "#ec4899", "#ef4444"];
-  return (
-    <div className="space-y-2">
-      {ordered.map((tier, i) => {
-        const val = data[tier] || 0;
-        return (
-          <div key={tier} className="flex items-center gap-2">
-            <span className="w-16 text-xs text-muted-foreground font-medium">{tier}</span>
-            <div className="flex-1 h-5 rounded bg-muted overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${(val / max) * 100}%` }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-                className="h-full rounded"
-                style={{ backgroundColor: colors[i] }}
-              />
-            </div>
-            <span className="text-xs font-medium w-6 text-right">{val}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
+const PALETTE = ["#0000FF", "#7c3aed", "#ec4899", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#84cc16"];
 
 // ── Main ──
 
@@ -304,183 +71,285 @@ function AnalyticsContent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-[70vh]">
+        <Loader2 className="h-7 w-7 animate-spin text-primary/60" />
       </div>
     );
   }
 
   const ov = data?.overview;
   const fn = data?.funnel;
+  const genres = data?.by_genre || [];
+  const zones = data?.by_zone || [];
+  const timeline = data?.timeline || [];
+  const heatmap = data?.heatmap || [];
+  const maxGenre = Math.max(...genres.map((g) => g.count), 1);
+  const maxZone = Math.max(...zones.map((z) => z.count), 1);
+  const maxTimeline = Math.max(...timeline.map((t) => t.count), 1);
+  const maxHeatmap = Math.max(...heatmap.map((h) => h.count), 1);
+  const funnelMax = fn?.detected || 1;
+
+  const kpiItems = ov
+    ? [
+        { label: "Artistes", value: String(ov.total_artists), icon: Users, color: "#0000FF" },
+        { label: "Événements", value: String(ov.total_events), icon: Calendar, color: "#7c3aed", sub: `${ov.real_events} Ticketmaster` },
+        { label: "Couverture contact", value: `${ov.contact_coverage_pct}%`, icon: Target, color: "#10b981" },
+        { label: "Budget estimé", value: formatCurrency(ov.total_budget_estimated), icon: DollarSign, color: "#f59e0b" },
+        { label: "Actionnables", value: String(fn?.actionable || 0), icon: Zap, color: "#ec4899", sub: `sur ${fn?.detected || 0} détectés` },
+      ]
+    : [];
+
+  const feeOrdered = ["< 5k", "5-15k", "15-40k", "40-100k", "> 100k"];
+  const feeColors = ["#10b981", "#0000FF", "#7c3aed", "#ec4899", "#ef4444"];
+  const feeMax = Math.max(...Object.values(data?.by_fee_tier || {}), 1);
+
+  const funnelSteps = fn
+    ? [
+        { label: "Détectés", value: fn.detected, color: "#0000FF" },
+        { label: "Scorés", value: fn.scored, color: "#7c3aed" },
+        { label: "Contact trouvé", value: fn.contact_found, color: "#a78bfa" },
+        { label: "Cachet estimé", value: fn.fee_estimated, color: "#c4b5fd" },
+        { label: "Actionnables", value: fn.actionable, color: "#10b981" },
+      ]
+    : [];
+
+  const eventEntries = Object.entries(data?.by_event_type || {}).sort((a, b) => b[1] - a[1]);
+  const sourceEntries = Object.entries(data?.by_source || {}).sort((a, b) => b[1] - a[1]);
+  const totalEvents = eventEntries.reduce((s, [, v]) => s + v, 0) || 1;
+  const totalSource = sourceEntries.reduce((s, [, v]) => s + v, 0) || 1;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-[1280px] px-6 py-8 space-y-8">
+      {/* ── Header ── */}
+      <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Terrain — structure du marché et couverture</p>
+          <h1 className="text-[1.65rem] font-semibold tracking-tight">Analytics</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Structure du marché et couverture terrain</p>
         </div>
-        <Button onClick={() => refetch()} variant="ghost" size="sm">
+        <Button onClick={() => refetch()} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Overview KPIs */}
-      {ov && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <OverviewKpi icon={Users} label="Artistes" value={ov.total_artists} />
-          <OverviewKpi icon={Calendar} label="Événements" value={ov.total_events} sub={`${ov.real_events} Ticketmaster`} />
-          <OverviewKpi icon={Target} label="Couverture contact" value={`${ov.contact_coverage_pct}%`} />
-          <OverviewKpi icon={DollarSign} label="Budget estimé" value={formatCurrency(ov.total_budget_estimated)} />
-          <OverviewKpi icon={Zap} label="Actionnables" value={fn?.actionable || 0} sub={`sur ${fn?.detected || 0} détectés`} />
-        </div>
-      )}
+      {/* ── KPIs ── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {kpiItems.map(({ label, value, icon: Icon, color, sub }) => (
+          <motion.div key={label} variants={fadeUp}>
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${color}10` }}>
+                  <Icon className="h-[18px] w-[18px]" style={{ color }} />
+                </div>
+              </div>
+              <p className="text-2xl font-bold tracking-tight">{value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{label}</p>
+              {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
 
-      {/* Grid: genres + zones */}
+      {/* ── Genres + Zones ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Music className="h-4 w-4" /> Répartition par genre
-              </CardTitle>
-              <Link href="/discovery" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
-                Explorer <ArrowRight className="h-3 w-3" />
-              </Link>
+        <div className="rounded-xl border bg-card">
+          <div className="flex items-center justify-between px-6 pt-5 pb-3">
+            <div className="flex items-center gap-2">
+              <Music className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Répartition par genre</h2>
             </div>
-          </CardHeader>
-          <CardContent>
-            {data?.by_genre && data.by_genre.length > 0 ? (
-              <BarList items={data.by_genre} labelKey="name" valueKey="count" scoreKey="avg_score" />
+            <Link href="/discovery" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+              Explorer <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="px-5 pb-5">
+            {genres.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">Aucune donnée</p>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée de genre</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <MapPin className="h-4 w-4" /> Répartition par zone
-              </CardTitle>
-              <Link href="/map" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
-                Carte <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {data?.by_zone && data.by_zone.length > 0 ? (
-              <div className="space-y-2">
-                {data.by_zone.map((z) => (
-                  <div key={z.city} className="flex items-center gap-2">
-                    <span className="w-28 text-sm truncate">{z.city}</span>
-                    <div className="flex-1 h-5 rounded bg-muted overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(z.count / Math.max(...data.by_zone.map((x) => x.count), 1)) * 100}%` }}
-                        transition={{ duration: 0.5 }}
-                        className="h-full rounded bg-indigo-500"
-                      />
+              <div className="space-y-2.5">
+                {genres.slice(0, 10).map((g, i) => (
+                  <motion.div key={g.name} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-2.5">
+                    <span className="w-24 truncate text-[13px]">{g.name}</span>
+                    <div className="flex-1 h-[7px] rounded-full bg-muted overflow-hidden">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${(g.count / maxGenre) * 100}%` }} transition={{ duration: 0.5, delay: i * 0.04 }} className="h-full rounded-full bg-primary" />
                     </div>
-                    <span className="text-xs font-medium w-6 text-right">{z.count}</span>
-                    <Badge variant="outline" className={`text-[10px] ${densityColor(z.density)}`}>
-                      {z.density}
-                    </Badge>
-                  </div>
+                    <span className="w-7 text-right text-xs font-medium tabular-nums">{g.count}</span>
+                    <span className="w-9 text-right text-[10px] text-muted-foreground tabular-nums">ø{g.avg_score}</span>
+                  </motion.div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée de zone</p>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* Event type & Source */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Type d'événement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data?.by_event_type && Object.keys(data.by_event_type).length > 0 ? (
-              <StackedBar data={data.by_event_type} />
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Source des données</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data?.by_source && Object.keys(data.by_source).length > 0 ? (
-              <StackedBar data={data.by_source} />
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Fee tiers */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <DollarSign className="h-4 w-4" /> Répartition par cachet estimé
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data?.by_fee_tier ? <FeeTierBars data={data.by_fee_tier} /> : <p className="text-sm text-muted-foreground text-center py-6">Aucune donnée</p>}
-        </CardContent>
-      </Card>
-
-      {/* Activity timeline + calendar heatmap */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" /> Activité (12 derniers mois)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ActivityTimeline data={data?.timeline || []} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Calendar className="h-4 w-4" /> Calendrier à venir
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CalendarHeatmap data={data?.heatmap || []} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Qualification funnel */}
-      {fn && (
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Filter className="h-4 w-4" /> Entonnoir de qualification
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {fn.actionable} artistes actionnables sur {fn.detected} détectés
-              </p>
+        <div className="rounded-xl border bg-card">
+          <div className="flex items-center justify-between px-6 pt-5 pb-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Répartition par zone</h2>
             </div>
-          </CardHeader>
-          <CardContent>
-            <QualificationFunnel funnel={fn} />
-          </CardContent>
-        </Card>
+            <Link href="/map" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+              Carte <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="px-5 pb-5">
+            {zones.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">Aucune donnée</p>
+            ) : (
+              <div className="space-y-2.5">
+                {zones.map((z, i) => {
+                  const dColor = z.density === "forte" ? "bg-primary/10 text-primary" : z.density === "moyenne" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400" : "bg-muted text-muted-foreground";
+                  return (
+                    <motion.div key={z.city} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-2.5">
+                      <span className="w-24 truncate text-[13px]">{z.city}</span>
+                      <div className="flex-1 h-[7px] rounded-full bg-muted overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${(z.count / maxZone) * 100}%` }} transition={{ duration: 0.5 }} className="h-full rounded-full bg-primary" />
+                      </div>
+                      <span className="w-7 text-right text-xs font-medium tabular-nums">{z.count}</span>
+                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${dColor}`}>{z.density}</Badge>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Event type + Source ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[
+          { title: "Type d\u2019événement", entries: eventEntries, total: totalEvents },
+          { title: "Source des données", entries: sourceEntries, total: totalSource },
+        ].map(({ title, entries, total }) => (
+          <div key={title} className="rounded-xl border bg-card px-6 py-5">
+            <h2 className="text-sm font-semibold mb-4">{title}</h2>
+            {entries.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Aucune donnée</p>
+            ) : (
+              <>
+                <div className="flex h-3 rounded-full overflow-hidden bg-muted mb-3">
+                  {entries.map(([key, val], i) => (
+                    <div key={key} style={{ width: `${(val / total) * 100}%`, backgroundColor: PALETTE[i % PALETTE.length] }} className="h-full" title={`${key}: ${val}`} />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {entries.map(([key, val], i) => (
+                    <div key={key} className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PALETTE[i % PALETTE.length] }} />
+                      <span className="text-xs text-muted-foreground">{key} <span className="font-medium text-foreground">{val}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Fee tiers ── */}
+      <div className="rounded-xl border bg-card px-6 py-5">
+        <div className="flex items-center gap-2 mb-4">
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Répartition par cachet estimé</h2>
+        </div>
+        {data?.by_fee_tier ? (
+          <div className="space-y-2.5">
+            {feeOrdered.map((tier, i) => {
+              const val = (data.by_fee_tier as Record<string, number>)[tier] || 0;
+              return (
+                <div key={tier} className="flex items-center gap-2.5">
+                  <span className="w-16 text-xs text-muted-foreground font-medium">{tier}</span>
+                  <div className="flex-1 h-[7px] rounded-full bg-muted overflow-hidden">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${(val / feeMax) * 100}%` }} transition={{ duration: 0.5, delay: i * 0.05 }} className="h-full rounded-full" style={{ backgroundColor: feeColors[i] }} />
+                  </div>
+                  <span className="w-6 text-right text-xs font-medium tabular-nums">{val}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm text-muted-foreground">Aucune donnée</p>
+        )}
+      </div>
+
+      {/* ── Timeline + Heatmap ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="rounded-xl border bg-card px-6 py-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Activité (12 derniers mois)</h2>
+          </div>
+          {timeline.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Pas de données</p>
+          ) : (
+            <div className="flex items-end gap-[3px] h-36">
+              {timeline.map((d) => (
+                <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[9px] text-muted-foreground font-medium tabular-nums">{d.count || ""}</span>
+                  <div className="w-full rounded-t-sm bg-muted relative overflow-hidden" style={{ height: "100%" }}>
+                    <motion.div initial={{ height: 0 }} animate={{ height: `${(d.count / maxTimeline) * 100}%` }} transition={{ duration: 0.5 }} className="absolute bottom-0 w-full rounded-t-sm bg-primary" />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground">{d.month.slice(5)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border bg-card px-6 py-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Calendrier à venir</h2>
+          </div>
+          {heatmap.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Pas de données</p>
+          ) : (
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {heatmap.map((d) => {
+                const intensity = d.count / maxHeatmap;
+                const bg = intensity === 0 ? "bg-muted" : intensity < 0.25 ? "bg-primary/10" : intensity < 0.5 ? "bg-primary/20" : intensity < 0.75 ? "bg-primary/40 text-white" : "bg-primary text-white";
+                return (
+                  <div key={d.month} className={`rounded-lg p-2.5 text-center transition-colors ${bg}`}>
+                    <p className="text-[10px] font-medium">{d.label}</p>
+                    <p className="text-lg font-bold tabular-nums">{d.count}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Funnel ── */}
+      {fn && (
+        <div className="rounded-xl border bg-card px-6 py-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Entonnoir de qualification</h2>
+            </div>
+            <span className="text-[11px] text-muted-foreground">{fn.actionable} actionnables sur {fn.detected} détectés</span>
+          </div>
+          <div className="space-y-3">
+            {funnelSteps.map((s, i) => (
+              <div key={s.label} className="flex items-center gap-3">
+                <span className="w-28 text-[13px] text-muted-foreground">{s.label}</span>
+                <div className="flex-1 h-7 rounded-lg bg-muted overflow-hidden relative">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(s.value / funnelMax) * 100}%` }}
+                    transition={{ duration: 0.6, delay: i * 0.08 }}
+                    className="h-full rounded-lg flex items-center px-2.5"
+                    style={{ backgroundColor: s.color }}
+                  >
+                    <span className="text-xs text-white font-bold tabular-nums">{s.value}</span>
+                  </motion.div>
+                </div>
+                <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">{funnelMax > 0 ? Math.round((s.value / funnelMax) * 100) : 0}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

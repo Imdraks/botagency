@@ -117,6 +117,7 @@ export function LockedFeature({ feature, title, compact = false }: LockedFeature
     sources: 'Sources',
     source_health: 'Santé des Sources',
     banking: 'Connexions Bancaires',
+    market_intelligence: 'Market Intelligence',
   };
   
   if (compact) {

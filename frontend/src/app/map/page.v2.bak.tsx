@@ -18,8 +18,8 @@ import {
   Eye,
   RefreshCw,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -183,9 +183,6 @@ function formatListeners(n: number): string {
   return String(n);
 }
 
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
-const fadeUp = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
-
 // Event card component
 function EventCard({
   event,
@@ -205,23 +202,23 @@ function EventCard({
 
   const scoreColor =
     event.artist_score >= 70
-      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+      ? "bg-green-100 text-green-700"
       : event.artist_score >= 40
-      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+      ? "bg-amber-100 text-amber-700"
+      : "bg-gray-100 text-gray-600";
 
   const feeLabel =
     event.fee_estimate_min && event.fee_estimate_max
-      ? `${Math.round(event.fee_estimate_min / 1000)}\u2013${Math.round(event.fee_estimate_max / 1000)}k\u20AC`
+      ? `${Math.round(event.fee_estimate_min / 1000)}–${Math.round(event.fee_estimate_max / 1000)}k€`
       : null;
 
   return (
     <button
       onClick={() => onSelect(event)}
-      className={`w-full text-left p-3 rounded-lg border transition-all hover:shadow-sm ${
+      className={`w-full text-left p-3 rounded-lg border transition-all hover:shadow-md ${
         isSelected
-          ? `${config.lightBg} ${config.borderColor} border-2 shadow-sm dark:bg-opacity-10`
-          : "bg-card border-border hover:border-muted-foreground/20"
+          ? `${config.lightBg} ${config.borderColor} border-2 shadow-md`
+          : "bg-card border-border hover:border-muted-foreground/30"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -229,23 +226,23 @@ function EventCard({
           <img
             src={event.artist_image}
             alt={event.artist_name}
-            className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
           />
         ) : (
           <div
-            className={`w-9 h-9 rounded-full ${config.bgColor} flex items-center justify-center flex-shrink-0`}
+            className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center flex-shrink-0`}
           >
-            <Icon className="h-4 w-4 text-white" />
+            <Icon className="h-5 w-5 text-white" />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[13px] truncate leading-tight">
+          <p className="font-semibold text-sm truncate">
             {event.artist_name}
           </p>
-          <p className="text-[11px] text-muted-foreground truncate">
+          <p className="text-xs text-muted-foreground truncate">
             {event.venue}
           </p>
-          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <Badge
               variant="secondary"
               className={`text-[10px] px-1.5 py-0 ${config.lightBg} ${config.textColor}`}
@@ -271,15 +268,15 @@ function EventCard({
             {isUpcoming && (
               <Badge
                 variant="secondary"
-                className="text-[10px] px-1.5 py-0 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                className="text-[10px] px-1.5 py-0 bg-red-50 text-red-600"
               >
-                Bient\u00F4t
+                Bientôt
               </Badge>
             )}
           </div>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-[11px] font-medium tabular-nums">{event.date_label}</p>
+          <p className="text-xs font-medium">{event.date_label}</p>
           <p className="text-[10px] text-muted-foreground">{event.city}</p>
         </div>
       </div>
@@ -340,34 +337,39 @@ function MapContent() {
     eventType !== "all" || city !== "all" || artistSearch.length > 0 || scoreMin > 0 || period !== "all";
 
   return (
-    <div className="mx-auto max-w-[1280px] px-6 py-8 space-y-6">
-      {/* ── Header ── */}
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-[1.65rem] font-semibold tracking-tight">Carte des \u00C9v\u00E9nements</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Concerts, festivals, pop-up stores et \u00E9v\u00E9nements de marque en France
+          <h1 className="text-2xl font-bold">Carte des Événements</h1>
+          <p className="text-sm text-muted-foreground">
+            Concerts, festivals, pop-up stores et événements de marque en
+            France
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {data?.stats && (
             <>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-card">
-                <Music className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium tabular-nums">{data.total} \u00E9v\u00E9nements</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 rounded-md">
+                <Music className="h-3.5 w-3.5 text-indigo-600" />
+                <span className="text-xs font-medium text-indigo-700">
+                  {data.total} événements
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-card">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-md">
                 <Users className="h-3.5 w-3.5 text-purple-600" />
-                <span className="text-xs font-medium tabular-nums">{data.stats.total_artists} artistes</span>
+                <span className="text-xs font-medium text-purple-700">
+                  {data.stats.total_artists} artistes
+                </span>
               </div>
               {data.source === "ticketmaster" && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-green-50 dark:bg-green-900/10">
-                  <span className="text-[10px] font-medium text-green-700 dark:text-green-400">\u2705 Donn\u00E9es r\u00E9elles</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-md">
+                  <span className="text-[10px] font-medium text-green-700">✅ Données réelles</span>
                 </div>
               )}
               {data.source === "generated" && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-amber-50 dark:bg-amber-900/10">
-                  <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">\u26A1 Estimations</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 rounded-md">
+                  <span className="text-[10px] font-medium text-amber-700">⚡ Estimations</span>
                 </div>
               )}
             </>
@@ -375,7 +377,7 @@ function MapContent() {
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs gap-1 rounded-full"
+            className="h-7 text-xs gap-1"
             onClick={async () => {
               try {
                 await eventsMapApi.syncEvents();
@@ -389,81 +391,83 @@ function MapContent() {
         </div>
       </div>
 
-      {/* ── Filters ── */}
-      <div className="rounded-xl border bg-card px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Filtres</span>
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un artiste..."
-              className="h-8 w-48 pl-8 text-xs"
-              value={artistSearch}
-              onChange={(e) => setArtistSearch(e.target.value)}
-            />
-          </div>
-
-          <Select value={city} onValueChange={setCity}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
-              <SelectValue placeholder="Ville" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les villes</SelectItem>
-              {data?.cities?.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={String(scoreMin)} onValueChange={(v) => setScoreMin(Number(v))}>
-            <SelectTrigger className="h-8 w-[130px] text-xs">
-              <SelectValue placeholder="Score min" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">Tous les scores</SelectItem>
-              <SelectItem value="30">Score \u2265 30</SelectItem>
-              <SelectItem value="50">Score \u2265 50</SelectItem>
-              <SelectItem value="70">Score \u2265 70</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="P\u00E9riode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toute p\u00E9riode</SelectItem>
-              <SelectItem value="7d">7 prochains jours</SelectItem>
-              <SelectItem value="30d">30 prochains jours</SelectItem>
-              <SelectItem value="90d">3 prochains mois</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {hasFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => {
-                setEventType("all");
-                setCity("all");
-                setArtistSearch("");
-                setScoreMin(0);
-                setPeriod("all");
-              }}
-            >
-              <X className="h-3 w-3 mr-1" />
-              R\u00E9initialiser
-            </Button>
-          )}
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/40 rounded-lg border">
+        <div className="flex items-center gap-1.5">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">
+            Filtres
+          </span>
         </div>
+
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un artiste..."
+            className="h-8 w-48 pl-8 text-xs"
+            value={artistSearch}
+            onChange={(e) => setArtistSearch(e.target.value)}
+          />
+        </div>
+
+        <Select value={city} onValueChange={setCity}>
+          <SelectTrigger className="h-8 w-[140px] text-xs">
+            <SelectValue placeholder="Ville" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les villes</SelectItem>
+            {data?.cities?.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={String(scoreMin)} onValueChange={(v) => setScoreMin(Number(v))}>
+          <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectValue placeholder="Score min" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">Tous les scores</SelectItem>
+            <SelectItem value="30">Score ≥ 30</SelectItem>
+            <SelectItem value="50">Score ≥ 50</SelectItem>
+            <SelectItem value="70">Score ≥ 70</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="h-8 w-[120px] text-xs">
+            <SelectValue placeholder="Période" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toute période</SelectItem>
+            <SelectItem value="7d">7 prochains jours</SelectItem>
+            <SelectItem value="30d">30 prochains jours</SelectItem>
+            <SelectItem value="90d">3 prochains mois</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              setEventType("all");
+              setCity("all");
+              setArtistSearch("");
+              setScoreMin(0);
+              setPeriod("all");
+            }}
+          >
+            <X className="h-3 w-3 mr-1" />
+            Réinitialiser
+          </Button>
+        )}
       </div>
 
-      {/* ── Type toggles ── */}
+      {/* Type toggles */}
       <div className="flex items-center gap-2 flex-wrap">
         {Object.entries(EVENT_TYPES).map(([key, config]) => {
           const Icon = config.icon;
@@ -475,14 +479,14 @@ function MapContent() {
               onClick={() => toggleType(key)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                 isActive
-                  ? `${config.lightBg} ${config.textColor} ${config.borderColor} dark:bg-opacity-10`
+                  ? `${config.lightBg} ${config.textColor} ${config.borderColor}`
                   : "bg-muted/50 text-muted-foreground border-transparent opacity-50"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
               {config.label}
               <span
-                className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] tabular-nums ${
+                className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] ${
                   isActive ? config.bgColor + " text-white" : "bg-muted"
                 }`}
               >
@@ -493,15 +497,17 @@ function MapContent() {
         })}
       </div>
 
-      {/* ── Map + sidebar ── */}
+      {/* Main content: Map + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Map */}
         <div className="lg:col-span-2">
           {isLoading ? (
             <div className="h-[600px] bg-muted rounded-xl flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Chargement...</span>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  Chargement...
+                </span>
               </div>
             </div>
           ) : (
@@ -514,122 +520,162 @@ function MapContent() {
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
+        {/* Sidebar: event list */}
+        <div className="lg:col-span-1">
           {/* Selected event detail */}
           {selectedEvent && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border-2 bg-card overflow-hidden"
-              style={{ borderColor: EVENT_TYPES[selectedEvent.event_type]?.color || "#0000FF" }}
-            >
-              <div className="p-4">
+            <Card className="mb-4 border-2" style={{
+              borderColor: EVENT_TYPES[selectedEvent.event_type]?.color || "#6366f1",
+            }}>
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <Badge
-                    className="text-[10px]"
-                    style={{ backgroundColor: EVENT_TYPES[selectedEvent.event_type]?.color, color: "white" }}
+                    className="text-xs"
+                    style={{
+                      backgroundColor:
+                        EVENT_TYPES[selectedEvent.event_type]?.color,
+                      color: "white",
+                    }}
                   >
                     {selectedEvent.event_type_label}
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedEvent(null)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setSelectedEvent(null)}
+                  >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
                 <div className="flex items-center gap-3 mb-3">
                   {selectedEvent.artist_image ? (
-                    <img src={selectedEvent.artist_image} alt={selectedEvent.artist_name} className="w-12 h-12 rounded-full object-cover" />
+                    <img
+                      src={selectedEvent.artist_image}
+                      alt={selectedEvent.artist_name}
+                      className="w-14 h-14 rounded-full object-cover"
+                    />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-                      <Music className="h-5 w-5 text-white" />
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                      <Music className="h-6 w-6 text-white" />
                     </div>
                   )}
                   <div>
-                    <h3 className="font-semibold text-base tracking-tight">{selectedEvent.artist_name}</h3>
+                    <h3 className="font-bold text-lg">
+                      {selectedEvent.artist_name}
+                    </h3>
                     {selectedEvent.artist_genres.length > 0 && (
                       <div className="flex gap-1 mt-0.5">
                         {selectedEvent.artist_genres.map((g) => (
-                          <Badge key={g} variant="outline" className="text-[10px] px-1.5 py-0">{g}</Badge>
+                          <Badge
+                            key={g}
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {g}
+                          </Badge>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="space-y-2 text-[13px]">
+                <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                    <span>{selectedEvent.venue}, {selectedEvent.city}</span>
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      {selectedEvent.venue}, {selectedEvent.city}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>{selectedEvent.date_label}</span>
                   </div>
                   {selectedEvent.capacity && (
                     <div className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      <span>{selectedEvent.capacity.toLocaleString()} places</span>
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        {selectedEvent.capacity.toLocaleString()} places
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">Prix</span>
-                    <span className="font-medium tabular-nums">{selectedEvent.price_min}\u20AC \u2013 {selectedEvent.price_max}\u20AC</span>
+                    <span className="text-muted-foreground text-xs">Prix</span>
+                    <span className="font-medium">
+                      {selectedEvent.price_min}€ – {selectedEvent.price_max}€
+                    </span>
                   </div>
                   {selectedEvent.monthly_listeners > 0 && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Auditeurs Spotify</span>
-                      <span className="font-medium tabular-nums">{formatListeners(selectedEvent.monthly_listeners)}</span>
+                      <span className="text-muted-foreground text-xs">
+                        Auditeurs Spotify
+                      </span>
+                      <span className="font-medium">
+                        {formatListeners(selectedEvent.monthly_listeners)}
+                      </span>
                     </div>
                   )}
                   {selectedEvent.fee_estimate_min && selectedEvent.fee_estimate_max && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Cachet estim\u00E9</span>
-                      <span className="font-medium tabular-nums">
-                        {Math.round(selectedEvent.fee_estimate_min / 1000)}\u2013{Math.round(selectedEvent.fee_estimate_max / 1000)}k\u20AC
+                      <span className="text-muted-foreground text-xs">Cachet estimé</span>
+                      <span className="font-medium">
+                        {Math.round(selectedEvent.fee_estimate_min / 1000)}–{Math.round(selectedEvent.fee_estimate_max / 1000)}k€
                       </span>
                     </div>
                   )}
                   {selectedEvent.has_contact !== undefined && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Contact</span>
+                      <span className="text-muted-foreground text-xs">Contact</span>
                       <span className={`text-xs font-medium ${selectedEvent.has_contact ? "text-green-600" : "text-orange-500"}`}>
-                        {selectedEvent.has_contact ? "\u2713 Trouv\u00E9" : "\u2717 Manquant"}
+                        {selectedEvent.has_contact ? "✓ Trouvé" : "✗ Manquant"}
                       </span>
                     </div>
                   )}
                 </div>
                 <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${
-                      selectedEvent.artist_score >= 70 ? "bg-green-500"
-                        : selectedEvent.artist_score >= 40 ? "bg-yellow-500"
-                        : "bg-red-500"
-                    }`} />
-                    <span className="text-[11px] text-muted-foreground tabular-nums">Score: {selectedEvent.artist_score}</span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        selectedEvent.artist_score >= 70
+                          ? "bg-green-500"
+                          : selectedEvent.artist_score >= 40
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Score: {selectedEvent.artist_score}
+                    </span>
                   </div>
-                  <Button variant="outline" size="sm" className="text-xs h-7 rounded-full" asChild>
+                  <Button variant="outline" size="sm" className="text-xs h-7" asChild>
                     <a href={`/discovery?search=${encodeURIComponent(selectedEvent.artist_name)}`}>
                       <Eye className="h-3 w-3 mr-1" />
                       Voir l&apos;artiste
                     </a>
                   </Button>
                 </div>
-              </div>
-            </motion.div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Event list */}
-          <div className="rounded-xl border bg-card">
-            <div className="flex items-center justify-between px-5 pt-4 pb-2">
-              <h2 className="text-sm font-semibold">\u00C9v\u00E9nements \u00E0 venir</h2>
-              <span className="text-[11px] text-muted-foreground tabular-nums">{filteredEvents.length}</span>
-            </div>
-            <div className="px-3 pb-3">
-              <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
+          <Card>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span>Événements à venir</span>
+                <Badge variant="secondary" className="text-[10px]">
+                  {filteredEvents.length}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
                 {filteredEvents.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground">
-                    <MapPin className="h-7 w-7 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Aucun \u00E9v\u00E9nement trouv\u00E9</p>
-                    <p className="text-[11px] mt-0.5">Ajoutez des artistes dans Discovery</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Aucun événement trouvé</p>
+                    <p className="text-xs mt-1">
+                      Ajoutez des artistes dans Discovery
+                    </p>
                   </div>
                 ) : (
                   filteredEvents.slice(0, 50).map((event) => (
@@ -642,34 +688,36 @@ function MapContent() {
                   ))
                 )}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* ── City stats ── */}
-      {data?.stats?.by_city && Object.keys(data.stats.by_city).length > 0 && (
-        <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
-          {Object.entries(data.stats.by_city)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 12)
-            .map(([cityName, count]) => (
-              <motion.div key={cityName} variants={fadeUp}>
+      {/* City stats */}
+      {data?.stats?.by_city &&
+        Object.keys(data.stats.by_city).length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
+            {Object.entries(data.stats.by_city)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 12)
+              .map(([cityName, count]) => (
                 <button
-                  onClick={() => setCity(city === cityName ? "all" : cityName)}
-                  className={`w-full p-2.5 rounded-xl border text-center transition-all hover:shadow-sm ${
+                  key={cityName}
+                  onClick={() =>
+                    setCity(city === cityName ? "all" : cityName)
+                  }
+                  className={`p-2.5 rounded-lg border text-center transition-all hover:shadow-sm ${
                     city === cityName
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-card hover:bg-muted/50"
                   }`}
                 >
-                  <p className="font-bold text-lg tabular-nums">{count}</p>
+                  <p className="font-bold text-lg">{count}</p>
                   <p className="text-[11px] truncate">{cityName}</p>
                 </button>
-              </motion.div>
-            ))}
-        </motion.div>
-      )}
+              ))}
+          </div>
+        )}
     </div>
   );
 }
