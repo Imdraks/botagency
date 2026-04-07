@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* mapcn - MapLibre popup overrides */
+.maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+.maplibregl-popup-tip {
+  display: none !important;
+}
+
 /* ============================================
    RADAR DESIGN SYSTEM - Complete CSS Reset
    Primary Color: #0000FF (Pure Blue)

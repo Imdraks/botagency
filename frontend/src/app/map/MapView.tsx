@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import Globe from "react-globe.gl";
+import { useEffect, useRef, useCallback } from "react";
+import {
+  Map,
+  MapMarker,
+  MarkerContent,
+  MarkerPopup,
+  MarkerTooltip,
+  MapControls,
+  type MapRef,
+} from "@/components/ui/map";
 
 interface ArtistEvent {
   id: string;
@@ -44,6 +52,13 @@ const EVENT_COLORS: Record<string, string> = {
   brand_event: "#ec4899",
 };
 
+const EVENT_ICONS: Record<string, string> = {
+  concert: "🎵",
+  festival: "🎪",
+  popup_store: "🏪",
+  brand_event: "⭐",
+};
+
 function formatListeners(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
@@ -56,146 +71,160 @@ export default function MapView({
   onSelectEvent,
   eventTypes,
 }: MapViewProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const globeRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(800);
-
-  // Measure container width
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => setWidth(el.clientWidth);
-    update();
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setWidth(entry.contentRect.width);
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Initial camera: center on France
-  const handleGlobeReady = useCallback(() => {
-    const globe = globeRef.current;
-    if (!globe) return;
-    globe.pointOfView({ lat: 46.6, lng: 2.5, altitude: 1.8 }, 0);
-    const controls = globe.controls();
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.3;
-    controls.enableZoom = true;
-  }, []);
+  const mapRef = useRef<MapRef>(null);
 
   // Fly to selected event
   useEffect(() => {
-    const globe = globeRef.current;
-    if (!globe || !selectedEvent) return;
-    globe.controls().autoRotate = false;
-    globe.pointOfView(
-      { lat: selectedEvent.lat, lng: selectedEvent.lng, altitude: 0.5 },
-      800
-    );
+    if (!mapRef.current || !selectedEvent) return;
+    mapRef.current.flyTo({
+      center: [selectedEvent.lng, selectedEvent.lat],
+      zoom: 10,
+      duration: 800,
+    });
   }, [selectedEvent]);
 
-  const ringsData = selectedEvent ? [selectedEvent] : [];
-
   return (
-    <div
-      ref={containerRef}
-      className="relative rounded-xl overflow-hidden border border-white/10 shadow-lg"
-      style={{
-        height: 600,
-        background:
-          "radial-gradient(ellipse at center, #0a0a2e 0%, #000010 100%)",
-      }}
-    >
-      <Globe
-        ref={globeRef}
-        width={width}
-        height={600}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        atmosphereColor="#6366f1"
-        atmosphereAltitude={0.18}
-        // Points
-        pointsData={events}
-        pointLat="lat"
-        pointLng="lng"
-        pointColor={(d: object) =>
-          EVENT_COLORS[(d as ArtistEvent).event_type] || "#6366f1"
-        }
-        pointAltitude={(d: object) =>
-          selectedEvent?.id === (d as ArtistEvent).id ? 0.06 : 0.01
-        }
-        pointRadius={(d: object) =>
-          selectedEvent?.id === (d as ArtistEvent).id ? 0.45 : 0.2
-        }
-        pointLabel={(d: object) => {
-          const e = d as ArtistEvent;
-          const color = EVENT_COLORS[e.event_type] || "#6366f1";
-          return `
-            <div style="background:rgba(10,10,30,0.92);color:#e2e8f0;padding:10px 14px;border-radius:10px;font-family:system-ui;font-size:12px;border:1px solid ${color}40;backdrop-filter:blur(12px);max-width:250px;pointer-events:none;">
-              <div style="font-weight:700;font-size:14px;color:white;margin-bottom:2px;">${e.artist_name}</div>
-              <div style="color:${color};font-size:11px;font-weight:600;margin-bottom:6px;">${e.event_type_label}</div>
-              <div style="line-height:1.7;font-size:11px;">
-                <span style="opacity:0.5;">📍</span> ${e.venue}, ${e.city}<br/>
-                <span style="opacity:0.5;">📅</span> ${e.date_label}<br/>
-                <span style="opacity:0.5;">💰</span> ${e.price_min}€ – ${e.price_max}€
-                ${e.monthly_listeners > 0 ? `<br/><span style="opacity:0.5;">🎧</span> ${formatListeners(e.monthly_listeners)} auditeurs` : ""}
-              </div>
-              ${
-                e.artist_genres.length > 0
-                  ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">${e.artist_genres
-                      .slice(0, 3)
-                      .map(
-                        (g) =>
-                          `<span style="background:${color}25;color:${color};padding:2px 8px;border-radius:10px;font-size:10px;">${g}</span>`
-                      )
-                      .join("")}</div>`
-                  : ""
-              }
-            </div>
-          `;
-        }}
-        onPointClick={(point: object) => onSelectEvent(point as ArtistEvent)}
-        // Pulsing rings around selected event
-        ringsData={ringsData}
-        ringLat="lat"
-        ringLng="lng"
-        ringColor={() => (t: number) =>
-          `rgba(99,102,241,${Math.sqrt(1 - t)})`
-        }
-        ringMaxRadius={4}
-        ringPropagationSpeed={3}
-        ringRepeatPeriod={800}
-        onGlobeReady={handleGlobeReady}
-        animateIn={true}
-      />
+    <div className="relative rounded-xl overflow-hidden border shadow-sm" style={{ height: 600 }}>
+      <Map
+        ref={mapRef}
+        center={[2.5, 46.6]}
+        zoom={5}
+        pitch={45}
+        className="h-full w-full"
+      >
+        {events.map((event) => {
+          const isSelected = selectedEvent?.id === event.id;
+          const color = EVENT_COLORS[event.event_type] || "#6366f1";
+          const icon = EVENT_ICONS[event.event_type] || "📍";
+
+          return (
+            <MapMarker
+              key={event.id}
+              longitude={event.lng}
+              latitude={event.lat}
+              onClick={() => onSelectEvent(event)}
+            >
+              <MarkerContent>
+                <div
+                  className="flex items-center justify-center rounded-full border-2 shadow-lg transition-all duration-200"
+                  style={{
+                    width: isSelected ? 40 : 30,
+                    height: isSelected ? 40 : 30,
+                    backgroundColor: color,
+                    borderColor: isSelected ? "white" : color,
+                    transform: isSelected ? "scale(1.15)" : "scale(1)",
+                  }}
+                >
+                  <span style={{ fontSize: isSelected ? 18 : 14 }}>{icon}</span>
+                </div>
+                {isSelected && (
+                  <div
+                    className="absolute inset-0 rounded-full animate-ping"
+                    style={{
+                      backgroundColor: color,
+                      opacity: 0.3,
+                      width: isSelected ? 40 : 30,
+                      height: isSelected ? 40 : 30,
+                    }}
+                  />
+                )}
+              </MarkerContent>
+
+              <MarkerTooltip>
+                <div className="font-medium">{event.artist_name}</div>
+                <div className="text-[10px] opacity-70">{event.event_type_label} · {event.city}</div>
+              </MarkerTooltip>
+
+              <MarkerPopup className="w-[260px] p-0">
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    {event.artist_image ? (
+                      <img
+                        src={event.artist_image}
+                        alt={event.artist_name}
+                        className="w-9 h-9 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                        style={{ backgroundColor: color }}
+                      >
+                        {event.artist_name[0]}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate">{event.artist_name}</p>
+                      <p className="text-[11px] text-muted-foreground" style={{ color }}>
+                        {event.event_type_label}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <p>📍 {event.venue}, {event.city}</p>
+                    <p>📅 {event.date_label}</p>
+                    <p>💰 {event.price_min}€ – {event.price_max}€</p>
+                    {event.capacity && (
+                      <p>👥 {event.capacity.toLocaleString()} places</p>
+                    )}
+                    {event.monthly_listeners > 0 && (
+                      <p>🎧 {formatListeners(event.monthly_listeners)} auditeurs</p>
+                    )}
+                  </div>
+
+                  {event.artist_genres.length > 0 && (
+                    <div className="flex gap-1 mt-2 flex-wrap">
+                      {event.artist_genres.slice(0, 3).map((g) => (
+                        <span
+                          key={g}
+                          className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                          style={{
+                            backgroundColor: `${color}15`,
+                            color: color,
+                          }}
+                        >
+                          {g}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </MarkerPopup>
+            </MapMarker>
+          );
+        })}
+
+        <MapControls
+          position="bottom-right"
+          showZoom
+          showCompass
+          showLocate
+          showFullscreen
+        />
+      </Map>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-10 bg-black/50 backdrop-blur-md rounded-lg p-3 shadow-lg border border-white/10">
-        <p className="text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">
+      <div className="absolute bottom-4 left-4 z-[1000] bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
+        <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
           Légende
         </p>
         <div className="space-y-1">
           {Object.entries(eventTypes).map(([key, config]) => (
             <div key={key} className="flex items-center gap-2">
               <div
-                className="w-3 h-3 rounded-full shadow-sm"
+                className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: config.color }}
               />
-              <span className="text-[11px] text-white/80">{config.label}</span>
+              <span className="text-[11px]">{config.label}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Event count */}
-      <div className="absolute top-4 right-4 z-10 bg-black/50 backdrop-blur-md rounded-lg px-3 py-2 shadow-lg border border-white/10">
-        <p className="text-xs font-medium text-white/90">
-          🌍 {events.length} événement{events.length !== 1 ? "s" : ""}
+      <div className="absolute top-4 right-4 z-[1000] bg-background/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border">
+        <p className="text-xs font-medium">
+          🗺️ {events.length} événement{events.length !== 1 ? "s" : ""}
         </p>
       </div>
     </div>
