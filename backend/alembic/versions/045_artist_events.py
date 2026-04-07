@@ -10,8 +10,8 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy import inspect as sa_inspect
 
 
-revision = "020_artist_events"
-down_revision = "019_agency_cockpit"
+revision = "045_artist_events"
+down_revision = "044_fix_tags_columns"
 branch_labels = None
 depends_on = None
 
