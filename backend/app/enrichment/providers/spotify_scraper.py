@@ -103,14 +103,93 @@ def scrape_spotify_artist(spotify_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def _search_musicbrainz(name: str) -> Optional[str]:
+    """
+    Find Spotify artist ID via MusicBrainz (free, reliable, no auth).
+    MusicBrainz stores external links (url-rels) including Spotify URLs.
+    Rate limit: 1 request/second, requires User-Agent.
+    """
+    import time
+    try:
+        import httpx
+        headers = {"User-Agent": "RadarApp/1.0 (contact@radarapp.fr)"}
+
+        # Step 1: Search for artist by name
+        r = httpx.get(
+            "https://musicbrainz.org/ws/2/artist/",
+            params={"query": name, "fmt": "json", "limit": 5},
+            headers=headers,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            logger.warning(f"MusicBrainz search HTTP {r.status_code} for '{name}'")
+            return None
+
+        artists = r.json().get("artists", [])
+        if not artists:
+            logger.warning(f"MusicBrainz: no results for '{name}'")
+            return None
+
+        # Pick best match: prefer exact name match with high score
+        name_lower = name.lower().strip()
+        best = None
+        for a in artists:
+            if a.get("name", "").lower().strip() == name_lower and a.get("score", 0) >= 80:
+                best = a
+                break
+        if not best:
+            # Fallback to highest score if >= 90
+            top = artists[0]
+            if top.get("score", 0) >= 90:
+                best = top
+        if not best:
+            logger.warning(f"MusicBrainz: no confident match for '{name}' (top score: {artists[0].get('score')})")
+            return None
+
+        mbid = best["id"]
+        logger.info(f"MusicBrainz matched '{name}' → '{best['name']}' (score={best.get('score')}, mbid={mbid})")
+
+        # Step 2: Get external URLs (url-rels) — respect rate limit
+        time.sleep(1.1)
+        r2 = httpx.get(
+            f"https://musicbrainz.org/ws/2/artist/{mbid}",
+            params={"inc": "url-rels", "fmt": "json"},
+            headers=headers,
+            timeout=10,
+        )
+        if r2.status_code != 200:
+            logger.warning(f"MusicBrainz url-rels HTTP {r2.status_code} for mbid={mbid}")
+            return None
+
+        for rel in r2.json().get("relations", []):
+            url = rel.get("url", {}).get("resource", "")
+            if "open.spotify.com/artist/" in url:
+                spotify_id = url.split("/artist/")[-1].split("?")[0]
+                if re.match(r"^[a-zA-Z0-9]{22}$", spotify_id):
+                    logger.info(f"MusicBrainz found Spotify ID for '{name}': {spotify_id}")
+                    return spotify_id
+
+        logger.warning(f"MusicBrainz: no Spotify URL for '{name}' (mbid={mbid})")
+        return None
+
+    except Exception as e:
+        logger.warning(f"MusicBrainz search failed for '{name}': {e}")
+        return None
+
+
 def search_spotify_id_by_name(name: str) -> Optional[str]:
     """
-    Try to find a Spotify artist ID by scraping Google search results.
-    Searches for 'site:open.spotify.com/artist "<name>"' and extracts the ID.
+    Find a Spotify artist ID by name.
+    Strategy: MusicBrainz (primary) → Google search (fallback).
     
     Returns the Spotify artist ID (22 chars) or None.
     """
-    import re
+    # Primary: MusicBrainz (free, reliable, structured data)
+    spotify_id = _search_musicbrainz(name)
+    if spotify_id:
+        return spotify_id
+
+    # Fallback: Google search
     try:
         import httpx
         query = f'site:open.spotify.com/artist "{name}"'
@@ -124,16 +203,14 @@ def search_spotify_id_by_name(name: str) -> Optional[str]:
             timeout=10,
             follow_redirects=True,
         )
-        # Extract Spotify artist IDs from Google results
         ids = re.findall(r'open\.spotify\.com/artist/([a-zA-Z0-9]{22})', r.text)
         if ids:
-            # Return the most common ID (usually the first/correct one)
             from collections import Counter
             best_id = Counter(ids).most_common(1)[0][0]
-            logger.info(f"Google found Spotify ID for '{name}': {best_id}")
+            logger.info(f"Google fallback found Spotify ID for '{name}': {best_id}")
             return best_id
-        logger.warning(f"No Spotify ID found via Google for '{name}'")
-        return None
     except Exception as e:
-        logger.warning(f"Google Spotify search failed for '{name}': {e}")
-        return None
+        logger.warning(f"Google fallback failed for '{name}': {e}")
+
+    logger.warning(f"No Spotify ID found for '{name}' via any source")
+    return None
