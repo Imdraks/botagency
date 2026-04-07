@@ -23,6 +23,8 @@ def sync_artist_events(self, workspace_id: int = None):
     from app.services.ticketmaster import TicketmasterService
     from app.db.models.discovery import DiscoveryArtist, DiscoveryComputedMetrics
     from app.db.models.workspace import Workspace
+    from app.db.models.artist_snapshot import ArtistSnapshot
+    from sqlalchemy import func, distinct
 
     db = SessionLocal()
     try:
@@ -39,7 +41,7 @@ def sync_artist_events(self, workspace_id: int = None):
         total_events = 0
 
         for ws_id in workspace_ids:
-            # Get top artists (by score) for this workspace
+            # Get top artists (by score) from discovery_artists
             rows = (
                 db.query(
                     DiscoveryArtist.id,
@@ -55,9 +57,38 @@ def sync_artist_events(self, workspace_id: int = None):
                     DiscoveryArtist.is_deleted == False,
                 )
                 .order_by(DiscoveryComputedMetrics.score.desc().nullslast())
-                .limit(100)  # Top 100 artists per workspace
+                .limit(100)
                 .all()
             )
+
+            # Fallback: if no discovery_artists, use artist_snapshots
+            if not rows:
+                snapshot_names = (
+                    db.query(distinct(ArtistSnapshot.artist_name))
+                    .filter(ArtistSnapshot.workspace_id == ws_id)
+                    .all()
+                )
+                if snapshot_names:
+                    logger.info("Workspace %d: no discovery_artists, using %d artists from snapshots", ws_id, len(snapshot_names))
+                    for (sname,) in snapshot_names:
+                        if not sname:
+                            continue
+                        artist_meta = {"name": sname, "image_url": None, "genres": [], "score": None, "monthly_listeners": None}
+                        try:
+                            events = tm.search_events_for_artist(sname, country_code="FR")
+                            if len(events) < 3:
+                                intl = tm.search_events_for_artist(sname, country_code="")
+                                seen = {e["external_id"] for e in events}
+                                for e in intl:
+                                    if e["external_id"] not in seen:
+                                        events.append(e)
+                            if events:
+                                count = TicketmasterService.upsert_events(db, ws_id, events, artist_meta=artist_meta)
+                                total_events += count
+                                logger.info("  %s (snapshot): %d events upserted", sname, count)
+                        except Exception as e:
+                            logger.warning("  %s (snapshot): error fetching events: %s", sname, e)
+                            continue
 
             logger.info("Workspace %d: syncing events for %d artists", ws_id, len(rows))
 
