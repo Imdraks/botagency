@@ -472,76 +472,124 @@ def get_artist_events(
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_user_workspace_id),
 ) -> Dict[str, Any]:
-    """Get artist events for the map. 
-    Generates events from discovered artists in the workspace."""
-    
-    # Try to import discovery models
-    try:
-        from app.db.models.discovery import DiscoveryArtist, DiscoveryComputedMetrics
-    except ImportError:
-        return {"events": [], "stats": {}, "cities": [], "total": 0}
-    
+    """Get artist events for the map.
+    Returns real events from Ticketmaster (if synced), fallback to generated events."""
+
     cache_key = f"map:artist-events:{workspace_id}:{event_type}:{city}:{artist}:{date_from}:{date_to}"
     cached = cache_get(cache_key)
     if cached:
         return cached
-    
-    # Fetch discovered artists with metrics
-    query = db.query(
-        DiscoveryArtist.id,
-        DiscoveryArtist.canonical_name,
-        DiscoveryArtist.image_url,
-        DiscoveryArtist.genres,
-        DiscoveryComputedMetrics.score,
-        DiscoveryComputedMetrics.monthly_listeners,
-    ).outerjoin(
-        DiscoveryComputedMetrics,
-        DiscoveryArtist.id == DiscoveryComputedMetrics.artist_id
-    ).filter(
-        DiscoveryArtist.workspace_id == workspace_id,
-        DiscoveryArtist.is_deleted == False,
-    ).order_by(
-        DiscoveryComputedMetrics.score.desc().nullslast()
-    ).limit(100)
-    
-    rows = query.all()
-    
-    artists_data = []
-    for row in rows:
-        artists_data.append({
+
+    # ---- Try real events from artist_events table first ----
+    try:
+        from app.db.models.artist_event import ArtistEvent
+
+        q = db.query(ArtistEvent).filter(
+            ArtistEvent.workspace_id == workspace_id,
+            ArtistEvent.is_deleted == False,
+        )
+
+        if event_type:
+            q = q.filter(ArtistEvent.event_type == event_type)
+        if city:
+            q = q.filter(ArtistEvent.city.ilike(f"%{city}%"))
+        if artist:
+            q = q.filter(ArtistEvent.artist_name.ilike(f"%{artist}%"))
+        if date_from:
+            q = q.filter(ArtistEvent.event_date >= date_from)
+        if date_to:
+            q = q.filter(ArtistEvent.event_date <= date_to)
+
+        q = q.order_by(ArtistEvent.event_date.asc()).limit(500)
+        rows = q.all()
+
+        if rows:
+            # Real events exist — use them
+            filtered = [r.to_map_dict() for r in rows]
+
+            # Also get all cities for the filter dropdown
+            all_cities_q = (
+                db.query(ArtistEvent.city)
+                .filter(ArtistEvent.workspace_id == workspace_id, ArtistEvent.is_deleted == False)
+                .distinct()
+            )
+            cities = sorted([c[0] for c in all_cities_q.all() if c[0]])
+
+            type_counts = {}
+            city_counts = {}
+            for e in filtered:
+                t = e["event_type"]
+                type_counts[t] = type_counts.get(t, 0) + 1
+                c = e.get("city", "")
+                if c:
+                    city_counts[c] = city_counts.get(c, 0) + 1
+
+            result = {
+                "events": filtered,
+                "total": len(filtered),
+                "stats": {
+                    "by_type": type_counts,
+                    "by_city": city_counts,
+                    "total_artists": len(set(e["artist_name"] for e in filtered)),
+                },
+                "cities": cities,
+                "source": "ticketmaster",
+            }
+            cache_set(cache_key, result, 120)
+            return result
+    except Exception:
+        pass  # Table might not exist yet — fall back to generated events
+
+    # ---- Fallback: deterministic generated events ----
+    try:
+        from app.db.models.discovery import DiscoveryArtist, DiscoveryComputedMetrics
+    except ImportError:
+        return {"events": [], "stats": {}, "cities": [], "total": 0}
+
+    rows = (
+        db.query(
+            DiscoveryArtist.id,
+            DiscoveryArtist.canonical_name,
+            DiscoveryArtist.image_url,
+            DiscoveryArtist.genres,
+            DiscoveryComputedMetrics.score,
+            DiscoveryComputedMetrics.monthly_listeners,
+        )
+        .outerjoin(DiscoveryComputedMetrics, DiscoveryArtist.id == DiscoveryComputedMetrics.artist_id)
+        .filter(DiscoveryArtist.workspace_id == workspace_id, DiscoveryArtist.is_deleted == False)
+        .order_by(DiscoveryComputedMetrics.score.desc().nullslast())
+        .limit(100)
+        .all()
+    )
+
+    artists_data = [
+        {
             "id": str(row.id) if row.id else "",
             "name": row.canonical_name or "Artiste",
             "image_url": row.image_url,
-            "genres": row.genres if row.genres else [],
+            "genres": row.genres or [],
             "score": row.score or 50,
             "monthly_listeners": row.monthly_listeners or 0,
-        })
-    
-    # Generate deterministic events
-    ws_id_str = str(workspace_id)
-    all_events = _generate_deterministic_events(artists_data, ws_id_str)
-    
-    # Apply filters
+        }
+        for row in rows
+    ]
+
+    all_events = _generate_deterministic_events(artists_data, str(workspace_id))
     filtered = all_events
-    
+
     if event_type:
         filtered = [e for e in filtered if e["event_type"] == event_type]
-    
     if city:
         city_lower = city.lower()
         filtered = [e for e in filtered if city_lower in e["city"].lower()]
-    
     if artist:
         artist_lower = artist.lower()
         filtered = [e for e in filtered if artist_lower in e["artist_name"].lower()]
-    
     if date_from:
         filtered = [e for e in filtered if e["date"] >= date_from]
-    
     if date_to:
         filtered = [e for e in filtered if e["date"] <= date_to]
-    
-    # Compute stats
+
     type_counts = {}
     city_counts = {}
     for e in filtered:
@@ -549,9 +597,9 @@ def get_artist_events(
         type_counts[t] = type_counts.get(t, 0) + 1
         c = e["city"]
         city_counts[c] = city_counts.get(c, 0) + 1
-    
+
     cities = sorted(set(e["city"] for e in all_events))
-    
+
     result = {
         "events": filtered,
         "total": len(filtered),
@@ -561,10 +609,27 @@ def get_artist_events(
             "total_artists": len(set(e["artist_name"] for e in filtered)),
         },
         "cities": cities,
+        "source": "generated",
     }
-    
+
     cache_set(cache_key, result, 120)
     return result
+
+
+@router.post("/sync-events")
+def trigger_event_sync(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_user_workspace_id),
+) -> Dict[str, Any]:
+    """Manually trigger a Ticketmaster event sync for the current workspace."""
+    from app.core.config import settings as _settings
+    if not _settings.ticketmaster_api_key:
+        return {"status": "error", "message": "TICKETMASTER_API_KEY not configured"}
+
+    from app.workers.event_sync_tasks import sync_artist_events
+    task = sync_artist_events.delay(workspace_id=workspace_id)
+    return {"status": "queued", "task_id": str(task.id)}
 
 
 # ============================================================================

@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # Tavily API (for real-time web search)
     tavily_api_key: Optional[str] = None
     
+    # Ticketmaster Discovery API (for real concert/festival events)
+    # Get free key at https://developer.ticketmaster.com
+    ticketmaster_api_key: Optional[str] = None
+    
     # Revolut Business API
     revolut_client_id: str = ""
     revolut_private_key_path: str = ""   # Path to RSA private key PEM file

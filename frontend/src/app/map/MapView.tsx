@@ -21,8 +21,12 @@ interface ArtistEvent {
   monthly_listeners: number;
   event_type: "concert" | "festival" | "popup_store" | "brand_event";
   event_type_label: string;
+  event_name?: string;
+  event_url?: string;
+  event_image?: string;
   venue: string;
   city: string;
+  country?: string;
   lat: number;
   lng: number;
   date: string;
@@ -30,6 +34,10 @@ interface ArtistEvent {
   capacity: number | null;
   price_min: number;
   price_max: number;
+  currency?: string;
+  status?: string;
+  promoter?: string;
+  source?: string;
 }
 
 interface EventTypeConfig {
@@ -161,16 +169,36 @@ export default function MapView({
                   </div>
 
                   <div className="space-y-1 text-xs text-muted-foreground">
+                    {event.event_name && event.event_name !== event.artist_name && (
+                      <p className="font-medium text-foreground">{event.event_name}</p>
+                    )}
                     <p>📍 {event.venue}, {event.city}</p>
                     <p>📅 {event.date_label}</p>
-                    <p>💰 {event.price_min}€ – {event.price_max}€</p>
+                    {(event.price_min || event.price_max) && (
+                      <p>💰 {event.price_min ?? "?"}€ – {event.price_max ?? "?"}€</p>
+                    )}
                     {event.capacity && (
                       <p>👥 {event.capacity.toLocaleString()} places</p>
                     )}
                     {event.monthly_listeners > 0 && (
                       <p>🎧 {formatListeners(event.monthly_listeners)} auditeurs</p>
                     )}
+                    {event.promoter && (
+                      <p>🏢 {event.promoter}</p>
+                    )}
                   </div>
+
+                  {event.event_url && (
+                    <a
+                      href={event.event_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block mt-2 text-center text-[11px] font-semibold py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: color }}
+                    >
+                      🎫 Voir / Acheter
+                    </a>
+                  )}
 
                   {event.artist_genres.length > 0 && (
                     <div className="flex gap-1 mt-2 flex-wrap">

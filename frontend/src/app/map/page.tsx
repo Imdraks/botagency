@@ -16,6 +16,7 @@ import {
   Loader2,
   Search,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +62,7 @@ interface EventsResponse {
     total_artists: number;
   };
   cities: string[];
+  source?: "ticketmaster" | "generated";
 }
 
 // API
@@ -89,6 +91,15 @@ const eventsMapApi = {
       throw new Error("Erreur chargement événements");
     }
 
+    return response.json();
+  },
+
+  syncEvents: async (): Promise<{ status: string; task_id?: string; message?: string }> => {
+    const token = localStorage.getItem("token");
+    const response = await fetch("/api/v1/map/sync-events", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
     return response.json();
   },
 };
@@ -245,7 +256,7 @@ function MapContent() {
     new Set(["concert", "festival", "popup_store", "brand_event"])
   );
 
-  const { data, isLoading } = useQuery<EventsResponse>({
+  const { data, isLoading, refetch } = useQuery<EventsResponse>({
     queryKey: ["map", "artist-events", eventType, city, artistSearch],
     queryFn: () =>
       eventsMapApi.getEvents({
@@ -301,8 +312,32 @@ function MapContent() {
                   {data.stats.total_artists} artistes
                 </span>
               </div>
+              {data.source === "ticketmaster" && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-md">
+                  <span className="text-[10px] font-medium text-green-700">✅ Données réelles</span>
+                </div>
+              )}
+              {data.source === "generated" && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 rounded-md">
+                  <span className="text-[10px] font-medium text-amber-700">⚡ Estimations</span>
+                </div>
+              )}
             </>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1"
+            onClick={async () => {
+              try {
+                await eventsMapApi.syncEvents();
+                setTimeout(() => refetch(), 3000);
+              } catch {}
+            }}
+          >
+            <RefreshCw className="h-3 w-3" />
+            Sync
+          </Button>
         </div>
       </div>
 

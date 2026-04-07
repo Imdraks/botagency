@@ -20,6 +20,7 @@ celery_app = Celery(
         "app.workers.agency_automations",
         "app.workers.discovery_pipeline",
         "app.workers.spotify_search_pipeline",
+        "app.workers.event_sync_tasks",
     ],
 )
 
@@ -120,5 +121,18 @@ celery_app.conf.beat_schedule = {
     "agency-cleanup-old-auto-tasks": {
         "task": "app.workers.agency_automations.cleanup_old_auto_tasks",
         "schedule": crontab(minute="0", hour="2", day_of_week="sunday"),
+    },
+    # ========================================================================
+    # 🎫 EVENT SYNC - Ticketmaster real events
+    # ========================================================================
+    # Sync Ticketmaster events every 6 hours
+    "sync-ticketmaster-events": {
+        "task": "app.workers.event_sync_tasks.sync_artist_events",
+        "schedule": crontab(minute="0", hour="*/6"),
+    },
+    # Cleanup past events weekly on Sunday at 04h00
+    "cleanup-past-events": {
+        "task": "app.workers.event_sync_tasks.cleanup_past_events",
+        "schedule": crontab(minute="0", hour="4", day_of_week="sunday"),
     },
 }
