@@ -23,7 +23,7 @@ from app.db.models.workspace import Workspace
 logger = logging.getLogger(__name__)
 
 # Feed configuration
-CANDIDATE_TTL_MINUTES = 60  # 1 hour
+CANDIDATE_TTL_MINUTES = 1440  # 24 hours
 MAX_CANDIDATES_PER_TYPE = 100  # Max candidates per workspace per type
 
 

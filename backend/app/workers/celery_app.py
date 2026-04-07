@@ -19,6 +19,7 @@ celery_app = Celery(
         "app.workers.radar_features_tasks",
         "app.workers.agency_automations",
         "app.workers.discovery_pipeline",
+        "app.workers.discovery_scheduler",
         "app.workers.spotify_search_pipeline",
         "app.workers.event_sync_tasks",
     ],
@@ -134,5 +135,18 @@ celery_app.conf.beat_schedule = {
     "cleanup-past-events": {
         "task": "app.workers.event_sync_tasks.cleanup_past_events",
         "schedule": crontab(minute="0", hour="4", day_of_week="sunday"),
+    },
+    # ========================================================================
+    # DISCOVERY V3 - Feed candidate generation
+    # ========================================================================
+    # Generate discovery candidates every 30 minutes
+    "generate-discovery-candidates": {
+        "task": "discovery.generate_candidates",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Cleanup expired candidates every 6 hours
+    "cleanup-expired-candidates": {
+        "task": "discovery.cleanup_expired",
+        "schedule": crontab(hour="*/6"),
     },
 }

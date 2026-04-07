@@ -30,6 +30,7 @@ from app.enrichment.config import EnrichmentConfig
 from app.enrichment.providers.viberate import ViberateProvider
 from app.enrichment.providers.spotify import SpotifyProvider
 from app.core.config import settings
+from app.db.models.discovery import DiscoveryCandidate
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +193,9 @@ def run_enrichment_pipeline(self, job_id: str) -> Dict[str, Any]:
             job.update_progress("COMPUTE", 80)
             db.commit()
             step_compute(db, job, viberate_ok, spotify_ok)
+            
+            # Generate discovery candidates immediately for feed display
+            _generate_candidates_for_artist(db, job)
             
             # Sync to artist_analyses for frontend display
             _sync_to_artist_analyses(db, job)
@@ -754,6 +758,77 @@ def step_compute(db: Session, job: DiscoveryEnrichmentJob, viberate_ok: bool, sp
     db.commit()
     
     logger.info(f"Computed metrics for artist {artist.id}: score={score}, timing={timing}")
+
+
+def _generate_candidates_for_artist(db: Session, job: DiscoveryEnrichmentJob) -> None:
+    """
+    Generate DiscoveryCandidate entries immediately after computing metrics,
+    so the artist appears in the feed right away.
+    """
+    from app.workers.discovery_scheduler import calculate_recommended_rank, calculate_trending_rank
+    
+    artist = db.query(DiscoveryArtist).filter(DiscoveryArtist.id == job.artist_id).first()
+    if not artist:
+        return
+    
+    metrics = db.query(DiscoveryComputedMetrics).filter(
+        DiscoveryComputedMetrics.artist_id == artist.id
+    ).order_by(DiscoveryComputedMetrics.computed_at.desc()).first()
+    
+    if not metrics:
+        return
+    
+    ttl_expires = datetime.utcnow() + timedelta(hours=24)
+    now = datetime.utcnow()
+    
+    # Delete old candidates for this artist in this workspace
+    db.query(DiscoveryCandidate).filter(
+        DiscoveryCandidate.artist_id == artist.id,
+        DiscoveryCandidate.workspace_id == artist.workspace_id,
+    ).delete()
+    
+    # RECOMMENDED candidate
+    rec_rank = calculate_recommended_rank(
+        score=metrics.score,
+        timing=metrics.timing_bucket,
+        monthly_listeners=metrics.monthly_listeners or 0,
+        data_quality=metrics.data_quality or "LOW",
+    )
+    reasons = (metrics.drivers or [])[:2]
+    db.add(DiscoveryCandidate(
+        workspace_id=artist.workspace_id,
+        artist_id=artist.id,
+        candidate_type="RECOMMENDED",
+        rank_score=rec_rank,
+        reasons=reasons,
+        computed_at=now,
+        ttl_expires_at=ttl_expires,
+    ))
+    
+    # TRENDING candidate
+    trend_rank = calculate_trending_rank(
+        velocity=metrics.velocity or 0,
+        acceleration=metrics.acceleration or 0,
+        score=metrics.score,
+    )
+    trend_reasons = []
+    if metrics.velocity and metrics.velocity > 0.2:
+        trend_reasons.append({"label": "Croissance rapide", "value": f"+{int(metrics.velocity*100)}%/mois", "impact": 15})
+    if metrics.acceleration and metrics.acceleration > 0.1:
+        trend_reasons.append({"label": "Accélération", "value": f"+{int(metrics.acceleration*100)}%", "impact": 10})
+    
+    db.add(DiscoveryCandidate(
+        workspace_id=artist.workspace_id,
+        artist_id=artist.id,
+        candidate_type="TRENDING",
+        rank_score=trend_rank,
+        reasons=trend_reasons[:2],
+        computed_at=now,
+        ttl_expires_at=ttl_expires,
+    ))
+    
+    db.commit()
+    logger.info(f"Generated candidates for artist {artist.id} (rec={rec_rank:.1f}, trend={trend_rank:.1f})")
 
 
 def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
