@@ -439,9 +439,6 @@ async def delete_artist_analysis(
     current_user: User = Depends(get_current_user),
 ):
     """Delete an artist analysis"""
-    if current_user.role not in ["admin", "manager"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
     analysis = db.query(ArtistAnalysis).filter(ArtistAnalysis.id == analysis_id).first()
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
@@ -458,7 +455,7 @@ async def clear_artist_history(
     current_user: User = Depends(get_current_user),
 ):
     """Clear all artist analysis history (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role.upper() != "ADMIN":
         raise HTTPException(status_code=403, detail="Admin access required")
     
     count = db.query(ArtistAnalysis).count()
