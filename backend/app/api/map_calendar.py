@@ -614,7 +614,7 @@ def get_artist_events(
                     "total_artists": len(set(e["artist_name"] for e in filtered)),
                 },
                 "cities": cities,
-                "source": "ticketmaster",
+                "source": "ticketmaster+bandsintown",
             }
             cache_set(cache_key, result, 120)
             return result

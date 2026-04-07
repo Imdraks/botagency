@@ -1,6 +1,8 @@
 """
-Celery tasks for syncing Ticketmaster events.
-Runs periodically to fetch real concert/festival data for discovered artists.
+Celery tasks for syncing events from multiple sources:
+- Ticketmaster Discovery API
+- Bandsintown REST API
+Runs periodically to fetch real concert/festival data for artists.
 """
 import logging
 from datetime import datetime
@@ -12,25 +14,68 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _fetch_events_for_artist(tm, bit, artist_name: str) -> list:
+    """Search both Ticketmaster and Bandsintown for an artist, deduplicate."""
+    all_events = []
+    seen_ids = set()
+
+    # --- Ticketmaster ---
+    if tm:
+        try:
+            tm_events = tm.search_events_for_artist(artist_name, country_code="FR")
+            if len(tm_events) < 3:
+                intl = tm.search_events_for_artist(artist_name, country_code="")
+                for e in intl:
+                    if e["external_id"] not in {x["external_id"] for x in tm_events}:
+                        tm_events.append(e)
+            for e in tm_events:
+                seen_ids.add(e["external_id"])
+                all_events.append(e)
+        except Exception as e:
+            logger.warning("  %s TM error: %s", artist_name, e)
+
+    # --- Bandsintown ---
+    if bit:
+        try:
+            bit_events = bit.search_events_for_artist(artist_name)
+            for e in bit_events:
+                if e["external_id"] not in seen_ids:
+                    e["source"] = "bandsintown"
+                    seen_ids.add(e["external_id"])
+                    all_events.append(e)
+        except Exception as e:
+            logger.warning("  %s BIT error: %s", artist_name, e)
+
+    return all_events
+
+
 @celery_app.task(bind=True, name="app.workers.event_sync_tasks.sync_artist_events", max_retries=1)
 def sync_artist_events(self, workspace_id: int = None):
-    """Sync Ticketmaster events for all discovered artists in a workspace (or all workspaces)."""
-
-    if not settings.ticketmaster_api_key:
-        logger.info("TICKETMASTER_API_KEY not set — skipping event sync")
-        return {"status": "skipped", "reason": "no_api_key"}
+    """Sync events from Ticketmaster + Bandsintown for all artists."""
 
     from app.services.ticketmaster import TicketmasterService
+    from app.services.bandsintown import BandsintownService
     from app.db.models.discovery import DiscoveryArtist, DiscoveryComputedMetrics
     from app.db.models.workspace import Workspace
     from app.db.models.artist_snapshot import ArtistSnapshot
-    from sqlalchemy import func, distinct
+    from sqlalchemy import distinct
+
+    # Init sources
+    tm = None
+    if settings.ticketmaster_api_key:
+        try:
+            tm = TicketmasterService()
+        except Exception:
+            logger.warning("Ticketmaster init failed")
+
+    bit = BandsintownService()
+
+    if not tm and not bit:
+        return {"status": "skipped", "reason": "no_sources"}
 
     db = SessionLocal()
     try:
-        tm = TicketmasterService()
-
-        # Determine which workspaces to sync
+        # Determine workspaces
         if workspace_id:
             workspace_ids = [workspace_id]
         else:
@@ -41,7 +86,10 @@ def sync_artist_events(self, workspace_id: int = None):
         total_events = 0
 
         for ws_id in workspace_ids:
-            # Get top artists (by score) from discovery_artists
+            # --- Collect artist names to search ---
+            artist_names = []
+
+            # 1) From discovery_artists
             rows = (
                 db.query(
                     DiscoveryArtist.id,
@@ -61,83 +109,62 @@ def sync_artist_events(self, workspace_id: int = None):
                 .all()
             )
 
-            # Fallback: if no discovery_artists, use artist_snapshots
-            if not rows:
+            for row in rows:
+                if row.canonical_name:
+                    artist_names.append({
+                        "name": row.canonical_name,
+                        "id": str(row.id),
+                        "meta": {
+                            "name": row.canonical_name,
+                            "image_url": row.image_url,
+                            "genres": row.genres or [],
+                            "score": row.score,
+                            "monthly_listeners": row.monthly_listeners,
+                        },
+                    })
+
+            # 2) Fallback: artist_snapshots
+            if not artist_names:
                 snapshot_names = (
                     db.query(distinct(ArtistSnapshot.artist_name))
                     .filter(ArtistSnapshot.workspace_id == ws_id)
                     .all()
                 )
-                if snapshot_names:
-                    logger.info("Workspace %d: no discovery_artists, using %d artists from snapshots", ws_id, len(snapshot_names))
-                    for (sname,) in snapshot_names:
-                        if not sname:
-                            continue
-                        artist_meta = {"name": sname, "image_url": None, "genres": [], "score": None, "monthly_listeners": None}
-                        try:
-                            events = tm.search_events_for_artist(sname, country_code="FR")
-                            if len(events) < 3:
-                                intl = tm.search_events_for_artist(sname, country_code="")
-                                seen = {e["external_id"] for e in events}
-                                for e in intl:
-                                    if e["external_id"] not in seen:
-                                        events.append(e)
-                            if events:
-                                count = TicketmasterService.upsert_events(db, ws_id, events, artist_meta=artist_meta)
-                                total_events += count
-                                logger.info("  %s (snapshot): %d events upserted", sname, count)
-                        except Exception as e:
-                            logger.warning("  %s (snapshot): error fetching events: %s", sname, e)
-                            continue
+                for (sname,) in snapshot_names:
+                    if sname:
+                        artist_names.append({
+                            "name": sname,
+                            "id": None,
+                            "meta": {"name": sname, "image_url": None, "genres": [], "score": None, "monthly_listeners": None},
+                        })
+                if artist_names:
+                    logger.info("Workspace %d: using %d artists from snapshots", ws_id, len(artist_names))
 
-            logger.info("Workspace %d: syncing events for %d artists", ws_id, len(rows))
+            logger.info("Workspace %d: syncing events for %d artists (TM=%s, BIT=%s)",
+                        ws_id, len(artist_names), bool(tm), True)
 
-            for row in rows:
-                artist_name = row.canonical_name
-                if not artist_name:
-                    continue
-
-                artist_meta = {
-                    "name": artist_name,
-                    "image_url": row.image_url,
-                    "genres": row.genres or [],
-                    "score": row.score,
-                    "monthly_listeners": row.monthly_listeners,
-                }
-
-                try:
-                    events = tm.search_events_for_artist(artist_name, country_code="FR")
-                    # Also search without country filter for international events
-                    if len(events) < 3:
-                        intl = tm.search_events_for_artist(artist_name, country_code="")
-                        seen = {e["external_id"] for e in events}
-                        for e in intl:
-                            if e["external_id"] not in seen:
-                                events.append(e)
-
-                    if events:
-                        count = TicketmasterService.upsert_events(
-                            db,
-                            ws_id,
-                            events,
-                            artist_id=str(row.id),
-                            artist_meta=artist_meta,
-                        )
-                        total_events += count
-                        logger.info("  %s: %d events upserted", artist_name, count)
-                except Exception as e:
-                    logger.warning("  %s: error fetching events: %s", artist_name, e)
-                    continue
-
-            # Also fetch general music events in France (catches events not matched to specific artists)
-            try:
-                general = tm.search_all_music_events(country_code="FR", pages=2)
-                if general:
-                    count = TicketmasterService.upsert_events(db, ws_id, general)
+            # --- Search each artist on all sources ---
+            for a in artist_names:
+                events = _fetch_events_for_artist(tm, bit, a["name"])
+                if events:
+                    count = TicketmasterService.upsert_events(
+                        db, ws_id, events,
+                        artist_id=a["id"],
+                        artist_meta=a["meta"],
+                    )
                     total_events += count
-                    logger.info("Workspace %d: %d general FR events upserted", ws_id, count)
-            except Exception as e:
-                logger.warning("Workspace %d: general events error: %s", ws_id, e)
+                    logger.info("  %s: %d events upserted", a["name"], count)
+
+            # --- General France events from Ticketmaster ---
+            if tm:
+                try:
+                    general = tm.search_all_music_events(country_code="FR", pages=2)
+                    if general:
+                        count = TicketmasterService.upsert_events(db, ws_id, general)
+                        total_events += count
+                        logger.info("Workspace %d: %d general FR events upserted", ws_id, count)
+                except Exception as e:
+                    logger.warning("Workspace %d: general events error: %s", ws_id, e)
 
         return {"status": "ok", "total_events": total_events, "workspaces": len(workspace_ids)}
 

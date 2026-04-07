@@ -131,6 +131,7 @@ class TicketmasterService:
         events: List[Dict[str, Any]],
         artist_id: Optional[str] = None,
         artist_meta: Optional[Dict[str, Any]] = None,
+        source: Optional[str] = None,
     ) -> int:
         """Upsert normalised events into the artist_events table.
         Returns the number of rows upserted."""
@@ -145,7 +146,7 @@ class TicketmasterService:
                 "workspace_id": workspace_id,
                 "artist_id": artist_id,
                 "external_id": ev["external_id"],
-                "source": "ticketmaster",
+                "source": ev.get("source", source or "ticketmaster"),
                 "artist_name": ev.get("artist_name") or meta.get("name", "Artiste"),
                 "artist_image": meta.get("image_url"),
                 "artist_genres": meta.get("genres", []),
