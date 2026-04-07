@@ -75,45 +75,63 @@ def extract_spotify_artist_id(url_or_id: str) -> Optional[str]:
 
 def _resolve_spotify_id_by_name(name: str) -> Optional[Dict[str, Any]]:
     """
-    Resolve artist name → Spotify ID + metadata.
-    Strategy: Spotify web scraping (Playwright search) → Deezer API fallback for metadata.
+    Resolve artist name → metadata + Spotify ID.
+    Strategy: 
+    1. Deezer API (free, reliable) for name/image/fans
+    2. Google search to find Spotify artist ID
+    3. Spotify page scraping for monthly listeners (if ID found)
     """
-    # 1. Try Spotify web scraping (search + scrape artist page)
-    try:
-        from app.enrichment.providers.spotify_scraper import search_spotify_artist
-        sp_data = search_spotify_artist(name)
-        if sp_data and sp_data.get("spotify_artist_id"):
-            logger.info(f"Spotify scraper resolved '{name}' → {sp_data.get('name')} (ID: {sp_data['spotify_artist_id']})")
-            return {
-                "spotify_artist_id": sp_data["spotify_artist_id"],
-                "canonical_name": sp_data.get("name", name),
-                "image_url": sp_data.get("image_url"),
-                "monthly_listeners": sp_data.get("monthly_listeners", 0),
-                "genres": [],
-            }
-    except Exception as e:
-        logger.warning(f"Spotify scraper search failed for '{name}': {e}")
+    result: Dict[str, Any] = {
+        "spotify_artist_id": None,
+        "canonical_name": name,
+        "image_url": None,
+        "monthly_listeners": 0,
+        "deezer_id": None,
+        "deezer_fans": 0,
+        "genres": [],
+    }
 
-    # 2. Fallback: Deezer API (free, no auth) — for name + image + fans
+    # 1. Deezer API — reliable name resolution + fans + image
     try:
         from app.enrichment.providers.deezer import search_deezer_artist
         dz_data = search_deezer_artist(name)
         if dz_data:
-            logger.info(f"Deezer resolved '{name}' → {dz_data.get('name')} (fans: {dz_data.get('deezer_fans')})")
-            return {
-                "spotify_artist_id": None,
-                "canonical_name": dz_data.get("name", name),
-                "image_url": dz_data.get("image_url"),
-                "monthly_listeners": 0,
-                "deezer_id": dz_data.get("deezer_id"),
-                "deezer_fans": dz_data.get("deezer_fans", 0),
-                "genres": [],
-            }
+            result["canonical_name"] = dz_data.get("name", name)
+            result["image_url"] = dz_data.get("image_url")
+            result["deezer_id"] = dz_data.get("deezer_id")
+            result["deezer_fans"] = dz_data.get("deezer_fans", 0)
+            logger.info(f"Deezer resolved '{name}' → {result['canonical_name']} (fans: {result['deezer_fans']})")
     except Exception as e:
         logger.warning(f"Deezer search failed for '{name}': {e}")
 
-    logger.error(f"Could not resolve artist '{name}' via any source")
-    return None
+    # 2. Find Spotify ID via Google
+    try:
+        from app.enrichment.providers.spotify_scraper import search_spotify_id_by_name
+        spotify_id = search_spotify_id_by_name(result["canonical_name"] or name)
+        if spotify_id:
+            result["spotify_artist_id"] = spotify_id
+            logger.info(f"Found Spotify ID for '{name}': {spotify_id}")
+    except Exception as e:
+        logger.warning(f"Spotify ID search failed for '{name}': {e}")
+
+    # 3. If we found a Spotify ID, scrape the page for monthly listeners
+    if result["spotify_artist_id"]:
+        try:
+            from app.enrichment.providers.spotify_scraper import scrape_spotify_artist
+            sp_data = scrape_spotify_artist(result["spotify_artist_id"])
+            if sp_data:
+                result["monthly_listeners"] = sp_data.get("monthly_listeners", 0)
+                if sp_data.get("image_url") and not result["image_url"]:
+                    result["image_url"] = sp_data["image_url"]
+                logger.info(f"Spotify scrape: ml={result['monthly_listeners']}")
+        except Exception as e:
+            logger.warning(f"Spotify scrape failed: {e}")
+
+    if not result["deezer_fans"] and not result["spotify_artist_id"]:
+        logger.error(f"Could not resolve artist '{name}' via any source")
+        return None
+
+    return result
 
 
 # ============================================================================

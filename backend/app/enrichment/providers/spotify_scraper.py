@@ -103,58 +103,37 @@ def scrape_spotify_artist(spotify_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def search_spotify_artist(name: str) -> Optional[Dict[str, Any]]:
+def search_spotify_id_by_name(name: str) -> Optional[str]:
     """
-    Search for an artist on Spotify via web scraping.
-    Uses Spotify's open search page to find the artist, then scrapes their page.
+    Try to find a Spotify artist ID by scraping Google search results.
+    Searches for 'site:open.spotify.com/artist "<name>"' and extracts the ID.
     
-    Returns dict with: spotify_artist_id, name, monthly_listeners, image_url
-    or None on failure.
+    Returns the Spotify artist ID (22 chars) or None.
     """
+    import re
     try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        logger.error("Playwright not installed")
+        import httpx
+        query = f'site:open.spotify.com/artist "{name}"'
+        r = httpx.get(
+            "https://www.google.com/search",
+            params={"q": query, "num": 5},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+            timeout=10,
+            follow_redirects=True,
+        )
+        # Extract Spotify artist IDs from Google results
+        ids = re.findall(r'open\.spotify\.com/artist/([a-zA-Z0-9]{22})', r.text)
+        if ids:
+            # Return the most common ID (usually the first/correct one)
+            from collections import Counter
+            best_id = Counter(ids).most_common(1)[0][0]
+            logger.info(f"Google found Spotify ID for '{name}': {best_id}")
+            return best_id
+        logger.warning(f"No Spotify ID found via Google for '{name}'")
         return None
-
-    search_url = f"https://open.spotify.com/search/{name}/artists"
-    logger.info(f"Searching Spotify for artist: {name}")
-
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                locale="en-US",
-            )
-            page = context.new_page()
-            page.goto(search_url, timeout=15000, wait_until="domcontentloaded")
-            # Need to wait for JS to render search results
-            page.wait_for_timeout(4000)
-
-            # Look for artist links in the page
-            content = page.content()
-            browser.close()
-
-        # Extract artist IDs from links: /artist/<22-char-id>
-        artist_ids = re.findall(r'/artist/([a-zA-Z0-9]{22})', content)
-        if not artist_ids:
-            logger.warning(f"No Spotify artist results for '{name}'")
-            return None
-
-        # Take the first unique ID (most relevant result)
-        seen = set()
-        unique_ids = []
-        for aid in artist_ids:
-            if aid not in seen:
-                seen.add(aid)
-                unique_ids.append(aid)
-
-        # Scrape the first result's artist page
-        best_id = unique_ids[0]
-        logger.info(f"Spotify search found {len(unique_ids)} artists, scraping first: {best_id}")
-        return scrape_spotify_artist(best_id)
-
     except Exception as e:
-        logger.error(f"Spotify search scraping failed for '{name}': {e}")
+        logger.warning(f"Google Spotify search failed for '{name}': {e}")
         return None
