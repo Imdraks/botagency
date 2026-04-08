@@ -23,18 +23,27 @@ MAX_TOKENS = 2000
 LLM_TIMEOUT = 45.0
 
 
+def _get_llm_config():
+    """Get LLM provider config: Groq (free) first, then OpenAI."""
+    groq_key = getattr(settings, 'groq_api_key', None)
+    if groq_key:
+        return groq_key, "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"
+    if settings.openai_api_key:
+        return settings.openai_api_key, "https://api.openai.com/v1/chat/completions", settings.openai_model or "gpt-4o-mini"
+    return None, None, None
+
+
 def _call_llm_sync(prompt: str, system: str = "Tu es un analyste expert de l'industrie musicale. Réponds uniquement en JSON valide.") -> Optional[str]:
-    """Sync call to OpenAI API."""
-    api_key = settings.openai_api_key
+    """Sync call to LLM API (Groq free or OpenAI)."""
+    api_key, base_url, model = _get_llm_config()
     if not api_key:
-        logger.warning("No OpenAI API key, skipping LLM analysis")
+        logger.warning("No LLM API key (GROQ_API_KEY or OPENAI_API_KEY), skipping LLM analysis")
         return None
 
-    model = settings.openai_model or "gpt-4o-mini"
     try:
         with httpx.Client(timeout=LLM_TIMEOUT) as client:
             resp = client.post(
-                "https://api.openai.com/v1/chat/completions",
+                base_url,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
@@ -51,7 +60,9 @@ def _call_llm_sync(prompt: str, system: str = "Tu es un analyste expert de l'ind
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"]
+            logger.info(f"LLM response OK (provider={'groq' if 'groq' in base_url else 'openai'}, model={model})")
+            return content
     except Exception as e:
         logger.error(f"LLM call failed: {e}")
         return None
