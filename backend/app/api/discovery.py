@@ -582,10 +582,10 @@ async def get_artist_detail(
         acceleration=metrics.acceleration if metrics else None,
         data_quality=metrics.data_quality if metrics else None,
         
-        drivers=metrics.drivers if metrics else [],
-        risks=metrics.penalties if metrics else [],
-        patterns=metrics.patterns if metrics else [],
-        signals=metrics.signals if metrics else [],
+        drivers=metrics.drivers or [] if metrics else [],
+        risks=metrics.penalties or [] if metrics else [],
+        patterns=metrics.patterns or [] if metrics else [],
+        signals=metrics.signals or [] if metrics else [],
         summary=None,
         booking_range={"min": metrics.fee_estimate_min, "max": metrics.fee_estimate_max} if metrics and metrics.fee_estimate_min else None,
         
