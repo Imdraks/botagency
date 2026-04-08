@@ -969,7 +969,7 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     if not best_platforms:
         best_platforms = ["Spotify", "Instagram"]
 
-    viral = "high" if velocity and velocity > 0.05 else "medium" if velocity and velocity > 0.01 else "low"
+    viral = 0.8 if velocity and velocity > 0.05 else 0.5 if velocity and velocity > 0.01 else 0.2
 
     # --- Build common update dict ---
     update_fields = dict(
