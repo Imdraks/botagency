@@ -838,8 +838,14 @@ def _generate_candidates_for_artist(db: Session, job: DiscoveryEnrichmentJob) ->
 def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     """
     Sync discovery results to artist_analyses table for frontend display.
+    Uses EWMA prediction service + GPT-4o-mini for qualitative intelligence.
+    Falls back to rule-based if LLM unavailable.
     """
     from app.db.models.artist_analysis import ArtistAnalysis
+    from app.intelligence.artist_intelligence import (
+        compute_statistical_predictions,
+        compute_llm_intelligence,
+    )
 
     artist = db.query(DiscoveryArtist).filter(
         DiscoveryArtist.id == job.artist_id
@@ -860,8 +866,13 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     ).order_by(DiscoverySnapshot.fetched_at.desc()).first()
     spot_data = (spot_snap.raw_payload if spot_snap else None) or {}
 
-    # Determine market tier
     ml = metrics.monthly_listeners or 0
+    velocity = metrics.velocity or 0
+    fee_min = metrics.fee_estimate_min or 0
+    fee_max = metrics.fee_estimate_max or 0
+    score = metrics.score or 0
+
+    # Determine market tier
     if ml >= 5_000_000:
         tier = "superstar"
     elif ml >= 1_000_000:
@@ -875,103 +886,43 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     else:
         tier = "underground"
 
-    # --- Compute predictions ---
-    velocity = metrics.velocity or 0
-    growth_rate = round(velocity * 100, 1) if velocity else 0
-    if velocity > 0.05:
-        growth_trend = "strong_growth"
-    elif velocity > 0.01:
-        growth_trend = "growing"
-    elif velocity > -0.01:
-        growth_trend = "stable"
-    elif velocity > -0.05:
-        growth_trend = "declining"
-    else:
-        growth_trend = "sharp_decline"
+    # --- 1. Statistical predictions (EWMA or velocity fallback) ---
+    preds = compute_statistical_predictions(
+        db=db,
+        artist_name=artist.canonical_name,
+        workspace_id=artist.workspace_id,
+        ml=ml,
+        velocity=velocity,
+    )
+    logger.info(f"Predictions for {artist.canonical_name}: method={preds['prediction_method']}, "
+                f"30d={preds['predicted_listeners_30d']}, trend={preds['growth_trend']}")
 
-    predicted_30d = int(ml * (1 + velocity)) if ml else None
-    predicted_90d = int(ml * (1 + velocity * 3)) if ml else None
-    predicted_180d = int(ml * (1 + velocity * 6)) if ml else None
+    # --- 2. LLM-powered intelligence (GPT or rule-based fallback) ---
+    genres = spot_data.get("genres", [])
+    intel = compute_llm_intelligence(
+        artist_name=artist.canonical_name,
+        tier=tier,
+        ml=ml,
+        spotify_followers=metrics.spotify_followers or 0,
+        instagram_followers=metrics.instagram_followers or 0,
+        tiktok_followers=metrics.tiktok_followers or 0,
+        youtube_subscribers=metrics.youtube_subscribers or 0,
+        genres=genres,
+        country=artist.country,
+        velocity=velocity,
+        growth_trend=preds["growth_trend"],
+        predicted_30d=preds["predicted_listeners_30d"],
+        predicted_90d=preds["predicted_listeners_90d"],
+        fee_min=fee_min,
+        fee_max=fee_max,
+        score=score,
+        drivers=metrics.drivers or [],
+        penalties=metrics.penalties or [],
+        signals=metrics.signals or [],
+    )
+    logger.info(f"Intelligence for {artist.canonical_name}: method={intel.get('intelligence_method')}")
 
-    # --- Compute booking intelligence ---
-    fee_min = metrics.fee_estimate_min or 0
-    fee_max = metrics.fee_estimate_max or 0
-    optimal_fee = int((fee_min + fee_max) * 0.6) if fee_max else None
-
-    score = metrics.score or 0
-    if score >= 80:
-        neg_power = "high"
-    elif score >= 50:
-        neg_power = "medium"
-    else:
-        neg_power = "low"
-
-    best_window = "Q4" if ml >= 100_000 else "Q2-Q3"
-    event_fit = {}
-    if ml >= 500_000:
-        event_fit = {"Festival": 90, "Concert": 85, "Showcase": 60, "Événement privé": 70}
-    elif ml >= 100_000:
-        event_fit = {"Festival": 70, "Concert": 80, "Showcase": 75, "Événement privé": 65}
-    elif ml >= 10_000:
-        event_fit = {"Festival": 40, "Concert": 60, "Showcase": 85, "Événement privé": 50}
-    else:
-        event_fit = {"Showcase": 80, "Événement privé": 60, "Concert": 40}
-
-    seasonal = {"Q1": 0.3, "Q2": 0.5, "Q3": 0.8, "Q4": 0.9}
-
-    # --- Compute AI summary ---
-    drivers_text = ", ".join([d.get("label", "") for d in (metrics.drivers or [])[:3]])
-    penalties_text = ", ".join([p.get("label", "") for p in (metrics.penalties or [])[:3]])
-
-    rec_map = {"BOOK": "signer", "WATCHLIST": "suivre", "WATCH": "suivre", "IGNORE": "passer"}
-    rec_label = rec_map.get(metrics.recommendation, metrics.recommendation or "évaluer")
-
-    ai_summary = f"{artist.canonical_name} est un artiste de niveau {tier}"
-    if ml:
-        ai_summary += f" avec {ml:,} auditeurs mensuels sur Spotify"
-    ai_summary += f". Score de découverte : {score}/100."
-    if drivers_text:
-        ai_summary += f" Points forts : {drivers_text}."
-    if penalties_text:
-        ai_summary += f" Points d'attention : {penalties_text}."
-    ai_summary += f" Recommandation : {rec_label}."
-
-    ai_tier = tier
-    strengths = [d.get("label", "") for d in (metrics.drivers or []) if d.get("label")]
-    weaknesses = [p.get("label", "") for p in (metrics.penalties or []) if p.get("label")]
-    opportunities = [s if isinstance(s, str) else s.get("type", "") for s in (metrics.signals or []) if s]
-    threats = []
-    if velocity and velocity < -0.02:
-        threats.append("Tendance à la baisse des auditeurs")
-    if metrics.data_quality == "LOW":
-        threats.append("Données limitées, analyse moins fiable")
-
-    ai_recommendations = []
-    if score >= 60:
-        ai_recommendations.append(f"Artiste à {rec_label} — score élevé de {score}/100")
-    if velocity and velocity > 0.03:
-        ai_recommendations.append("Croissance rapide — fenêtre d'opportunité ouverte")
-    if fee_max and fee_max < 5000:
-        ai_recommendations.append("Cachet accessible — bon rapport qualité/prix")
-    if not ai_recommendations:
-        ai_recommendations.append(f"Artiste à {rec_label} — continuer le suivi")
-
-    # Best platforms
-    best_platforms = []
-    if ml and ml > 0:
-        best_platforms.append("Spotify")
-    if metrics.instagram_followers and metrics.instagram_followers > 0:
-        best_platforms.append("Instagram")
-    if metrics.tiktok_followers and metrics.tiktok_followers > 0:
-        best_platforms.append("TikTok")
-    if metrics.youtube_subscribers and metrics.youtube_subscribers > 0:
-        best_platforms.append("YouTube")
-    if not best_platforms:
-        best_platforms = ["Spotify", "Instagram"]
-
-    viral = 0.8 if velocity and velocity > 0.05 else 0.5 if velocity and velocity > 0.01 else 0.2
-
-    # --- Build common update dict ---
+    # --- Build update dict ---
     update_fields = dict(
         spotify_monthly_listeners=ml,
         instagram_followers=metrics.instagram_followers or 0,
@@ -984,30 +935,30 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
         popularity_score=score,
         ai_score=score,
         image_url=artist.image_url,
-        confidence_score=0.8 if metrics.data_quality == "HIGH" else 0.5,
-        # Predictions
-        growth_trend=growth_trend,
-        growth_rate_monthly=growth_rate,
-        predicted_listeners_30d=predicted_30d,
-        predicted_listeners_90d=predicted_90d,
-        predicted_listeners_180d=predicted_180d,
-        best_platforms=best_platforms,
-        viral_potential=viral,
-        # Booking intelligence
-        optimal_fee=optimal_fee,
-        negotiation_power=neg_power,
-        best_booking_window=best_window,
-        event_type_fit=event_fit,
-        territory_strength={"France": 80, "Europe": 40, "International": 20},
-        seasonal_demand=seasonal,
-        # AI Intelligence
-        ai_summary=ai_summary,
-        ai_tier=ai_tier,
-        strengths=strengths,
-        weaknesses=weaknesses,
-        opportunities=opportunities,
-        threats=threats,
-        ai_recommendations=ai_recommendations,
+        confidence_score=preds["confidence_score"],
+        # Predictions (from EWMA/velocity)
+        growth_trend=preds["growth_trend"],
+        growth_rate_monthly=preds["growth_rate_monthly"],
+        predicted_listeners_30d=preds["predicted_listeners_30d"],
+        predicted_listeners_90d=preds["predicted_listeners_90d"],
+        predicted_listeners_180d=preds["predicted_listeners_180d"],
+        # Intelligence (from LLM/rule-based)
+        best_platforms=intel["best_platforms"],
+        viral_potential=intel["viral_potential"],
+        optimal_fee=intel["optimal_fee"],
+        negotiation_power=intel["negotiation_power"],
+        best_booking_window=intel["best_booking_window"],
+        event_type_fit=intel["event_type_fit"],
+        territory_strength=intel["territory_strength"],
+        seasonal_demand=intel["seasonal_demand"],
+        ai_summary=intel["ai_summary"],
+        ai_tier=tier,
+        strengths=intel["strengths"],
+        weaknesses=intel["weaknesses"],
+        opportunities=intel["opportunities"],
+        threats=intel["threats"],
+        ai_recommendations=intel["ai_recommendations"],
+        content_recommendations=intel.get("content_recommendations", []),
         created_at=datetime.utcnow(),
     )
 
@@ -1025,8 +976,8 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
         analysis = ArtistAnalysis(
             workspace_id=artist.workspace_id,
             artist_name=artist.canonical_name,
-            genre=", ".join(spot_data.get("genres", [])) if spot_data.get("genres") else None,
-            market_trend=growth_trend,
+            genre=", ".join(genres) if genres else None,
+            market_trend=preds["growth_trend"],
             sources_scanned="spotify,deezer,musicbrainz",
             **update_fields,
         )
