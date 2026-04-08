@@ -84,16 +84,133 @@ def _parse_json(raw: str, default: Dict) -> Dict:
         return default
 
 
+def _compute_velocity_from_snapshots(db: Session, artist_name: str, workspace_id: int) -> float:
+    """
+    Compute growth velocity from past artist_snapshots when no listeners_history.
+    Returns monthly growth rate (e.g. 0.05 = +5%/month).
+    """
+    from app.db.models.artist_snapshot import ArtistSnapshot as SnapModel
+    normalized = SnapModel.normalize_name(artist_name)
+    snaps = (
+        db.query(SnapModel)
+        .filter(
+            SnapModel.artist_name_normalized == normalized,
+            SnapModel.workspace_id == workspace_id,
+            SnapModel.spotify_monthly_listeners.isnot(None),
+            SnapModel.spotify_monthly_listeners > 0,
+        )
+        .order_by(SnapModel.snapshot_date.asc())
+        .all()
+    )
+    if len(snaps) < 2:
+        return 0.0
+
+    # Compute average daily growth rate between consecutive snapshots
+    growth_rates = []
+    for i in range(1, len(snaps)):
+        prev_ml = snaps[i - 1].spotify_monthly_listeners
+        curr_ml = snaps[i].spotify_monthly_listeners
+        days = (snaps[i].snapshot_date - snaps[i - 1].snapshot_date).days
+        if prev_ml > 0 and days > 0:
+            daily_rate = (curr_ml - prev_ml) / prev_ml / days
+            growth_rates.append(daily_rate)
+
+    if not growth_rates:
+        return 0.0
+
+    # Average daily rate → monthly rate
+    avg_daily = sum(growth_rates) / len(growth_rates)
+    monthly_rate = avg_daily * 30
+    logger.info(f"Snapshot velocity for {artist_name}: {monthly_rate:+.4f}/month from {len(snaps)} snapshots")
+    return monthly_rate
+
+
+def _estimate_growth_via_llm(
+    artist_name: str, ml: int, tier: str,
+    spotify_followers: int, instagram_followers: int,
+    tiktok_followers: int, youtube_subscribers: int,
+) -> Optional[Dict[str, Any]]:
+    """
+    Ask LLM to estimate growth trajectory when we have zero historical data.
+    Returns dict with estimated monthly growth rate and predictions, or None.
+    """
+    social_total = (instagram_followers or 0) + (tiktok_followers or 0) + (youtube_subscribers or 0)
+    prompt = f"""Tu es un analyste data de l'industrie musicale. Estime la trajectoire de croissance de cet artiste.
+
+## DONNÉES
+- Nom : {artist_name}
+- Niveau : {tier}
+- Monthly listeners Spotify : {ml:,}
+- Followers Spotify : {spotify_followers:,}
+- Instagram : {instagram_followers:,}
+- TikTok : {tiktok_followers:,}
+- YouTube : {youtube_subscribers:,}
+- Social total : {social_total:,}
+
+## RATIOS CLÉS
+- Ratio followers/listeners : {(spotify_followers / ml * 100) if ml > 0 else 0:.1f}%
+- Ratio social/listeners : {(social_total / ml * 100) if ml > 0 else 0:.1f}%
+
+## INSTRUCTIONS
+Analyse les ratios et le positionnement pour estimer la croissance mensuelle probable.
+- Un artiste "rising" avec bon ratio social croît typiquement de +3% à +8%/mois
+- Un artiste "established" stable est autour de +1% à +3%/mois
+- Un artiste avec ratio followers/listeners élevé a une fanbase fidèle = plus stable
+- Un artiste avec beaucoup de TikTok mais peu de Spotify est probablement en phase virale
+
+Réponds UNIQUEMENT avec ce JSON :
+{{
+  "estimated_monthly_growth": <float, ex: 0.03 pour +3%/mois>,
+  "growth_trend": "strong_growth|growing|stable|declining",
+  "confidence": <float 0.0-1.0, ta confiance dans l'estimation>,
+  "reasoning": "1 phrase expliquant ton raisonnement"
+}}"""
+
+    raw = _call_llm_sync(prompt)
+    parsed = _parse_json(raw, {})
+    if not parsed or "estimated_monthly_growth" not in parsed:
+        return None
+
+    growth = parsed.get("estimated_monthly_growth", 0)
+    if not isinstance(growth, (int, float)):
+        return None
+
+    # Clamp to reasonable range (-20% to +30% monthly)
+    growth = max(-0.20, min(0.30, float(growth)))
+    confidence = max(0.1, min(0.8, float(parsed.get("confidence", 0.4))))
+    trend = parsed.get("growth_trend", "stable")
+    if trend not in ("strong_growth", "growing", "stable", "declining", "sharp_decline"):
+        trend = "stable"
+
+    logger.info(f"LLM growth estimate for {artist_name}: {growth:+.3f}/month, "
+                f"trend={trend}, confidence={confidence:.2f}, reason={parsed.get('reasoning', 'N/A')}")
+    return {
+        "growth_rate": growth,
+        "trend": trend,
+        "confidence": confidence,
+        "reasoning": parsed.get("reasoning", ""),
+    }
+
+
 def compute_statistical_predictions(
     db: Session,
     artist_name: str,
     workspace_id: int,
     ml: int,
     velocity: float,
+    tier: str = "unknown",
+    spotify_followers: int = 0,
+    instagram_followers: int = 0,
+    tiktok_followers: int = 0,
+    youtube_subscribers: int = 0,
 ) -> Dict[str, Any]:
     """
-    Use ArtistPredictionService (EWMA) if enough snapshots,
-    otherwise fall back to velocity-based formula.
+    Multi-tier prediction strategy:
+    1. EWMA (if 2+ snapshots in artist_snapshots) — best accuracy
+    2. Snapshot velocity (if 2+ snapshots but EWMA fails)
+    3. Pipeline velocity (from Viberate listeners_history)
+    4. LLM-estimated growth (when no historical data at all)
+    5. Tier-based heuristic (last resort, no LLM)
     Returns dict with prediction fields.
     """
     result = {
@@ -110,7 +227,7 @@ def compute_statistical_predictions(
     if not ml:
         return result
 
-    # Try EWMA prediction service
+    # --- Tier 1: EWMA prediction service ---
     try:
         svc = ArtistPredictionService(db)
         pred = svc.get_prediction(artist_name, workspace_id)
@@ -118,25 +235,14 @@ def compute_statistical_predictions(
         if pred.is_valid and pred.snapshot_count >= 2:
             result["predicted_listeners_30d"] = pred.central.value_30d
             result["predicted_listeners_90d"] = pred.central.value_90d
-            # 180d = extrapolate from central growth rate
             result["predicted_listeners_180d"] = max(0, int(ml * math.exp(pred.central.growth_rate * 180)))
             result["growth_rate_monthly"] = round(pred.central.growth_rate * 30 * 100, 2)
             result["confidence_score"] = pred.confidence_score / 100.0
             result["growth_probability"] = pred.growth_probability
             result["prediction_method"] = "ewma"
 
-            # Growth trend from actual growth rate
             monthly_rate = pred.central.growth_rate * 30
-            if monthly_rate > 0.05:
-                result["growth_trend"] = "strong_growth"
-            elif monthly_rate > 0.01:
-                result["growth_trend"] = "growing"
-            elif monthly_rate > -0.01:
-                result["growth_trend"] = "stable"
-            elif monthly_rate > -0.05:
-                result["growth_trend"] = "declining"
-            else:
-                result["growth_trend"] = "sharp_decline"
+            result["growth_trend"] = _trend_from_rate(monthly_rate)
 
             logger.info(
                 f"EWMA prediction for {artist_name}: "
@@ -147,25 +253,79 @@ def compute_statistical_predictions(
     except Exception as e:
         logger.warning(f"EWMA prediction failed for {artist_name}: {e}")
 
-    # Fallback: velocity-based linear
-    if velocity:
-        result["growth_rate_monthly"] = round(velocity * 100, 1)
-        result["predicted_listeners_30d"] = int(ml * (1 + velocity))
-        result["predicted_listeners_90d"] = int(ml * (1 + velocity * 3))
-        result["predicted_listeners_180d"] = int(ml * (1 + velocity * 6))
-        result["prediction_method"] = "velocity_linear"
+    # --- Tier 2: Snapshot-derived velocity ---
+    if not velocity or velocity == 0:
+        snap_velocity = _compute_velocity_from_snapshots(db, artist_name, workspace_id)
+        if snap_velocity != 0:
+            velocity = snap_velocity
+            logger.info(f"Using snapshot velocity for {artist_name}: {velocity:+.4f}")
 
-        if velocity > 0.05:
-            result["growth_trend"] = "strong_growth"
-        elif velocity > 0.01:
-            result["growth_trend"] = "growing"
-        elif velocity > -0.01:
-            result["growth_trend"] = "stable"
-        elif velocity > -0.05:
-            result["growth_trend"] = "declining"
-        else:
-            result["growth_trend"] = "sharp_decline"
+    # --- Tier 3: Pipeline velocity (from Viberate) ---
+    if velocity and velocity != 0:
+        return _apply_velocity_prediction(result, ml, velocity, "velocity_linear")
 
+    # --- Tier 4: LLM-estimated growth ---
+    llm_est = _estimate_growth_via_llm(
+        artist_name, ml, tier,
+        spotify_followers, instagram_followers,
+        tiktok_followers, youtube_subscribers,
+    )
+    if llm_est:
+        growth = llm_est["growth_rate"]
+        result["growth_rate_monthly"] = round(growth * 100, 1)
+        result["predicted_listeners_30d"] = max(0, int(ml * (1 + growth)))
+        result["predicted_listeners_90d"] = max(0, int(ml * (1 + growth * 3)))
+        result["predicted_listeners_180d"] = max(0, int(ml * (1 + growth * 6)))
+        result["growth_trend"] = llm_est["trend"]
+        result["confidence_score"] = llm_est["confidence"]
+        result["growth_probability"] = 50 + (growth * 500)  # Map to 0-100
+        result["prediction_method"] = "llm_estimated"
+        return result
+
+    # --- Tier 5: Tier-based heuristic ---
+    tier_growth = {
+        "superstar": 0.005,
+        "major": 0.01,
+        "established": 0.015,
+        "rising": 0.03,
+        "emerging": 0.05,
+        "underground": 0.02,
+    }
+    heuristic_rate = tier_growth.get(tier, 0.01)
+    result["growth_rate_monthly"] = round(heuristic_rate * 100, 1)
+    result["predicted_listeners_30d"] = int(ml * (1 + heuristic_rate))
+    result["predicted_listeners_90d"] = int(ml * (1 + heuristic_rate * 3))
+    result["predicted_listeners_180d"] = int(ml * (1 + heuristic_rate * 6))
+    result["growth_trend"] = "growing" if heuristic_rate > 0.02 else "stable"
+    result["confidence_score"] = 0.15
+    result["growth_probability"] = 55.0
+    result["prediction_method"] = "tier_heuristic"
+    logger.info(f"Tier heuristic for {artist_name}: {heuristic_rate:+.3f}/month (tier={tier})")
+    return result
+
+
+def _trend_from_rate(monthly_rate: float) -> str:
+    """Map monthly growth rate to trend label."""
+    if monthly_rate > 0.05:
+        return "strong_growth"
+    elif monthly_rate > 0.01:
+        return "growing"
+    elif monthly_rate > -0.01:
+        return "stable"
+    elif monthly_rate > -0.05:
+        return "declining"
+    return "sharp_decline"
+
+
+def _apply_velocity_prediction(result: Dict, ml: int, velocity: float, method: str) -> Dict:
+    """Apply velocity-based linear prediction."""
+    result["growth_rate_monthly"] = round(velocity * 100, 1)
+    result["predicted_listeners_30d"] = max(0, int(ml * (1 + velocity)))
+    result["predicted_listeners_90d"] = max(0, int(ml * (1 + velocity * 3)))
+    result["predicted_listeners_180d"] = max(0, int(ml * (1 + velocity * 6)))
+    result["prediction_method"] = method
+    result["confidence_score"] = 0.4 if method == "velocity_linear" else 0.35
+    result["growth_trend"] = _trend_from_rate(velocity)
     return result
 
 

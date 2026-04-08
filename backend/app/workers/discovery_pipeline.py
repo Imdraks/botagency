@@ -758,6 +758,24 @@ def step_compute(db: Session, job: DiscoveryEnrichmentJob, viberate_ok: bool, sp
     # Update artist quality
     artist.data_quality = data_quality
     artist.last_enriched_at = datetime.utcnow()
+
+    # --- Create ArtistSnapshot for prediction service (EWMA) ---
+    from app.db.models.artist_snapshot import ArtistSnapshot as SnapModel
+    snap = SnapModel(
+        artist_name=artist.canonical_name,
+        artist_name_normalized=SnapModel.normalize_name(artist.canonical_name),
+        workspace_id=artist.workspace_id,
+        snapshot_date=datetime.utcnow(),
+        spotify_monthly_listeners=monthly_listeners or None,
+        spotify_followers=spotify_followers or None,
+        tiktok_followers=tiktok_followers or None,
+        youtube_subscribers=youtube_subscribers or None,
+        instagram_followers=instagram_followers or None,
+        source_quality_score=80.0 if data_quality == "HIGH" else 50.0,
+        sources_used="deezer,spotify,musicbrainz",
+    )
+    db.add(snap)
+    logger.info(f"Created snapshot for {artist.canonical_name} (ml={monthly_listeners})")
     
     db.commit()
     
@@ -893,6 +911,11 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
         workspace_id=artist.workspace_id,
         ml=ml,
         velocity=velocity,
+        tier=tier,
+        spotify_followers=metrics.spotify_followers or 0,
+        instagram_followers=metrics.instagram_followers or 0,
+        tiktok_followers=metrics.tiktok_followers or 0,
+        youtube_subscribers=metrics.youtube_subscribers or 0,
     )
     logger.info(f"Predictions for {artist.canonical_name}: method={preds['prediction_method']}, "
                 f"30d={preds['predicted_listeners_30d']}, trend={preds['growth_trend']}")
