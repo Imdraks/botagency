@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Music2,
@@ -12,6 +13,9 @@ import {
   ExternalLink,
   RefreshCw,
   Sparkles,
+  Plus,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import Image from "next/image";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 // ============================================================================
@@ -126,7 +131,13 @@ const getTimingStyle = (bucket?: string): string => {
 export default function DiscoveryArtistDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const artistId = params.id as string;
+
+  const [enrichJobId, setEnrichJobId] = useState<string | null>(null);
+  const [enrichStatus, setEnrichStatus] = useState<string | null>(null);
+  const [enrichStep, setEnrichStep] = useState<string | null>(null);
+  const [enrichProgress, setEnrichProgress] = useState(0);
 
   const { data: artist, isLoading, error } = useQuery<ArtistDetail>({
     queryKey: ["discovery-artist", artistId],
@@ -136,6 +147,64 @@ export default function DiscoveryArtistDetailPage() {
     },
     enabled: !!artistId,
   });
+
+  // Poll enrichment job status
+  useEffect(() => {
+    if (!enrichJobId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get(`/discovery/job/${enrichJobId}`);
+        const job = res.data;
+        setEnrichStatus(job.status);
+        setEnrichStep(job.current_step);
+        setEnrichProgress(job.progress);
+        if (job.status === "COMPLETED" || job.status === "FAILED") {
+          clearInterval(interval);
+          if (job.status === "COMPLETED") {
+            toast.success("Enrichissement terminé ! Données mises à jour.");
+            queryClient.invalidateQueries({ queryKey: ["discovery-artist", artistId] });
+          } else {
+            toast.error(job.error_message || "Erreur lors de l'enrichissement");
+          }
+          setTimeout(() => {
+            setEnrichJobId(null);
+            setEnrichStatus(null);
+            setEnrichStep(null);
+            setEnrichProgress(0);
+          }, 3000);
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [enrichJobId, artistId, queryClient]);
+
+  const handleEnrich = useCallback(async () => {
+    try {
+      const res = await api.post(`/discovery/artist/${artistId}/refresh`);
+      setEnrichJobId(res.data.id);
+      setEnrichStatus("RUNNING");
+      setEnrichStep("VIBERATE");
+      setEnrichProgress(0);
+      toast.info("Enrichissement lancé...");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Erreur lors du lancement");
+    }
+  }, [artistId]);
+
+  const handleAddToArtists = useCallback(async () => {
+    try {
+      const res = await api.post(`/discovery/artist/${artistId}/refresh`);
+      setEnrichJobId(res.data.id);
+      setEnrichStatus("RUNNING");
+      setEnrichStep("VIBERATE");
+      setEnrichProgress(0);
+      toast.info("Analyse en cours... L'artiste sera ajouté à vos artistes.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Erreur lors du lancement");
+    }
+  }, [artistId]);
 
   return (
     <ProtectedRoute>
@@ -263,6 +332,60 @@ export default function DiscoveryArtistDetailPage() {
                       <div className="text-sm text-muted-foreground mt-1">Score</div>
                       <Progress value={artist.score} className="w-20 mt-2" />
                     </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3 mt-5 pt-4 border-t">
+                    <Button
+                      onClick={handleEnrich}
+                      disabled={!!enrichJobId}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      {enrichJobId ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {enrichStep || "Enrichissement"} ({enrichProgress}%)
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Enrichir les données
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleAddToArtists}
+                      disabled={!!enrichJobId}
+                      className="flex-1"
+                    >
+                      {enrichStatus === "COMPLETED" ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Ajouté !
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Ajouter à mes artistes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Enrichment progress bar */}
+                  {enrichJobId && (
+                    <div className="mt-3">
+                      <Progress value={enrichProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1 text-center">
+                        {enrichStep === "VIBERATE" && "Récupération des données sociales..."}
+                        {enrichStep === "SPOTIFY" && "Scraping Spotify (auditeurs mensuels)..."}
+                        {enrichStep === "COMPUTE" && "Calcul du score et des métriques..."}
+                        {enrichStatus === "COMPLETED" && "Terminé !"}
+                        {enrichStatus === "FAILED" && "Erreur"}
+                      </p>
+                    </div>
+                  )}
                   </div>
                 </CardContent>
               </Card>
