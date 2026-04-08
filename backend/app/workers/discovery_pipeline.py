@@ -917,7 +917,7 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     else:
         event_fit = {"Showcase": 80, "Événement privé": 60, "Concert": 40}
 
-    seasonal = {"Q1": "low", "Q2": "medium", "Q3": "high", "Q4": "high"}
+    seasonal = {"Q1": 0.3, "Q2": 0.5, "Q3": 0.8, "Q4": 0.9}
 
     # --- Compute AI summary ---
     drivers_text = ", ".join([d.get("label", "") for d in (metrics.drivers or [])[:3]])
