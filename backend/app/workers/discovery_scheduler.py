@@ -529,9 +529,9 @@ def generate_workspace_recommendations(db: Session, workspace_id: int) -> int:
                     {"label": "Fans Deezer", "value": f"{fans:,}", "impact": 10},
                 ],
                 penalties=[],
-                monthly_listeners=0,  # Not yet scraped
-                spotify_followers=0,
-                total_social_followers=fans,
+                monthly_listeners=None,  # Not yet scraped
+                spotify_followers=None,
+                total_social_followers=fans or None,
                 data_quality="LOW",
                 algo_version="v3.0-reco",
                 computed_at=now,
