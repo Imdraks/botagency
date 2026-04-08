@@ -364,7 +364,7 @@ async def search_artist(
 
 @router.post("/artist/{artist_id}/refresh", response_model=JobResponse)
 async def refresh_artist(
-    artist_id: int,
+    artist_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_user_workspace_id),
@@ -535,7 +535,7 @@ async def get_job_status(
 
 @router.get("/artist/{artist_id}", response_model=ArtistDetailResponse)
 async def get_artist_detail(
-    artist_id: int,
+    artist_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_user_workspace_id),
@@ -604,7 +604,7 @@ async def get_artist_detail(
 
 @router.delete("/artist/{artist_id}")
 async def delete_artist(
-    artist_id: int,
+    artist_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     workspace_id: int = Depends(get_user_workspace_id),
