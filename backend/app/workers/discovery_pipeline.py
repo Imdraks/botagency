@@ -875,6 +875,142 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     else:
         tier = "underground"
 
+    # --- Compute predictions ---
+    velocity = metrics.velocity or 0
+    growth_rate = round(velocity * 100, 1) if velocity else 0
+    if velocity > 0.05:
+        growth_trend = "strong_growth"
+    elif velocity > 0.01:
+        growth_trend = "growing"
+    elif velocity > -0.01:
+        growth_trend = "stable"
+    elif velocity > -0.05:
+        growth_trend = "declining"
+    else:
+        growth_trend = "sharp_decline"
+
+    predicted_30d = int(ml * (1 + velocity)) if ml else None
+    predicted_90d = int(ml * (1 + velocity * 3)) if ml else None
+    predicted_180d = int(ml * (1 + velocity * 6)) if ml else None
+
+    # --- Compute booking intelligence ---
+    fee_min = metrics.fee_estimate_min or 0
+    fee_max = metrics.fee_estimate_max or 0
+    optimal_fee = int((fee_min + fee_max) * 0.6) if fee_max else None
+
+    score = metrics.score or 0
+    if score >= 80:
+        neg_power = "high"
+    elif score >= 50:
+        neg_power = "medium"
+    else:
+        neg_power = "low"
+
+    best_window = "Q4" if ml >= 100_000 else "Q2-Q3"
+    event_fit = {}
+    if ml >= 500_000:
+        event_fit = {"Festival": 90, "Concert": 85, "Showcase": 60, "Événement privé": 70}
+    elif ml >= 100_000:
+        event_fit = {"Festival": 70, "Concert": 80, "Showcase": 75, "Événement privé": 65}
+    elif ml >= 10_000:
+        event_fit = {"Festival": 40, "Concert": 60, "Showcase": 85, "Événement privé": 50}
+    else:
+        event_fit = {"Showcase": 80, "Événement privé": 60, "Concert": 40}
+
+    seasonal = {"Q1": "low", "Q2": "medium", "Q3": "high", "Q4": "high"}
+
+    # --- Compute AI summary ---
+    drivers_text = ", ".join([d.get("label", "") for d in (metrics.drivers or [])[:3]])
+    penalties_text = ", ".join([p.get("label", "") for p in (metrics.penalties or [])[:3]])
+
+    rec_map = {"BOOK": "signer", "WATCHLIST": "suivre", "WATCH": "suivre", "IGNORE": "passer"}
+    rec_label = rec_map.get(metrics.recommendation, metrics.recommendation or "évaluer")
+
+    ai_summary = f"{artist.canonical_name} est un artiste de niveau {tier}"
+    if ml:
+        ai_summary += f" avec {ml:,} auditeurs mensuels sur Spotify"
+    ai_summary += f". Score de découverte : {score}/100."
+    if drivers_text:
+        ai_summary += f" Points forts : {drivers_text}."
+    if penalties_text:
+        ai_summary += f" Points d'attention : {penalties_text}."
+    ai_summary += f" Recommandation : {rec_label}."
+
+    ai_tier = tier
+    strengths = [d.get("label", "") for d in (metrics.drivers or []) if d.get("label")]
+    weaknesses = [p.get("label", "") for p in (metrics.penalties or []) if p.get("label")]
+    opportunities = [s if isinstance(s, str) else s.get("type", "") for s in (metrics.signals or []) if s]
+    threats = []
+    if velocity and velocity < -0.02:
+        threats.append("Tendance à la baisse des auditeurs")
+    if metrics.data_quality == "LOW":
+        threats.append("Données limitées, analyse moins fiable")
+
+    ai_recommendations = []
+    if score >= 60:
+        ai_recommendations.append(f"Artiste à {rec_label} — score élevé de {score}/100")
+    if velocity and velocity > 0.03:
+        ai_recommendations.append("Croissance rapide — fenêtre d'opportunité ouverte")
+    if fee_max and fee_max < 5000:
+        ai_recommendations.append("Cachet accessible — bon rapport qualité/prix")
+    if not ai_recommendations:
+        ai_recommendations.append(f"Artiste à {rec_label} — continuer le suivi")
+
+    # Best platforms
+    best_platforms = []
+    if ml and ml > 0:
+        best_platforms.append("Spotify")
+    if metrics.instagram_followers and metrics.instagram_followers > 0:
+        best_platforms.append("Instagram")
+    if metrics.tiktok_followers and metrics.tiktok_followers > 0:
+        best_platforms.append("TikTok")
+    if metrics.youtube_subscribers and metrics.youtube_subscribers > 0:
+        best_platforms.append("YouTube")
+    if not best_platforms:
+        best_platforms = ["Spotify", "Instagram"]
+
+    viral = "high" if velocity and velocity > 0.05 else "medium" if velocity and velocity > 0.01 else "low"
+
+    # --- Build common update dict ---
+    update_fields = dict(
+        spotify_monthly_listeners=ml,
+        instagram_followers=metrics.instagram_followers or 0,
+        tiktok_followers=metrics.tiktok_followers or 0,
+        youtube_subscribers=metrics.youtube_subscribers or 0,
+        total_followers=metrics.total_social_followers or 0,
+        fee_min=fee_min,
+        fee_max=fee_max,
+        market_tier=tier,
+        popularity_score=score,
+        ai_score=score,
+        image_url=artist.image_url,
+        confidence_score=0.8 if metrics.data_quality == "HIGH" else 0.5,
+        # Predictions
+        growth_trend=growth_trend,
+        growth_rate_monthly=growth_rate,
+        predicted_listeners_30d=predicted_30d,
+        predicted_listeners_90d=predicted_90d,
+        predicted_listeners_180d=predicted_180d,
+        best_platforms=best_platforms,
+        viral_potential=viral,
+        # Booking intelligence
+        optimal_fee=optimal_fee,
+        negotiation_power=neg_power,
+        best_booking_window=best_window,
+        event_type_fit=event_fit,
+        territory_strength={"France": 80, "Europe": 40, "International": 20},
+        seasonal_demand=seasonal,
+        # AI Intelligence
+        ai_summary=ai_summary,
+        ai_tier=ai_tier,
+        strengths=strengths,
+        weaknesses=weaknesses,
+        opportunities=opportunities,
+        threats=threats,
+        ai_recommendations=ai_recommendations,
+        created_at=datetime.utcnow(),
+    )
+
     # Check if already exists (update instead of duplicate)
     existing = db.query(ArtistAnalysis).filter(
         ArtistAnalysis.workspace_id == artist.workspace_id,
@@ -882,40 +1018,17 @@ def _sync_to_artist_analyses(db: Session, job: DiscoveryEnrichmentJob) -> None:
     ).first()
 
     if existing:
-        existing.spotify_monthly_listeners = ml
-        existing.instagram_followers = metrics.instagram_followers or 0
-        existing.tiktok_followers = metrics.tiktok_followers or 0
-        existing.youtube_subscribers = metrics.youtube_subscribers or 0
-        existing.total_followers = metrics.total_social_followers or 0
-        existing.fee_min = metrics.fee_estimate_min or 0
-        existing.fee_max = metrics.fee_estimate_max or 0
-        existing.market_tier = tier
-        existing.popularity_score = metrics.score or 0
-        existing.ai_score = metrics.score or 0
-        existing.image_url = artist.image_url
-        existing.confidence_score = 0.8 if metrics.data_quality == "HIGH" else 0.5
-        existing.created_at = datetime.utcnow()
+        for k, v in update_fields.items():
+            setattr(existing, k, v)
         logger.info(f"Updated artist_analyses for {artist.canonical_name}")
     else:
         analysis = ArtistAnalysis(
             workspace_id=artist.workspace_id,
             artist_name=artist.canonical_name,
             genre=", ".join(spot_data.get("genres", [])) if spot_data.get("genres") else None,
-            image_url=artist.image_url,
-            spotify_monthly_listeners=ml,
-            youtube_subscribers=metrics.youtube_subscribers or 0,
-            instagram_followers=metrics.instagram_followers or 0,
-            tiktok_followers=metrics.tiktok_followers or 0,
-            total_followers=metrics.total_social_followers or 0,
-            fee_min=metrics.fee_estimate_min or 0,
-            fee_max=metrics.fee_estimate_max or 0,
-            market_tier=tier,
-            popularity_score=metrics.score or 0,
-            ai_score=metrics.score or 0,
-            market_trend="stable",
-            confidence_score=0.8 if metrics.data_quality == "HIGH" else 0.5,
+            market_trend=growth_trend,
             sources_scanned="spotify,deezer,musicbrainz",
-            created_at=datetime.utcnow(),
+            **update_fields,
         )
         db.add(analysis)
         logger.info(f"Created artist_analyses for {artist.canonical_name}")
