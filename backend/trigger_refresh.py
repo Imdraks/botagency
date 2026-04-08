@@ -2,7 +2,6 @@
 import sys
 from app.db.session import SessionLocal
 from app.db.models.discovery import DiscoveryEnrichmentJob
-from app.workers.discovery_pipeline import run_enrichment_pipeline
 from datetime import datetime
 
 artist_id = sys.argv[1]
@@ -23,6 +22,8 @@ db.add(j)
 db.commit()
 job_id = str(j.id)
 db.close()
-print(f"Created job {job_id}, running pipeline...")
-run_enrichment_pipeline(job_id)
-print("Done!")
+print(f"Created job {job_id}, dispatching to Celery...")
+
+from app.workers.discovery_pipeline import run_enrichment_pipeline
+result = run_enrichment_pipeline.delay(job_id)
+print(f"Dispatched task {result.id}")
