@@ -29,6 +29,7 @@ from app.db.models.discovery import (
     JobStep,
     InputType,
 )
+from app.db.models.artist_analysis import ArtistAnalysis
 from app.workers.discovery_pipeline import run_enrichment_pipeline
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
@@ -145,6 +146,42 @@ class ArtistDetailResponse(BaseModel):
     signals: List[str] = []
     summary: Optional[str] = None
     booking_range: Optional[dict] = None
+    
+    # AI Intelligence (from artist_analyses)
+    ai_summary: Optional[str] = None
+    ai_tier: Optional[str] = None
+    ai_score: Optional[float] = None
+    growth_trend: Optional[str] = None
+    growth_rate_monthly: Optional[float] = None
+    predicted_listeners_30d: Optional[int] = None
+    predicted_listeners_90d: Optional[int] = None
+    predicted_listeners_180d: Optional[int] = None
+    confidence_score: Optional[float] = None
+    
+    # SWOT
+    strengths: Optional[List[str]] = None
+    weaknesses: Optional[List[str]] = None
+    opportunities: Optional[List[str]] = None
+    threats: Optional[List[str]] = None
+    
+    # Booking Intelligence
+    optimal_fee: Optional[float] = None
+    negotiation_power: Optional[str] = None
+    best_booking_window: Optional[str] = None
+    event_type_fit: Optional[dict] = None
+    territory_strength: Optional[dict] = None
+    seasonal_demand: Optional[dict] = None
+    
+    # Content & Viral
+    viral_potential: Optional[float] = None
+    best_platforms: Optional[List[str]] = None
+    content_recommendations: Optional[List[str]] = None
+    ai_recommendations: Optional[List[str]] = None
+    
+    # Social breakdown
+    instagram_followers: Optional[int] = None
+    tiktok_followers: Optional[int] = None
+    youtube_subscribers: Optional[int] = None
     
     # History
     last_enriched_at: Optional[datetime] = None
@@ -558,6 +595,12 @@ async def get_artist_detail(
         DiscoveryComputedMetrics.artist_id == artist_id,
     ).order_by(desc(DiscoveryComputedMetrics.computed_at)).first()
     
+    # Get AI intelligence from artist_analyses
+    analysis = db.query(ArtistAnalysis).filter(
+        ArtistAnalysis.workspace_id == workspace_id,
+        ArtistAnalysis.artist_name == artist.canonical_name,
+    ).order_by(desc(ArtistAnalysis.created_at)).first()
+    
     # Check if stale
     stale_threshold = datetime.utcnow() - timedelta(hours=24)
     is_stale = bool(artist.last_enriched_at and artist.last_enriched_at < stale_threshold)
@@ -586,8 +629,44 @@ async def get_artist_detail(
         risks=metrics.penalties or [] if metrics else [],
         patterns=metrics.patterns or [] if metrics else [],
         signals=metrics.signals or [] if metrics else [],
-        summary=None,
+        summary=analysis.ai_summary if analysis else None,
         booking_range={"min": metrics.fee_estimate_min, "max": metrics.fee_estimate_max} if metrics and metrics.fee_estimate_min else None,
+        
+        # AI Intelligence
+        ai_summary=analysis.ai_summary if analysis else None,
+        ai_tier=analysis.ai_tier if analysis else None,
+        ai_score=analysis.ai_score if analysis else None,
+        growth_trend=analysis.growth_trend if analysis else None,
+        growth_rate_monthly=analysis.growth_rate_monthly if analysis else None,
+        predicted_listeners_30d=analysis.predicted_listeners_30d if analysis else None,
+        predicted_listeners_90d=analysis.predicted_listeners_90d if analysis else None,
+        predicted_listeners_180d=analysis.predicted_listeners_180d if analysis else None,
+        confidence_score=analysis.confidence_score if analysis else None,
+        
+        # SWOT
+        strengths=analysis.strengths if analysis else None,
+        weaknesses=analysis.weaknesses if analysis else None,
+        opportunities=analysis.opportunities if analysis else None,
+        threats=analysis.threats if analysis else None,
+        
+        # Booking Intelligence
+        optimal_fee=analysis.optimal_fee if analysis else None,
+        negotiation_power=analysis.negotiation_power if analysis else None,
+        best_booking_window=analysis.best_booking_window if analysis else None,
+        event_type_fit=analysis.event_type_fit if analysis else None,
+        territory_strength=analysis.territory_strength if analysis else None,
+        seasonal_demand=analysis.seasonal_demand if analysis else None,
+        
+        # Content & Viral
+        viral_potential=analysis.viral_potential if analysis else None,
+        best_platforms=analysis.best_platforms if analysis else None,
+        content_recommendations=analysis.content_recommendations if analysis else None,
+        ai_recommendations=analysis.ai_recommendations if analysis else None,
+        
+        # Social breakdown
+        instagram_followers=metrics.instagram_followers if metrics else None,
+        tiktok_followers=metrics.tiktok_followers if metrics else None,
+        youtube_subscribers=metrics.youtube_subscribers if metrics else None,
         
         last_enriched_at=artist.last_enriched_at,
         created_at=artist.created_at,

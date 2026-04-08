@@ -529,8 +529,7 @@ function ArtistsPageContent() {
           <div className="sticky top-6">
             <JobQueuePanel 
               onViewDetail={(artistId) => {
-                // TODO: Navigate to artist detail or open modal
-                console.log("View artist:", artistId);
+                window.open(`/discovery/${artistId}`, "_blank");
               }}
             />
           </div>

@@ -372,14 +372,13 @@ function DiscoveryV3Page() {
   };
 
   const handleAddToComparison = (artistId: number) => {
-    // TODO: Open comparison modal or add to shortlist
-    toast.info("Ajouter à une shortlist", {
-      description: "Fonctionnalité à venir",
+    window.open(`/comparison?add=${artistId}`, "_blank");
+    toast.success("Ouverture de la comparaison", {
+      description: "Artiste ajouté à la comparaison",
     });
   };
 
   const handleViewDetail = (artistId: number) => {
-    // TODO: Open detail drawer or navigate
     window.open(`/discovery/${artistId}`, "_blank");
   };
 
@@ -653,11 +652,16 @@ function DiscoveryV3Page() {
               pendingCount={queueQuery.data?.pending || 0}
               completedCount={queueQuery.data?.completed_24h || 0}
               isLoading={queueQuery.isLoading}
-              onRetry={(jobId) => {
-                // TODO: Implement retry
-                toast.info("Retry", {
-                  description: `Retry job ${jobId}`,
-                });
+              onRetry={async (jobId) => {
+                try {
+                  await api.post(`/discovery/artist/${jobId}/refresh`);
+                  toast.success("Relance effectuée", {
+                    description: "Le job a été relancé",
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["discovery-queue"] });
+                } catch {
+                  toast.error("Erreur lors de la relance");
+                }
               }}
             />
             

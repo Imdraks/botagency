@@ -68,7 +68,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { opportunitiesApi } from "@/lib/api";
+import { opportunitiesApi, api } from "@/lib/api";
+import { toast } from "sonner";
 import { useFiltersStore } from "@/store/filters";
 import {
   formatCurrency,
@@ -200,9 +201,34 @@ function LeadsContent() {
   const handleBulkAction = async (action: string) => {
     if (selectedLeads.size === 0) return;
     
-    const ids = Array.from(selectedLeads);
-    console.log(`Bulk action: ${action} on`, ids);
-    // TODO: Implement bulk actions API calls
+    const ids = Array.from(selectedLeads).map(String);
+    try {
+      if (action === "status") {
+        await api.post("/leads/bulk-update", { ids, status: "IN_PROGRESS" });
+        toast.success(`${ids.length} lead(s) passé(s) en cours`);
+      } else if (action === "tag") {
+        await api.post("/leads/bulk-update", { ids, tags_add: ["important"] });
+        toast.success(`Tag ajouté à ${ids.length} lead(s)`);
+      } else if (action === "favorite") {
+        await api.post("/leads/bulk-update", { ids, tags_add: ["favori"] });
+        toast.success(`${ids.length} lead(s) ajouté(s) aux favoris`);
+      } else if (action === "export") {
+        const csv = data?.items
+          ?.filter((l) => selectedLeads.has(l.id))
+          .map((l) => `${l.title},${l.status},${l.score},${l.budget_amount || ""}`)
+          .join("\n");
+        const blob = new Blob([`Titre,Statut,Score,Budget\n${csv}`], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "leads-export.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success(`${ids.length} lead(s) exporté(s)`);
+      }
+    } catch {
+      toast.error("Erreur lors de l'action groupée");
+    }
     
     setSelectedLeads(new Set());
     queryClient.invalidateQueries({ queryKey: ["leads"] });

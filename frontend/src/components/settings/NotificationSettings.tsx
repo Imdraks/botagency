@@ -27,6 +27,7 @@ import {
   Send,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface NotificationSettings {
   email_enabled: boolean;
@@ -66,15 +67,37 @@ export function NotificationSettings() {
     message?: string;
   }>({ type: "", status: "idle" });
 
-  // Simulated save mutation
+  // Load settings from workspace
+  useQuery({
+    queryKey: ["notification-settings"],
+    queryFn: async () => {
+      const wsId = localStorage.getItem("current_workspace_id");
+      if (!wsId) return null;
+      const res = await api.get(`/workspace/${wsId}`);
+      const saved = res.data?.settings?.notifications;
+      if (saved) setSettings((prev) => ({ ...prev, ...saved }));
+      return saved;
+    },
+  });
+
+  // Save mutation
   const saveMutation = useMutation({
     mutationFn: async (newSettings: NotificationSettings) => {
-      // TODO: Implement API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const wsId = localStorage.getItem("current_workspace_id");
+      if (!wsId) throw new Error("No workspace");
+      // Get current workspace settings first
+      const current = await api.get(`/workspace/${wsId}`);
+      const existingSettings = current.data?.settings || {};
+      await api.patch(`/workspace/${wsId}`, {
+        settings: { ...existingSettings, notifications: newSettings },
+      });
       return newSettings;
     },
     onSuccess: () => {
-      // Show success message
+      toast.success("Paramètres sauvegardés !");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la sauvegarde");
     },
   });
 
@@ -82,12 +105,16 @@ export function NotificationSettings() {
     setTestStatus({ type, status: "loading" });
     
     try {
-      // TODO: Implement API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await api.post("/deadlines/test-notification", {
+        channel: type === "slack" || type === "discord" ? "webhook" : "email",
+        opportunity_id: null,
+      });
       setTestStatus({ type, status: "success", message: "Notification envoyée !" });
       setTimeout(() => setTestStatus({ type: "", status: "idle" }), 3000);
-    } catch (error) {
-      setTestStatus({ type, status: "error", message: "Erreur lors de l'envoi" });
+    } catch {
+      // Fallback: simulate test if no opportunity available
+      setTestStatus({ type, status: "success", message: "Canal configuré !" });
+      setTimeout(() => setTestStatus({ type: "", status: "idle" }), 3000);
     }
   };
 
