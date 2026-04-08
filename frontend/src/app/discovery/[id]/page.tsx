@@ -391,40 +391,56 @@ export default function DiscoveryArtistDetailPage() {
               </Card>
 
               {/* Metrics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <Users className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <div className="text-2xl font-bold">{formatNumber(artist.monthly_listeners)}</div>
-                    <div className="text-xs text-muted-foreground">Auditeurs mensuels</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <Music2 className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <div className="text-2xl font-bold">{formatNumber(artist.followers)}</div>
-                    <div className="text-xs text-muted-foreground">Followers</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <div className="text-2xl font-bold text-green-600">
-                      {artist.velocity ? `+${(artist.velocity * 100).toFixed(0)}%` : "-"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Croissance</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <div className="text-2xl font-bold">
-                      {artist.acceleration ? `${(artist.acceleration * 100).toFixed(0)}%` : "-"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Accélération</div>
-                  </CardContent>
-                </Card>
-              </div>
+              {(() => {
+                const metrics = [
+                  artist.monthly_listeners != null && {
+                    icon: <Users className="h-5 w-5 mx-auto text-muted-foreground mb-1" />,
+                    value: formatNumber(artist.monthly_listeners),
+                    label: "Auditeurs mensuels",
+                  },
+                  artist.followers != null && {
+                    icon: <Music2 className="h-5 w-5 mx-auto text-muted-foreground mb-1" />,
+                    value: formatNumber(artist.followers),
+                    label: "Followers",
+                  },
+                  artist.velocity != null && {
+                    icon: <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-1" />,
+                    value: <span className="text-green-600">+{(artist.velocity * 100).toFixed(0)}%</span>,
+                    label: "Croissance",
+                  },
+                  artist.acceleration != null && {
+                    icon: <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-1" />,
+                    value: `${(artist.acceleration * 100).toFixed(0)}%`,
+                    label: "Accélération",
+                  },
+                ].filter(Boolean) as { icon: React.ReactNode; value: React.ReactNode; label: string }[];
+
+                if (metrics.length === 0) {
+                  return (
+                    <Card>
+                      <CardContent className="p-6 text-center text-muted-foreground">
+                        <AlertCircle className="h-5 w-5 mx-auto mb-2" />
+                        <p className="text-sm">Données limitées — cliquez sur &quot;Enrichir les données&quot; pour obtenir les métriques complètes.</p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
+                const cols = metrics.length >= 4 ? "md:grid-cols-4" : metrics.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+                return (
+                  <div className={`grid grid-cols-2 ${cols} gap-4`}>
+                    {metrics.map((m, i) => (
+                      <Card key={i}>
+                        <CardContent className="p-4 text-center">
+                          {m.icon}
+                          <div className="text-2xl font-bold">{m.value}</div>
+                          <div className="text-xs text-muted-foreground">{m.label}</div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Booking Range */}
               {artist.booking_range && (
