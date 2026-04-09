@@ -66,6 +66,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-58KS4WWH');`,
           }}
         />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-K865Q339CD"
+          strategy="afterInteractive"
+        />
+        <Script
+          id="ga4-config"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `gtag('js', new Date()); gtag('config', 'G-K865Q339CD');`,
+          }}
+        />
       </head>
       <body className={inter.className}>
         <noscript>
