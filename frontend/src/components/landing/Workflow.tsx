@@ -1,41 +1,41 @@
 "use client";
 
-import { Target, Sparkles, Rocket, FileText, Send } from "lucide-react";
+import { Target, Sparkles, Rocket, FileText, BarChart3, Music2 } from "lucide-react";
 
 const steps = [
   {
     step: "01",
-    icon: Target,
-    title: "Capturer",
-    description: "Centralisez vos leads depuis toutes vos sources. Scoring IA automatique de 0 à 100.",
+    icon: Music2,
+    title: "Découvrir",
+    description: "Repérez les artistes prometteurs. Scoring IA multicritère, analyse de tendances et comparaison.",
     color: "from-blue-500 to-cyan-500",
   },
   {
     step: "02",
-    icon: Sparkles,
+    icon: Target,
     title: "Qualifier",
-    description: "Analytics avancés : taux de conversion, top performers, heatmap des deadlines.",
+    description: "Pipeline visuel pour qualifier vos opportunités. Priorisez avec le scoring automatique.",
     color: "from-purple-500 to-pink-500",
   },
   {
     step: "03",
     icon: Rocket,
-    title: "Convertir",
-    description: "Transformez vos deals en projets. Créez le devis en un clic, envoyez le PDF.",
+    title: "Produire",
+    description: "Gérez projets, tâches et livrables. Validations clients, assets centralisés, suivi en temps réel.",
     color: "from-orange-500 to-red-500",
   },
   {
     step: "04",
     icon: FileText,
     title: "Facturer",
-    description: "Générez vos factures conformes. Sauvegarde Drive automatique. Suivi des paiements.",
+    description: "Devis → Facture → Paiement en quelques clics. PDF conforme, sauvegarde Drive automatique.",
     color: "from-green-500 to-emerald-500",
   },
   {
     step: "05",
-    icon: Send,
-    title: "Livrer",
-    description: "Assets centralisés, arborescence Drive automatique. Livraison propre et traçée.",
+    icon: BarChart3,
+    title: "Analyser",
+    description: "Cockpit temps réel, veille concurrentielle, carte événements et prédictions de performance.",
     color: "from-indigo-500 to-purple-500",
   },
 ];
@@ -53,13 +53,13 @@ export function Workflow() {
             Workflow
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Du lead à la livraison en{" "}
+            De la découverte à l&apos;analyse en{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
               5 étapes
             </span>
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Un workflow pensé pour les agences. Fini les infos éparpillées entre 10 outils.
+            Un workflow pensé pour les agences de production. Du repérage d&apos;artistes à l&apos;analyse de performance.
           </p>
         </div>
 

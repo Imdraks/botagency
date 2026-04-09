@@ -54,12 +54,12 @@ export function Integrations() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
               Unifié avec{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                Google Workspace
+                vos outils
               </span>
             </h2>
             <p className="text-gray-600 mb-8 text-lg">
-              Radar se connecte nativement à votre environnement Google.
-              Vos fichiers, calendriers et emails restent synchronisés.
+              Radar se connecte nativement à Google Workspace et vos banques.
+              Fichiers, calendriers et transactions restent synchronisés.
             </p>
 
             {/* Integration Cards */}

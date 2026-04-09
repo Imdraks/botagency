@@ -15,14 +15,14 @@ import {
 } from "@/components/landing";
 
 export const metadata = {
-  title: "Radar - Le cockpit pour piloter votre agence",
+  title: "Radar - Le cockpit pour piloter votre agence de production",
   description:
-    "Pipeline, projets, facturation, analytics — unifié avec Google Workspace et Revolut. La plateforme tout-en-un pour les agences.",
-  keywords: ["agence", "gestion de projet", "pipeline", "CRM", "facturation", "devis", "Google Workspace", "analytics"],
+    "Pipeline, projets, facturation, découverte artistes, analytics et veille concurrentielle — unifié avec Google Workspace et Revolut. La plateforme tout-en-un pour les agences de production musicale.",
+  keywords: ["agence", "production musicale", "gestion de projet", "pipeline", "CRM", "facturation", "devis", "découverte artistes", "Google Workspace", "analytics", "veille concurrentielle"],
   openGraph: {
-    title: "Radar - Le cockpit pour piloter votre agence",
+    title: "Radar - Le cockpit pour piloter votre agence de production",
     description:
-      "Pipeline, projets, facturation, analytics — unifié avec Google Workspace et Revolut.",
+      "Pipeline, projets, facturation, découverte artistes et analytics — unifié avec Google Workspace et Revolut.",
     type: "website",
     locale: "fr_FR",
     siteName: "Radar",

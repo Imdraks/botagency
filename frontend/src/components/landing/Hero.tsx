@@ -31,7 +31,7 @@ export function Hero() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
               </span>
-              Pensé pour les agences
+              Pensé pour les agences de production
             </div>
 
             {/* Headline */}
@@ -45,14 +45,14 @@ export function Hero() {
 
             {/* Subheadline - Pain → Solution */}
             <p className="text-lg sm:text-xl text-gray-600 mb-4 max-w-xl mx-auto lg:mx-0">
-              Centralisez pipeline, projets, facturation et analytics.
+              Pipeline, projets, facturation, découverte artistes et analytics — tout au même endroit.
             </p>
             <p className="text-lg sm:text-xl text-gray-900 font-medium mb-4 max-w-xl mx-auto lg:mx-0">
               Fin des infos éparpillées entre Drive, Notion et Excel.
             </p>
             {/* Filtre naturel */}
             <p className="text-sm text-gray-500 mb-8 max-w-xl mx-auto lg:mx-0">
-              Plateforme privée conçue pour les agences de production.
+              Plateforme privée conçue pour les agences de production musicale.
             </p>
 
             {/* CTA Buttons */}
@@ -80,13 +80,13 @@ export function Hero() {
 
             {/* Trust badges - Micro-ligne de confiance */}
             <div className="flex flex-wrap items-center gap-4 mt-10 justify-center lg:justify-start text-sm text-gray-500">
+              <span>Découverte & Scoring artistes</span>
+              <span className="text-gray-300">•</span>
               <span>Devis & Factures conformes</span>
               <span className="text-gray-300">•</span>
               <span>Google Workspace + Banques</span>
               <span className="text-gray-300">•</span>
-              <span>Analytics & IA</span>
-              <span className="text-gray-300">•</span>
-              <span>RGPD</span>
+              <span>Veille concurrentielle</span>
             </div>
           </div>
 

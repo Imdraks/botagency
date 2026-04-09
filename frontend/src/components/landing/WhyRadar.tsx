@@ -1,22 +1,22 @@
 "use client";
 
-import { Layers, FileText, BarChart3, Shield } from "lucide-react";
+import { Layers, FileText, BarChart3, Shield, Music2, Eye } from "lucide-react";
 
 const reasons = [
   {
     icon: Layers,
     title: "Tout-en-un pour les agences",
-    description: "Pipeline, projets, facturation, analytics, Drive — plus besoin de jongler entre 10 outils.",
+    description: "Pipeline, projets, production, facturation, analytics, Drive — plus besoin de jongler entre 10 outils.",
   },
   {
-    icon: FileText,
-    title: "Devis & Factures conformes",
-    description: "Génération PDF aux normes françaises. Sauvegarde automatique sur Google Drive.",
+    icon: Music2,
+    title: "Découverte & Scoring artistes",
+    description: "Analysez, comparez et scorez les artistes automatiquement. Repérez les talents avant tout le monde.",
   },
   {
-    icon: BarChart3,
-    title: "Analytics & IA intégrés",
-    description: "Scoring IA des leads, dashboard de performance, heatmap des deadlines, top performers.",
+    icon: Eye,
+    title: "Veille & Analytics avancés",
+    description: "Cockpit temps réel, veille concurrentielle, carte événements et prédictions IA intégrées.",
   },
   {
     icon: Shield,
@@ -35,7 +35,7 @@ export function WhyRadar() {
             Pourquoi Radar fonctionne
           </h2>
           <p className="text-gray-600 max-w-xl mx-auto">
-            Conçu pour les agences qui veulent sortir du chaos opérationnel.
+            Conçu pour les agences de production qui veulent sortir du chaos opérationnel.
           </p>
         </div>
 

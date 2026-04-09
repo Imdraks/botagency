@@ -29,7 +29,7 @@ export function FinalCTA() {
 
           {/* Subheadline */}
           <p className="text-lg text-gray-600 mb-10 max-w-xl mx-auto">
-            Pipeline, projets, facturation, analytics, Drive — tout au même endroit.
+            Pipeline, projets, facturation, découverte artistes, analytics — tout au même endroit.
             <br />
             Accès sur création d&apos;espace ou invitation.
           </p>
@@ -59,7 +59,7 @@ export function FinalCTA() {
 
           {/* Trust note */}
           <p className="mt-8 text-sm text-gray-500">
-            Plateforme privée • Google Workspace + Banques • Hébergement RGPD France
+            Plateforme privée • Découverte artistes & Scoring IA • Google Workspace + Banques • Hébergement RGPD France
           </p>
         </div>
       </div>

@@ -9,18 +9,22 @@ import {
   BarChart3,
   Sparkles,
   Landmark,
+  Music2,
+  Eye,
+  Inbox,
+  Clapperboard,
 } from "lucide-react";
 
 const features = [
   {
     icon: Target,
-    title: "Pipeline & Leads",
-    description: "Kanban visuel pour suivre vos opportunités du premier contact au closing. Scoring IA automatique.",
+    title: "Pipeline & Deals",
+    description: "Kanban visuel pour suivre vos opportunités du premier contact au closing. Scoring et priorisation automatiques.",
   },
   {
     icon: FolderKanban,
-    title: "Projets & Tâches",
-    description: "Organisez chaque projet client avec ses phases, tâches et échéances. Suivi en temps réel.",
+    title: "Projets & Production",
+    description: "Phases, tâches, livrables et validations clients. Suivi de production en temps réel avec assets centralisés.",
   },
   {
     icon: FileText,
@@ -28,29 +32,29 @@ const features = [
     description: "Créez vos devis et factures conformes. Export PDF, sauvegarde automatique sur Google Drive.",
   },
   {
+    icon: Music2,
+    title: "Découverte Artistes",
+    description: "Analysez les artistes avec le scoring IA multicritère. Comparez, suivez les tendances et repérez les talents.",
+  },
+  {
     icon: BarChart3,
-    title: "Analytics",
-    description: "Dashboard complet : KPIs, taux de conversion, heatmap deadlines, top performers.",
+    title: "Analytics & Cockpit",
+    description: "Dashboard complet : KPIs, taux de conversion, heatmap deadlines, top performers et prédictions.",
+  },
+  {
+    icon: Eye,
+    title: "Veille Concurrentielle",
+    description: "Surveillez vos concurrents : parts de marché, alertes, benchmark pricing et analyse des tendances.",
   },
   {
     icon: HardDrive,
-    title: "Google Drive",
-    description: "Arborescence Drive automatique par projet. Templates Docs & Sheets prêts à l'emploi.",
-  },
-  {
-    icon: Calendar,
-    title: "Google Calendar",
-    description: "Synchronisation bidirectionnelle des deadlines et rendez-vous clients.",
-  },
-  {
-    icon: Sparkles,
-    title: "Intelligence IA",
-    description: "Scoring automatique des leads, enrichissement de données, suggestions intelligentes.",
+    title: "Google Workspace",
+    description: "Drive, Calendar et Gmail synchronisés. Arborescence automatique par projet, templates prêts à l'emploi.",
   },
   {
     icon: Landmark,
-    title: "Transactions",
-    description: "Connectez vos comptes bancaires. Suivi des paiements et rapprochement automatique.",
+    title: "Transactions & Banques",
+    description: "Connectez vos comptes bancaires et Revolut. Suivi des paiements et rapprochement automatique.",
   },
 ];
 
@@ -64,10 +68,10 @@ export function FeaturesGrid() {
             Plateforme tout-en-un
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Tout ce qu&apos;il faut pour piloter une agence
+            Tout ce qu&apos;il faut pour piloter une agence de production
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Un seul outil. Zéro dispersion. Du pipeline à la facturation.
+            Un seul outil. Zéro dispersion. Du repérage d&apos;artistes à la facturation.
           </p>
         </div>
 
