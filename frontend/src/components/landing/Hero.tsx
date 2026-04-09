@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { ArrowRight, ArrowDown, Eye } from "lucide-react";
+import { ArrowRight, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Hero() {
@@ -202,7 +202,7 @@ export function Hero() {
             </div>
 
             {/* Floating Elements */}
-            <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl p-4 flex items-center gap-3 animate-fade-in">
+            <div className="absolute bottom-4 left-4 bg-white rounded-xl shadow-xl p-4 flex items-center gap-3 animate-fade-in z-10">
               <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
                 <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -214,7 +214,7 @@ export function Hero() {
               </div>
             </div>
 
-            <div className="absolute -top-4 -right-4 bg-white rounded-xl shadow-xl p-4 animate-fade-in">
+            <div className="absolute top-4 right-4 bg-white rounded-xl shadow-xl p-4 animate-fade-in z-10">
               <div className="flex items-center gap-2 text-sm">
                 <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
                   <span className="text-purple-600 font-bold text-xs">GD</span>
@@ -225,12 +225,6 @@ export function Hero() {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden lg:block">
-          <a href="#produit" className="flex flex-col items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <span className="text-sm">Découvrir</span>
-            <ArrowDown className="h-5 w-5 animate-bounce" />
-          </a>
         </div>
       </div>
     </section>
