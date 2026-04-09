@@ -19,13 +19,23 @@ export const metadata = {
   description:
     "Pipeline, projets, facturation, découverte artistes, analytics et veille concurrentielle — unifié avec Google Workspace et Revolut. La plateforme tout-en-un pour les agences de production musicale.",
   keywords: ["agence", "production musicale", "gestion de projet", "pipeline", "CRM", "facturation", "devis", "découverte artistes", "Google Workspace", "analytics", "veille concurrentielle"],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Radar - Le cockpit pour piloter votre agence de production",
     description:
       "Pipeline, projets, facturation, découverte artistes et analytics — unifié avec Google Workspace et Revolut.",
+    url: "/",
     type: "website",
     locale: "fr_FR",
     siteName: "Radar",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Radar - Le cockpit pour piloter votre agence de production",
+    description:
+      "Pipeline, projets, facturation, découverte artistes et analytics — la plateforme tout-en-un pour les agences de production musicale.",
   },
 };
 

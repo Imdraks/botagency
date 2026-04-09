@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Radar",
+  metadataBase: new URL("https://radarapp.fr"),
+  title: {
+    default: "Radar",
+    template: "%s | Radar",
+  },
   description: "Plateforme de détection et gestion d'opportunités événementielles",
   icons: {
     icon: [
@@ -14,6 +19,14 @@ export const metadata: Metadata = {
       { url: "/logo.svg" },
     ],
     apple: "/favicon.svg",
+  },
+  openGraph: {
+    siteName: "Radar",
+    locale: "fr_FR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
   },
 };
 
@@ -24,7 +37,28 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" suppressHydrationWarning>
+      <head>
+        <Script
+          id="gtm-script"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-58KS4WWH');`,
+          }}
+        />
+      </head>
       <body className={inter.className}>
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-58KS4WWH"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
         <Providers>{children}</Providers>
       </body>
     </html>
