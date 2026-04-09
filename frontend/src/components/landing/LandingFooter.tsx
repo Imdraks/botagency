@@ -13,6 +13,7 @@ const footerLinks = {
   legal: [
     { label: "Confidentialité", href: "/privacy" },
     { label: "CGU", href: "/terms" },
+    { label: "Contact", href: "/contact" },
   ],
 };
 

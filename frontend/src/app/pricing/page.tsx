@@ -881,10 +881,12 @@ export default function PricingPage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
+                <Link href="/contact">
                 <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3 rounded-xl">
                   <Headphones className="mr-2 h-4 w-4" />
                   Contacter l'équipe
                 </Button>
+                </Link>
               </div>
             </div>
           </div>

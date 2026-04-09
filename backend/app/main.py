@@ -114,6 +114,7 @@ from app.api.spotify_search import router as spotify_search_router
 # ARTISTS V2 - "Google des artistes" search-first system
 # ============================================================================
 from app.api.artists import router as artists_v2_router
+from app.api.contact import router as public_contact_router
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -351,6 +352,11 @@ app.include_router(spotify_search_router, prefix="/api/v1", tags=["Spotify Searc
 # ARTISTS V2 - "Google des artistes" search-first endpoints
 # ============================================================================
 app.include_router(artists_v2_router, prefix="/api/v1/artists", tags=["Artists V2"])
+
+# ============================================================================
+# PUBLIC CONTACT FORM - No auth required
+# ============================================================================
+app.include_router(public_contact_router, prefix="/api/v1", tags=["Public Contact"])
 
 # Progress streaming (SSE)
 app.include_router(progress_router, prefix="/api/v1", tags=["Progress"])
