@@ -170,11 +170,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Content Security Policy - Prevent XSS
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https: blob:; "
-            "connect-src 'self' https://api.spotify.com https://www.google-analytics.com https://*.googleapis.com https://recherche-entreprises.api.gouv.fr; "
+            "connect-src 'self' https://api.spotify.com https://www.google-analytics.com https://*.google-analytics.com https://*.googleapis.com https://recherche-entreprises.api.gouv.fr https://www.googletagmanager.com; "
             "frame-ancestors 'none'; "
             "form-action 'self'; "
             "base-uri 'self';"
