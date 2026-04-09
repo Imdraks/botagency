@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   description: "Plateforme de détection et gestion d'opportunités événementielles",
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/logo.svg" },
     ],
     apple: "/favicon.svg",
   },

@@ -17,6 +17,15 @@ const nextConfig = {
         hostname: 'cdn-images.dzcdn.net',
         pathname: '/images/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.scdn.co',
+        pathname: '/image/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
     ],
   },
   

@@ -95,8 +95,17 @@ export default function PrivacyPage() {
               <h2 className="text-xl font-semibold text-white mb-3">7. Cookies</h2>
               <p>
                 Nous utilisons des cookies essentiels pour le fonctionnement de la plateforme 
-                (authentification, préférences). Aucun cookie publicitaire ou de tracking 
-                n'est utilisé.
+                (authentification, préférences utilisateur).
+              </p>
+              <p className="mt-2">
+                Nous utilisons également <strong>Google Analytics (GA4)</strong> à des fins 
+                de mesure d&apos;audience. Ces cookies analytiques ne sont déposés qu&apos;après votre 
+                consentement explicite via le bandeau de gestion des cookies, conformément 
+                au RGPD et aux recommandations de la CNIL.
+              </p>
+              <p className="mt-2">
+                Vous pouvez modifier vos choix à tout moment en supprimant vos cookies 
+                et en rechargeant la page. Le bandeau de consentement s&apos;affichera à nouveau.
               </p>
             </section>
 
@@ -110,6 +119,15 @@ export default function PrivacyPage() {
                 <strong>Email</strong> : contact@radarapp.fr<br />
                 <strong>Site</strong> : https://radarapp.fr
               </p>
+              <p className="mt-2">
+                Voir également nos{" "}
+                <Link href="/legal" className="text-purple-300 hover:text-white">
+                  Mentions Légales
+                </Link>{" "}et nos{" "}
+                <Link href="/terms" className="text-purple-300 hover:text-white">
+                  Conditions Générales d&apos;Utilisation
+                </Link>.
+              </p>
             </section>
 
             <section>
@@ -119,7 +137,7 @@ export default function PrivacyPage() {
                 La date de dernière modification est indiquée ci-dessous.
               </p>
               <p className="mt-4 text-sm text-gray-400">
-                Dernière mise à jour : 21 janvier 2026
+                Dernière mise à jour : 9 avril 2026
               </p>
             </section>
           </div>

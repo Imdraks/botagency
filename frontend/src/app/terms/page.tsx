@@ -147,10 +147,19 @@ export default function TermsPage() {
                 <strong>Email</strong> : contact@radarapp.fr<br />
                 <strong>Site</strong> : https://radarapp.fr
               </p>
+              <p className="mt-2">
+                Voir également nos{" "}
+                <Link href="/legal" className="text-purple-300 hover:text-white">
+                  Mentions Légales
+                </Link>{" "}et notre{" "}
+                <Link href="/privacy" className="text-purple-300 hover:text-white">
+                  Politique de Confidentialité
+                </Link>.
+              </p>
             </section>
 
             <p className="mt-8 text-sm text-gray-400">
-              Dernière mise à jour : 22 janvier 2026
+              Dernière mise à jour : 9 avril 2026
             </p>
           </div>
         </div>
