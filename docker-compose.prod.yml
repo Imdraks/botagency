@@ -137,6 +137,7 @@ services:
       - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt/live/radarapp.fr/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
       - /etc/letsencrypt/live/radarapp.fr/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+      - certbot_webroot:/var/www/certbot:ro
     depends_on:
       - frontend
       - backend
@@ -147,6 +148,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  certbot_webroot:
 
 networks:
   radar_network:
