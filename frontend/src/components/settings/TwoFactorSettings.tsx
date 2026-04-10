@@ -285,7 +285,7 @@ export function TwoFactorSettings() {
                 </p>
               </div>
 
-              {/* Verification */}}
+              {/* Verification */}
               <div className="space-y-2">
                 <p className="text-sm">
                   Entrez le code à 6 chiffres de votre application:
