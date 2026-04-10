@@ -1,146 +1,258 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Shield, Database, Settings, Globe, Lock, UserCheck, Cookie, Mail, RefreshCw } from "lucide-react";
 
 export default function PrivacyPage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 text-purple-300 hover:text-white mb-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour à l'accueil
-        </Link>
-
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-white">
-          <h1 className="text-3xl font-bold mb-8">Politique de Confidentialité</h1>
-          
-          <div className="space-y-6 text-gray-200">
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">1. Introduction</h2>
-              <p>
-                Radar ("nous", "notre", "nos") s'engage à protéger la vie privée des utilisateurs 
-                de notre plateforme accessible à l'adresse https://radarapp.fr. Cette politique 
-                de confidentialité explique comment nous collectons, utilisons et protégeons vos 
-                informations personnelles.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">2. Données collectées</h2>
-              <p>Nous collectons les types de données suivants :</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Informations de compte : nom, adresse e-mail</li>
-                <li>Données d'authentification via Google OAuth</li>
-                <li>Données d'utilisation de la plateforme</li>
-                <li>Informations relatives à vos projets et clients (stockées de manière sécurisée)</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">3. Utilisation des données</h2>
-              <p>Vos données sont utilisées pour :</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Fournir et améliorer nos services</li>
-                <li>Authentifier votre accès à la plateforme</li>
-                <li>Synchroniser avec Google Drive et Google Calendar (si autorisé)</li>
-                <li>Vous envoyer des notifications relatives à votre compte</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">4. Intégrations Google</h2>
-              <p>
-                Notre application utilise les API Google pour les fonctionnalités suivantes :
-              </p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>Google OAuth</strong> : Connexion sécurisée à votre compte</li>
-                <li><strong>Google Drive</strong> : Stockage et organisation de vos fichiers projets</li>
-                <li><strong>Google Calendar</strong> : Synchronisation de vos événements</li>
-              </ul>
-              <p className="mt-2">
-                Nous n'accédons qu'aux données strictement nécessaires au fonctionnement de ces 
-                fonctionnalités et ne partageons jamais vos données avec des tiers.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">5. Stockage et sécurité</h2>
-              <p>
-                Vos données sont stockées sur des serveurs sécurisés situés en Europe. 
-                Nous utilisons le chiffrement SSL/TLS pour toutes les communications 
-                et appliquons les meilleures pratiques de sécurité pour protéger vos informations.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">6. Vos droits</h2>
-              <p>Conformément au RGPD, vous disposez des droits suivants :</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Droit d'accès à vos données personnelles</li>
-                <li>Droit de rectification</li>
-                <li>Droit à l'effacement ("droit à l'oubli")</li>
-                <li>Droit à la portabilité des données</li>
-                <li>Droit d'opposition au traitement</li>
-              </ul>
-              <p className="mt-2">
-                Pour exercer ces droits, contactez-nous à : contact@radarapp.fr
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">7. Cookies</h2>
-              <p>
-                Nous utilisons des cookies essentiels pour le fonctionnement de la plateforme 
-                (authentification, préférences utilisateur).
-              </p>
-              <p className="mt-2">
-                Nous utilisons également <strong>Google Analytics (GA4)</strong> à des fins 
-                de mesure d&apos;audience. Ces cookies analytiques ne sont déposés qu&apos;après votre 
-                consentement explicite via le bandeau de gestion des cookies, conformément 
-                au RGPD et aux recommandations de la CNIL.
-              </p>
-              <p className="mt-2">
-                Vous pouvez modifier vos choix à tout moment en supprimant vos cookies 
-                et en rechargeant la page. Le bandeau de consentement s&apos;affichera à nouveau.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">8. Contact</h2>
-              <p>
-                Pour toute question concernant cette politique de confidentialité, 
-                vous pouvez nous contacter à :
-              </p>
-              <p className="mt-2">
-                <strong>Email</strong> : contact@radarapp.fr<br />
-                <strong>Site</strong> : https://radarapp.fr
-              </p>
-              <p className="mt-2">
-                Voir également nos{" "}
-                <Link href="/legal" className="text-purple-300 hover:text-white">
-                  Mentions Légales
-                </Link>{" "}et nos{" "}
-                <Link href="/terms" className="text-purple-300 hover:text-white">
-                  Conditions Générales d&apos;Utilisation
-                </Link>.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-white mb-3">9. Modifications</h2>
-              <p>
-                Cette politique de confidentialité peut être mise à jour occasionnellement. 
-                La date de dernière modification est indiquée ci-dessous.
-              </p>
-              <p className="mt-4 text-sm text-gray-400">
-                Dernière mise à jour : 9 avril 2026
-              </p>
-            </section>
+  const sections = [
+    {
+      icon: Shield,
+      color: "purple",
+      title: "Introduction",
+      content: (
+        <p>
+          Radar (&quot;nous&quot;, &quot;notre&quot;, &quot;nos&quot;) s&apos;engage à protéger la vie privée des utilisateurs
+          de notre plateforme accessible à l&apos;adresse{" "}
+          <strong className="text-gray-900">https://radarapp.fr</strong>. Cette politique
+          de confidentialité explique comment nous collectons, utilisons et protégeons vos
+          informations personnelles.
+        </p>
+      ),
+    },
+    {
+      icon: Database,
+      color: "blue",
+      title: "Données collectées",
+      content: (
+        <>
+          <p>Nous collectons les types de données suivants :</p>
+          <ul className="mt-3 space-y-2">
+            {[
+              "Informations de compte : nom, adresse e-mail",
+              "Données d'authentification via Google OAuth",
+              "Données d'utilisation de la plateforme",
+              "Informations relatives à vos projets et clients",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ),
+    },
+    {
+      icon: Settings,
+      color: "green",
+      title: "Utilisation des données",
+      content: (
+        <>
+          <p>Vos données sont utilisées pour :</p>
+          <ul className="mt-3 space-y-2">
+            {[
+              "Fournir et améliorer nos services",
+              "Authentifier votre accès à la plateforme",
+              "Synchroniser avec Google Drive et Google Calendar (si autorisé)",
+              "Vous envoyer des notifications relatives à votre compte",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ),
+    },
+    {
+      icon: Globe,
+      color: "orange",
+      title: "Intégrations Google",
+      content: (
+        <>
+          <p>Notre application utilise les API Google pour les fonctionnalités suivantes :</p>
+          <div className="mt-3 grid gap-2">
+            {[
+              { name: "Google OAuth", desc: "Connexion sécurisée à votre compte" },
+              { name: "Google Drive", desc: "Stockage et organisation de vos fichiers projets" },
+              { name: "Google Calendar", desc: "Synchronisation de vos événements" },
+            ].map((item) => (
+              <div key={item.name} className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
+                <span className="text-sm font-semibold text-gray-900">{item.name}</span>
+                <span className="text-sm text-gray-500">— {item.desc}</span>
+              </div>
+            ))}
           </div>
+          <p className="mt-3">
+            Nous n&apos;accédons qu&apos;aux données strictement nécessaires et ne partageons jamais
+            vos données avec des tiers.
+          </p>
+        </>
+      ),
+    },
+    {
+      icon: Lock,
+      color: "red",
+      title: "Stockage et sécurité",
+      content: (
+        <p>
+          Vos données sont stockées sur des <strong className="text-gray-900">serveurs sécurisés situés en Europe</strong>.
+          Nous utilisons le chiffrement SSL/TLS pour toutes les communications
+          et appliquons les meilleures pratiques de sécurité pour protéger vos informations.
+        </p>
+      ),
+    },
+    {
+      icon: UserCheck,
+      color: "purple",
+      title: "Vos droits (RGPD)",
+      content: (
+        <>
+          <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              "Droit d'accès",
+              "Droit de rectification",
+              "Droit à l'effacement",
+              "Droit à la portabilité",
+              "Droit d'opposition",
+            ].map((right) => (
+              <div key={right} className="flex items-center gap-2 rounded-lg bg-gray-50 p-3">
+                <UserCheck className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                <span className="text-sm">{right}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3">
+            Pour exercer ces droits : <strong className="text-gray-900">contact@radarapp.fr</strong>
+          </p>
+        </>
+      ),
+    },
+    {
+      icon: Cookie,
+      color: "yellow",
+      title: "Cookies",
+      content: (
+        <>
+          <p>
+            Nous utilisons des <strong className="text-gray-900">cookies essentiels</strong> pour
+            le fonctionnement de la plateforme (authentification, préférences utilisateur).
+          </p>
+          <p className="mt-3">
+            Nous utilisons également <strong className="text-gray-900">Google Analytics (GA4)</strong> à
+            des fins de mesure d&apos;audience. Ces cookies analytiques ne sont déposés qu&apos;après votre
+            consentement explicite via le bandeau de gestion des cookies, conformément au RGPD
+            et aux recommandations de la CNIL.
+          </p>
+          <p className="mt-3">
+            Vous pouvez modifier vos choix à tout moment en supprimant vos cookies
+            et en rechargeant la page.
+          </p>
+        </>
+      ),
+    },
+    {
+      icon: Mail,
+      color: "blue",
+      title: "Contact",
+      content: (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            <div className="flex flex-col rounded-lg bg-gray-50 p-3">
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Email</span>
+              <span className="text-sm text-gray-900 mt-1">contact@radarapp.fr</span>
+            </div>
+            <div className="flex flex-col rounded-lg bg-gray-50 p-3">
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Site</span>
+              <span className="text-sm text-gray-900 mt-1">https://radarapp.fr</span>
+            </div>
+          </div>
+          <p>
+            Voir également nos{" "}
+            <Link href="/legal" className="text-purple-600 hover:text-purple-700 font-medium">
+              Mentions Légales
+            </Link>{" "}et nos{" "}
+            <Link href="/terms" className="text-purple-600 hover:text-purple-700 font-medium">
+              Conditions Générales d&apos;Utilisation
+            </Link>.
+          </p>
+        </>
+      ),
+    },
+    {
+      icon: RefreshCw,
+      color: "gray",
+      title: "Modifications",
+      content: (
+        <p>
+          Cette politique de confidentialité peut être mise à jour occasionnellement.
+          Les modifications seront publiées sur cette page.
+        </p>
+      ),
+    },
+  ];
+
+  const colorMap: Record<string, { bg: string; text: string }> = {
+    purple: { bg: "bg-purple-50", text: "text-purple-600" },
+    blue: { bg: "bg-blue-50", text: "text-blue-600" },
+    green: { bg: "bg-green-50", text: "text-green-600" },
+    orange: { bg: "bg-orange-50", text: "text-orange-600" },
+    red: { bg: "bg-red-50", text: "text-red-600" },
+    yellow: { bg: "bg-yellow-50", text: "text-yellow-600" },
+    gray: { bg: "bg-gray-100", text: "text-gray-600" },
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-6 py-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour à l&apos;accueil
+          </Link>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-6 py-16 max-w-4xl">
+        {/* Title */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-50 text-purple-600 text-sm font-medium mb-6">
+            <Shield className="h-4 w-4" />
+            Confidentialité
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+            Politique de Confidentialité
+          </h1>
+          <p className="mt-4 text-gray-500 text-sm">
+            Dernière mise à jour : 10 avril 2026
+          </p>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-8">
+          {sections.map((section, i) => {
+            const colors = colorMap[section.color];
+            const Icon = section.icon;
+            return (
+              <section key={i} className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-2 rounded-lg ${colors.bg}`}>
+                    <Icon className={`h-5 w-5 ${colors.text}`} />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">{section.title}</h2>
+                </div>
+                <div className="text-gray-600 text-sm leading-relaxed space-y-2">
+                  {section.content}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
     </div>
