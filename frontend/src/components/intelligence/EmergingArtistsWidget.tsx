@@ -447,7 +447,7 @@ export function EmergingArtistsWidget() {
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <p className="text-xs text-muted-foreground mt-2">
-              💡 Artistes émergents avec fort potentiel et cachets abordables
+              Artistes émergents avec fort potentiel et cachets abordables
             </p>
           </TabsContent>
           
@@ -474,7 +474,7 @@ export function EmergingArtistsWidget() {
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <p className="text-xs text-muted-foreground mt-2">
-              🚀 Artistes en forte progression, proches de devenir établis
+              Artistes en forte progression, proches de devenir établis
             </p>
           </TabsContent>
           
@@ -501,7 +501,7 @@ export function EmergingArtistsWidget() {
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <p className="text-xs text-muted-foreground mt-2">
-              💰 Meilleur rapport qualité/prix pour les budgets serrés (&lt; 15 000€)
+              Meilleur rapport qualité/prix pour les budgets serrés (&lt; 15 000€)
             </p>
           </TabsContent>
         </Tabs>

@@ -68,9 +68,9 @@ const getRecommendationBadge = (rec?: string) => {
     PASS: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
   };
   const labels: Record<string, string> = {
-    SIGN: "🎯 À signer",
-    WATCH: "👀 À suivre",
-    PASS: "⏸️ Passer",
+    SIGN: "À signer",
+    WATCH: "À suivre",
+    PASS: "Passer",
   };
   return (
     <Badge className={styles[rec] || styles.PASS}>

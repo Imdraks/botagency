@@ -193,14 +193,14 @@ function getTrendIcon(trend: string) {
 
 function getTrendLabel(trend: string) {
   const labels: Record<string, string> = {
-    rising: "En hausse 🚀",
-    explosive: "Explosive 🔥",
-    rapid: "Rapide ⚡",
-    strong: "Fort 📈",
+    rising: "En hausse",
+    explosive: "Explosive",
+    rapid: "Rapide",
+    strong: "Fort",
     moderate: "Modéré",
     stable: "Stable",
     declining: "En baisse",
-    falling: "Chute 📉",
+    falling: "Chute",
   };
   return labels[trend] || trend;
 }
@@ -242,7 +242,7 @@ function SpotifySearchPage() {
     onSuccess: (data) => {
       setTaskId(data.task_id);
       setPolling(true);
-      toast.success("🧠 Analyse lancée !");
+      toast.success("Analyse lancée !");
       
       // Ajouter à l'historique
       setSearchHistory(prev => [{
@@ -378,9 +378,9 @@ function SpotifySearchPage() {
                         Analyse en cours pour <strong className="text-purple-600">{searchQuery}</strong>
                       </p>
                       <div className="text-sm text-muted-foreground text-center space-y-1">
-                        <p>🔍 Scan des sources web (Spotify, YouTube, Viberate...)</p>
-                        <p>🧠 Génération des prédictions...</p>
-                        <p>📊 Calcul du score et analyse SWOT...</p>
+                        <p className="flex items-center justify-center gap-1.5"><Search className="h-3.5 w-3.5" /> Scan des sources web (Spotify, YouTube, Viberate...)</p>
+                        <p className="flex items-center justify-center gap-1.5"><Brain className="h-3.5 w-3.5" /> Génération des prédictions...</p>
+                        <p className="flex items-center justify-center gap-1.5"><LineChart className="h-3.5 w-3.5" /> Calcul du score et analyse SWOT...</p>
                       </div>
                       <div className="w-64">
                         <Progress value={undefined} className="h-2" />
@@ -465,7 +465,7 @@ function SpotifySearchPage() {
                         {/* Fee Estimation */}
                         <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium flex items-center gap-2">💰 Cachet estimé</h4>
+                            <h4 className="font-medium flex items-center gap-2"><Zap className="h-4 w-4 text-green-600" /> Cachet estimé</h4>
                             {aiData?.booking_intelligence?.optimal_fee && (
                               <Badge className="bg-green-600">
                                 Optimal: {aiData.booking_intelligence.optimal_fee.toLocaleString()}€
@@ -484,7 +484,7 @@ function SpotifySearchPage() {
 
                         {/* Social Metrics */}
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <h4 className="font-medium mb-3">📊 Métriques Sociales</h4>
+                          <h4 className="font-medium mb-3 flex items-center gap-2"><LineChart className="h-4 w-4 text-blue-600" /> Métriques Sociales</h4>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {profile.social_metrics.spotify_monthly_listeners > 0 && (
                               <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded">
@@ -528,7 +528,7 @@ function SpotifySearchPage() {
                         {/* Business Info */}
                         {(profile.business.record_label || profile.business.management || profile.business.booking_email) && (
                           <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                            <h4 className="font-medium mb-3">🏢 Contacts Business</h4>
+                            <h4 className="font-medium mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-gray-600" /> Contacts Business</h4>
                             <div className="space-y-2 text-sm">
                               {profile.business.record_label && (
                                 <div className="flex items-center gap-2">
@@ -557,7 +557,7 @@ function SpotifySearchPage() {
                         {/* Upcoming Concerts */}
                         {profile.concerts.upcoming.length > 0 && (
                           <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                            <h4 className="font-medium mb-3">🎤 Prochains concerts</h4>
+                            <h4 className="font-medium mb-3 flex items-center gap-2"><Music className="h-4 w-4 text-orange-600" /> Prochains concerts</h4>
                             <div className="space-y-2">
                               {profile.concerts.upcoming.slice(0, 5).map((concert, i) => (
                                 <div key={i} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded text-sm">
@@ -757,7 +757,7 @@ function SpotifySearchPage() {
                           <>
                             {aiData.booking_intelligence.optimal_fee && (
                               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                                <h4 className="font-medium mb-2">💰 Cachet optimal recommandé</h4>
+                                <h4 className="font-medium mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-green-600" /> Cachet optimal recommandé</h4>
                                 <div className="text-3xl font-bold text-green-600">
                                   {aiData.booking_intelligence.optimal_fee.toLocaleString()}€
                                 </div>

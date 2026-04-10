@@ -300,7 +300,7 @@ function ComparisonTable({ artists }: { artists: ArtistComparisonData[] }) {
       label: "Recommandation",
       icon: Check,
       getValue: (a: ArtistComparisonData) => a.recommendation || "-",
-      format: (v: string) => v === "SIGN" ? "🎯 À signer" : v === "WATCH" ? "👀 À suivre" : v === "PASS" ? "⏸️ Passer" : v,
+      format: (v: string) => v === "SIGN" ? "À signer" : v === "WATCH" ? "À suivre" : v === "PASS" ? "Passer" : v,
       isBest: (v: string) => v === "SIGN",
       badgeStyle: (a: ArtistComparisonData) => getRecommendationStyle(a.recommendation),
     },

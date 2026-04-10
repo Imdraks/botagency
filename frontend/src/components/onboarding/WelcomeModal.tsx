@@ -108,7 +108,7 @@ export function WelcomeModal() {
             </div>
 
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-              Bienvenue sur Radar 🎯
+              Bienvenue sur Radar
             </DialogTitle>
             <DialogDescription className="text-base">
               Votre plateforme intelligente pour détecter les meilleures opportunités

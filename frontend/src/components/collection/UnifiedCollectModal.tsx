@@ -54,12 +54,12 @@ interface EntityInput {
 
 // Constants
 const OBJECTIVES = [
-  { value: "SPONSOR", label: "Sponsor / Partenariat", icon: "🤝", description: "Trouver des sponsors et partenaires potentiels" },
-  { value: "BOOKING", label: "Booking artiste", icon: "🎤", description: "Opportunités de concerts et événements" },
-  { value: "PRESS", label: "Presse / Média", icon: "📰", description: "Contacts presse et médias" },
-  { value: "VENUE", label: "Lieu / Salle", icon: "🏛️", description: "Salles et espaces événementiels" },
-  { value: "SUPPLIER", label: "Prestataires", icon: "🔧", description: "Prestataires techniques et logistiques" },
-  { value: "GRANT", label: "Subventions", icon: "💰", description: "Aides et appels à projets" },
+  { value: "SPONSOR", label: "Sponsor / Partenariat", icon: "Handshake", description: "Trouver des sponsors et partenaires potentiels" },
+  { value: "BOOKING", label: "Booking artiste", icon: "Mic", description: "Opportunités de concerts et événements" },
+  { value: "PRESS", label: "Presse / Média", icon: "Newspaper", description: "Contacts presse et médias" },
+  { value: "VENUE", label: "Lieu / Salle", icon: "Landmark", description: "Salles et espaces événementiels" },
+  { value: "SUPPLIER", label: "Prestataires", icon: "Wrench", description: "Prestataires techniques et logistiques" },
+  { value: "GRANT", label: "Subventions", icon: "Coins", description: "Aides et appels à projets" },
 ];
 
 const ENTITY_TYPES = [
@@ -488,7 +488,7 @@ export function UnifiedCollectModal({ defaultTab = "standard" }: UnifiedCollectM
                     {entities.map((entity, index) => (
                       <Badge key={index} variant="secondary" className="gap-1 pl-2 pr-1">
                         <span className="text-xs opacity-70">
-                          {entity.type === "PERSON" ? "👤" : entity.type === "ORGANIZATION" ? "🏢" : "#"}
+                          {entity.type === "PERSON" ? <User className="h-3 w-3" /> : entity.type === "ORGANIZATION" ? <Building className="h-3 w-3" /> : "#"}
                         </span>
                         {entity.name}
                         <button

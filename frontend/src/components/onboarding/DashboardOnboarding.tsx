@@ -8,7 +8,7 @@ const DASHBOARD_STEPS: OnboardingStep[] = [
   {
     id: "welcome",
     target: "[data-onboarding='stats-cards']",
-    title: "Bienvenue sur Radar ! 🎯",
+    title: "Bienvenue sur Radar !",
     description:
       "Radar vous aide à détecter les meilleures opportunités pour votre activité musicale. Ces cartes affichent vos statistiques clés : opportunités totales, nouvelles, urgentes et score moyen.",
     position: "bottom",
@@ -50,7 +50,7 @@ const DASHBOARD_STEPS: OnboardingStep[] = [
     target: "[data-onboarding='user-menu']",
     title: "Votre profil",
     description:
-      "Gérez votre compte, vos préférences et relancez ce tutoriel à tout moment depuis votre menu utilisateur. Vous êtes prêt à commencer ! 🚀",
+      "Gérez votre compte, vos préférences et relancez ce tutoriel à tout moment depuis votre menu utilisateur. Vous êtes prêt à commencer !",
     position: "top",
   },
 ];

@@ -36,12 +36,12 @@ import {
 import Link from "next/link";
 
 const COLUMNS = [
-  { id: "new", title: "📥 Nouveau", color: "bg-blue-500" },
-  { id: "review", title: "👀 En revue", color: "bg-yellow-500" },
-  { id: "contacted", title: "📞 Contacté", color: "bg-purple-500" },
-  { id: "proposal", title: "📝 Proposition", color: "bg-orange-500" },
-  { id: "won", title: "🏆 Gagné", color: "bg-green-500" },
-  { id: "lost", title: "❌ Perdu", color: "bg-red-500" },
+  { id: "new", title: "Nouveau", color: "bg-blue-500" },
+  { id: "review", title: "En revue", color: "bg-yellow-500" },
+  { id: "contacted", title: "Contacté", color: "bg-purple-500" },
+  { id: "proposal", title: "Proposition", color: "bg-orange-500" },
+  { id: "won", title: "Gagné", color: "bg-green-500" },
+  { id: "lost", title: "Perdu", color: "bg-red-500" },
 ];
 
 interface KanbanCardProps {

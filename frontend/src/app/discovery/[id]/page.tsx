@@ -29,6 +29,12 @@ import {
   Brain,
   Lightbulb,
   MapPin,
+  Crown,
+  Gem,
+  Rocket,
+  Sprout,
+  Guitar,
+  type LucideIcon,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -183,13 +189,13 @@ const getTrendInfo = (trend?: string) => {
 };
 
 const getTierInfo = (tier?: string) => {
-  const map: Record<string, { label: string; emoji: string }> = {
-    superstar: { label: "Superstar", emoji: "👑" },
-    major: { label: "Major", emoji: "⭐" },
-    established: { label: "Confirmé", emoji: "💎" },
-    rising: { label: "En montée", emoji: "🚀" },
-    emerging: { label: "Émergent", emoji: "🌱" },
-    underground: { label: "Underground", emoji: "🎸" },
+  const map: Record<string, { label: string; icon: LucideIcon }> = {
+    superstar: { label: "Superstar", icon: Crown },
+    major: { label: "Major", icon: Star },
+    established: { label: "Confirmé", icon: Gem },
+    rising: { label: "En montée", icon: Rocket },
+    emerging: { label: "Émergent", icon: Sprout },
+    underground: { label: "Underground", icon: Guitar },
   };
   return map[tier || ""] || null;
 };
@@ -358,8 +364,9 @@ export default function DiscoveryArtistDetailPage() {
                       <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold truncate">{artist.name}</h1>
                         {artist.ai_tier && getTierInfo(artist.ai_tier) && (
-                          <Badge variant="outline" className="text-sm">
-                            {getTierInfo(artist.ai_tier)!.emoji} {getTierInfo(artist.ai_tier)!.label}
+                          <Badge variant="outline" className="text-sm flex items-center gap-1">
+                            {(() => { const Icon = getTierInfo(artist.ai_tier)!.icon; return <Icon className="h-3.5 w-3.5" />; })()}
+                            {getTierInfo(artist.ai_tier)!.label}
                           </Badge>
                         )}
                       </div>

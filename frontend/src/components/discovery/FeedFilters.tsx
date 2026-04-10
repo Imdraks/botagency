@@ -43,9 +43,9 @@ const TIMING_OPTIONS = [
 ];
 
 const RECOMMENDATION_OPTIONS = [
-  { value: "SIGN", label: "🎯 À signer" },
-  { value: "WATCH", label: "👀 À suivre" },
-  { value: "PASS", label: "⏸️ Passer" },
+  { value: "SIGN", label: "À signer" },
+  { value: "WATCH", label: "À suivre" },
+  { value: "PASS", label: "Passer" },
 ];
 
 const LISTENERS_PRESETS = [

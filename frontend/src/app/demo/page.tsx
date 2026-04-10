@@ -18,7 +18,8 @@ import {
   ArrowRight,
   Zap,
   Mail,
-  FileText
+  FileText,
+  Target
 } from 'lucide-react';
 
 export default function DemoPage() {
@@ -400,7 +401,7 @@ export default function DemoPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-600 to-pink-500 text-white py-4 px-6 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">🎯 Ceci est une démo interactive de Radar</span>
+            <span className="text-sm font-medium flex items-center gap-1.5"><Target className="h-4 w-4" /> Ceci est une démo interactive de Radar</span>
             <span className="text-sm opacity-80">Données fictives pour illustration</span>
           </div>
           <Link 

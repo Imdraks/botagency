@@ -315,7 +315,7 @@ function RuleForm({
 
       <div className="space-y-2">
         <Label htmlFor="label">Libellé affiché</Label>
-        <Input id="label" {...register("label")} placeholder="Ex: ⚡ Deadline < 7 jours" />
+        <Input id="label" {...register("label")} placeholder="Ex: Deadline < 7 jours" />
       </div>
 
       <div className="space-y-2">

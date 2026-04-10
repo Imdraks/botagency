@@ -67,6 +67,14 @@ import {
   XCircle,
   RefreshCw,
   Play,
+  Sprout,
+  Star,
+  Crown,
+  Building2,
+  Smartphone,
+  Gem,
+  Tent,
+  type LucideIcon,
 } from "lucide-react";
 
 // ============================================================================
@@ -208,15 +216,15 @@ const detectInputType = (value: string): InputType => {
 };
 
 const getTierConfig = (tier?: string) => {
-  const tiers: Record<string, { label: string; className: string; emoji: string }> = {
-    emerging: { label: "Émergent", className: "bg-blue-50 text-blue-700 border-blue-200", emoji: "🌱" },
-    developing: { label: "En développement", className: "bg-cyan-50 text-cyan-700 border-cyan-200", emoji: "📈" },
-    established: { label: "Établi", className: "bg-green-50 text-green-700 border-green-200", emoji: "✅" },
-    star: { label: "Star", className: "bg-yellow-50 text-yellow-700 border-yellow-200", emoji: "⭐" },
-    superstar: { label: "Superstar", className: "bg-orange-50 text-orange-700 border-orange-200", emoji: "🌟" },
-    mega_star: { label: "Méga Star", className: "bg-red-50 text-red-700 border-red-200", emoji: "👑" },
+  const tiers: Record<string, { label: string; className: string; icon: LucideIcon }> = {
+    emerging: { label: "Émergent", className: "bg-blue-50 text-blue-700 border-blue-200", icon: Sprout },
+    developing: { label: "En développement", className: "bg-cyan-50 text-cyan-700 border-cyan-200", icon: TrendingUp },
+    established: { label: "Établi", className: "bg-green-50 text-green-700 border-green-200", icon: CheckCircle2 },
+    star: { label: "Star", className: "bg-yellow-50 text-yellow-700 border-yellow-200", icon: Star },
+    superstar: { label: "Superstar", className: "bg-orange-50 text-orange-700 border-orange-200", icon: Sparkles },
+    mega_star: { label: "Méga Star", className: "bg-red-50 text-red-700 border-red-200", icon: Crown },
   };
-  return tiers[tier || ""] || { label: tier || "N/A", className: "bg-gray-50 text-gray-700 border-gray-200", emoji: "•" };
+  return tiers[tier || ""] || { label: tier || "N/A", className: "bg-gray-50 text-gray-700 border-gray-200", icon: Minus };
 };
 
 // ============================================================================
@@ -499,8 +507,9 @@ function ArtistTableRow({
       </TableCell>
       
       <TableCell>
-        <Badge variant="outline" className={`${tierConfig.className} border`}>
-          {tierConfig.emoji} {tierConfig.label}
+        <Badge variant="outline" className={`${tierConfig.className} border flex items-center gap-1`}>
+          {(() => { const Icon = tierConfig.icon; return <Icon className="h-3 w-3" />; })()}
+          {tierConfig.label}
         </Badge>
       </TableCell>
       
@@ -624,7 +633,7 @@ function ArtistDetailDialog({
               <DialogDescription className="flex items-center gap-2 flex-wrap">
                 {analysis.real_name && <span>({analysis.real_name})</span>}
                 <Badge variant="outline">{analysis.genre || "Genre inconnu"}</Badge>
-                <Badge variant="outline" className={tierConfig.className}>{tierConfig.emoji} {tierConfig.label}</Badge>
+                <Badge variant="outline" className={tierConfig.className}>{(() => { const Icon = tierConfig.icon; return <Icon className="h-3 w-3 mr-1 inline" />; })()} {tierConfig.label}</Badge>
                 <span className="text-xs">Analysé le {format(new Date(analysis.created_at), "dd MMMM yyyy à HH:mm", { locale: fr })}</span>
               </DialogDescription>
             </div>
@@ -642,7 +651,7 @@ function ArtistDetailDialog({
           <TabsContent value="overview" className="space-y-4 mt-4">
             <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold flex items-center gap-2">💰 Cachet estimé</h4>
+                <h4 className="font-semibold flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-600" /> Cachet estimé</h4>
                 {analysis.optimal_fee && <Badge className="bg-green-600 text-white">Optimal: {analysis.optimal_fee.toLocaleString()}€</Badge>}
               </div>
               <div className="text-3xl font-bold text-green-700 dark:text-green-400">
@@ -656,7 +665,7 @@ function ArtistDetailDialog({
             </div>
 
             <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl">
-              <h4 className="font-semibold mb-4">📊 Métriques Sociales</h4>
+              <h4 className="font-semibold mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-blue-600" /> Métriques Sociales</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg">
                   <SpotifyIcon className="h-6 w-6 text-green-500" />
@@ -690,7 +699,7 @@ function ArtistDetailDialog({
             </div>
 
             <div className="p-5 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl">
-              <h4 className="font-semibold mb-4">🏢 Contacts Business</h4>
+              <h4 className="font-semibold mb-4 flex items-center gap-2"><Building2 className="h-4 w-4 text-purple-600" /> Contacts Business</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {analysis.record_label && <div className="p-3 bg-white dark:bg-gray-800 rounded-lg"><span className="text-muted-foreground">Label</span><p className="font-medium">{analysis.record_label}</p></div>}
                 {analysis.management && <div className="p-3 bg-white dark:bg-gray-800 rounded-lg"><span className="text-muted-foreground">Management</span><p className="font-medium">{analysis.management}</p></div>}
@@ -779,7 +788,7 @@ function ArtistDetailDialog({
 
                 {analysis.best_platforms && analysis.best_platforms.length > 0 && (
                   <div className="p-5 bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-xl">
-                    <h4 className="font-semibold mb-4">📱 Meilleures Plateformes</h4>
+                    <h4 className="font-semibold mb-4 flex items-center gap-2"><Smartphone className="h-4 w-4 text-pink-600" /> Meilleures Plateformes</h4>
                     <div className="flex flex-wrap gap-2 mb-4">{analysis.best_platforms.map((platform, i) => <Badge key={i} variant="secondary" className="text-sm py-1 px-3">{platform}</Badge>)}</div>
                     {analysis.viral_potential !== undefined && (
                       <div className="flex items-center gap-3"><span className="text-sm font-medium">Potentiel viral:</span><Progress value={analysis.viral_potential * 100} className="flex-1 h-2.5" /><span className="text-sm font-bold">{(analysis.viral_potential * 100).toFixed(0)}%</span></div>
@@ -799,7 +808,7 @@ function ArtistDetailDialog({
             {analysis.optimal_fee ? (
               <>
                 <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
-                  <h4 className="font-semibold mb-2">💎 Cachet Optimal Recommandé</h4>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2"><Gem className="h-4 w-4 text-green-600" /> Cachet Optimal Recommandé</h4>
                   <div className="text-4xl font-bold text-green-600">{analysis.optimal_fee.toLocaleString()}€</div>
                   <div className="text-sm text-muted-foreground mt-2">Fourchette: {analysis.fee_min.toLocaleString()}€ - {analysis.fee_max.toLocaleString()}€</div>
                 </div>
@@ -809,7 +818,7 @@ function ArtistDetailDialog({
                     <div className="p-5 border rounded-xl">
                       <div className="text-sm text-muted-foreground mb-2">Pouvoir de négociation</div>
                       <div className={`text-xl font-bold ${analysis.negotiation_power === "high" ? "text-red-600" : analysis.negotiation_power === "medium" ? "text-yellow-600" : "text-green-600"}`}>
-                        {analysis.negotiation_power === "high" ? "🔴 Élevé (Artiste)" : analysis.negotiation_power === "medium" ? "🟡 Moyen" : "🟢 Faible (Acheteur)"}
+                        {analysis.negotiation_power === "high" ? "● Élevé (Artiste)" : analysis.negotiation_power === "medium" ? "● Moyen" : "● Faible (Acheteur)"}
                       </div>
                     </div>
                   )}
@@ -823,7 +832,7 @@ function ArtistDetailDialog({
 
                 {analysis.event_type_fit && Object.keys(analysis.event_type_fit).length > 0 && (
                   <div className="p-5 border rounded-xl">
-                    <h4 className="font-semibold mb-4">🎪 Compatibilité par Type d'Événement</h4>
+                    <h4 className="font-semibold mb-4 flex items-center gap-2"><Tent className="h-4 w-4" /> Compatibilité par Type d'Événement</h4>
                     <div className="space-y-3">
                       {Object.entries(analysis.event_type_fit).sort(([, a], [, b]) => b - a).map(([type, score]) => (
                         <div key={type} className="flex items-center gap-3">
@@ -838,7 +847,7 @@ function ArtistDetailDialog({
 
                 {analysis.seasonal_demand && Object.keys(analysis.seasonal_demand).length > 0 && (
                   <div className="p-5 border rounded-xl">
-                    <h4 className="font-semibold mb-4">📅 Demande Saisonnière</h4>
+                    <h4 className="font-semibold mb-4 flex items-center gap-2"><Calendar className="h-4 w-4" /> Demande Saisonnière</h4>
                     <div className="grid grid-cols-4 gap-3">
                       {Object.entries(analysis.seasonal_demand).map(([season, score]) => (
                         <div key={season} className="text-center p-4 rounded-xl bg-muted/50">
@@ -950,7 +959,7 @@ function BatchAnalysisDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             <>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Progression: {completedCount + errorCount} / {tasks.length}</span>
-                <span className="text-sm text-muted-foreground">✅ {completedCount} réussies • ❌ {errorCount} erreurs</span>
+                <span className="text-sm text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 inline mr-0.5" />{completedCount} réussies • <XCircle className="h-3.5 w-3.5 text-red-500 inline mr-0.5" />{errorCount} erreurs</span>
               </div>
               <Progress value={((completedCount + errorCount) / tasks.length) * 100} className="h-2" />
               
@@ -1119,12 +1128,12 @@ function ArtistHistoryContent() {
                     <SelectTrigger className="w-[180px]"><SelectValue placeholder="Niveau" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous niveaux</SelectItem>
-                      <SelectItem value="emerging">🌱 Émergent</SelectItem>
-                      <SelectItem value="developing">📈 En développement</SelectItem>
-                      <SelectItem value="established">✅ Établi</SelectItem>
-                      <SelectItem value="star">⭐ Star</SelectItem>
-                      <SelectItem value="superstar">🌟 Superstar</SelectItem>
-                      <SelectItem value="mega_star">👑 Méga Star</SelectItem>
+                      <SelectItem value="emerging">Émergent</SelectItem>
+                      <SelectItem value="developing">En développement</SelectItem>
+                      <SelectItem value="established">Établi</SelectItem>
+                      <SelectItem value="star">Star</SelectItem>
+                      <SelectItem value="superstar">Superstar</SelectItem>
+                      <SelectItem value="mega_star">Méga Star</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

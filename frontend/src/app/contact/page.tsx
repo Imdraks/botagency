@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Loader2,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ForceLightMode } from "@/components/landing/ForceLightMode";
@@ -125,8 +126,8 @@ export default function ContactPage() {
 
                 {/* Trust */}
                 <div className="mt-10 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-sm text-gray-600">
-                    🇫🇷 Hébergé en France • RGPD conforme • Données chiffrées
+                  <p className="text-sm text-gray-600 flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5" /> Hébergé en France • RGPD conforme • Données chiffrées
                   </p>
                 </div>
               </div>

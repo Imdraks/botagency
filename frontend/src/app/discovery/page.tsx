@@ -329,7 +329,7 @@ function DiscoveryV3Page() {
     mutationFn: ({ query, inputType }: { query: string; inputType: InputType }) =>
       searchArtist(query, inputType),
     onSuccess: (data) => {
-      toast.success("🎵 Analyse lancée !", {
+      toast.success("Analyse lancée !", {
         description: `L'artiste "${data.input_value}" est en cours d'analyse`,
         duration: 5000,
       });
@@ -455,19 +455,19 @@ function DiscoveryV3Page() {
             <div className="flex-shrink-0">
               <div className="flex items-center gap-2 text-xs text-blue-600">
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
-                  🔍 Identification
+                  Identification
                 </span>
                 <span>→</span>
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
-                  📊 Viberate
+                  Viberate
                 </span>
                 <span>→</span>
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
-                  🎵 Spotify
+                  Spotify
                 </span>
                 <span>→</span>
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded">
-                  ⚡ Calcul
+                  Calcul
                 </span>
               </div>
             </div>

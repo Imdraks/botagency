@@ -373,7 +373,7 @@ export function DeadlinesCalendar() {
                         
                         {item.googleEvent?.location && (
                           <div className="text-sm text-muted-foreground mt-1">
-                            📍 {item.googleEvent.location}
+                            {item.googleEvent.location}
                           </div>
                         )}
                         

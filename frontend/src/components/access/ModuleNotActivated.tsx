@@ -80,7 +80,7 @@ export default function ModuleNotActivated({
           <div className="space-y-4">
             <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                💡 Contactez un administrateur du workspace pour activer ce module.
+                Contactez un administrateur du workspace pour activer ce module.
               </p>
             </div>
             <Button

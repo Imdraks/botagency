@@ -31,6 +31,8 @@ import {
   MessageCircle,
   Lightbulb,
   Bell,
+  Headphones,
+  Building2,
 } from "lucide-react";
 import { AppLayout, ProtectedRoute } from "@/components/layout";
 import { marketIntelligenceApi } from "@/lib/api";
@@ -220,14 +222,14 @@ function FeedCard({ item }: { item: FeedItem }) {
               </span>
             )}
             {(item.fee_min || item.fee_max) && (item.fee_min! > 0 || item.fee_max! > 0) && (
-              <span>💰 {formatFee(item.fee_min || 0, item.fee_max || 0)}</span>
+              <span className="flex items-center gap-0.5"><DollarSign className="h-3 w-3" />{formatFee(item.fee_min || 0, item.fee_max || 0)}</span>
             )}
             {item.monthly_listeners && item.monthly_listeners > 0 && (
-              <span>🎧 {formatK(item.monthly_listeners)}</span>
+              <span className="flex items-center gap-0.5"><Headphones className="h-3 w-3" />{formatK(item.monthly_listeners)}</span>
             )}
-            {item.city && <span>📍 {item.city}</span>}
-            {item.date_label && <span>📅 {item.date_label}</span>}
-            {item.promoter && <span>🏢 {item.promoter}</span>}
+            {item.city && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{item.city}</span>}
+            {item.date_label && <span className="flex items-center gap-0.5"><Calendar className="h-3 w-3" />{item.date_label}</span>}
+            {item.promoter && <span className="flex items-center gap-0.5"><Building2 className="h-3 w-3" />{item.promoter}</span>}
           </div>
 
           {/* Genres */}

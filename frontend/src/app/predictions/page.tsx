@@ -104,7 +104,7 @@ const predictionsApi = {
     if (!response.ok) {
       // Mock data if API not ready
       return [
-        { opportunity_id: 1, title: "Festival de Jazz de Nice 2025", organization: "OT Nice", win_probability: 85, deadline: "2025-02-15", budget: 150000, status: "in_progress", risk_count: 0, top_action: "✅ Bonne opportunité - Maintenir l'effort" },
+        { opportunity_id: 1, title: "Festival de Jazz de Nice 2025", organization: "OT Nice", win_probability: 85, deadline: "2025-02-15", budget: 150000, status: "in_progress", risk_count: 0, top_action: "Bonne opportunité - Maintenir l'effort" },
         { opportunity_id: 2, title: "Salon de l'Agriculture - Animation", organization: "SIA", win_probability: 72, deadline: "2025-01-30", budget: 80000, status: "new", risk_count: 1, top_action: "Préparer une proposition technique détaillée" },
         { opportunity_id: 3, title: "Fête de la Musique Paris", organization: "Mairie Paris", win_probability: 68, deadline: "2025-03-01", budget: 200000, status: "in_progress", risk_count: 1, top_action: "Mettre en avant vos avantages concurrentiels" },
         { opportunity_id: 4, title: "Corporate Event Renault", organization: "Renault Group", win_probability: 55, deadline: "2025-02-10", budget: 45000, status: "new", risk_count: 2, top_action: "Contacter le client pour mieux comprendre les attentes" },
@@ -129,11 +129,11 @@ const predictionsApi = {
         total_pipeline_value: 2850000,
         expected_value: 1767000,
         insights: [
-          { type: "pipeline_health", title: "Pipeline sain", description: "Score moyen de 62% - Bonne qualité d'opportunités", impact: "positive", icon: "✅" },
-          { type: "deadline_alert", title: "3 deadline(s) urgente(s)", description: "Opportunités avec moins de 7 jours restants", impact: "warning", icon: "🚨" },
-          { type: "high_value", title: "5 opportunité(s) prioritaire(s)", description: "Valeur potentielle: 510,000€ avec bonne probabilité", impact: "positive", icon: "💰" },
-          { type: "trend", title: "Tendance positive", description: "Taux de conversion historique de 38%", impact: "positive", icon: "📈" },
-          { type: "recommendation", title: "Focus recommandé", description: "Prioriser: Festival de Jazz de Nice 2025 (85%)", impact: "action", icon: "🎯", opportunity_id: 1 },
+          { type: "pipeline_health", title: "Pipeline sain", description: "Score moyen de 62% - Bonne qualité d'opportunités", impact: "positive", icon: "check" },
+          { type: "deadline_alert", title: "3 deadline(s) urgente(s)", description: "Opportunités avec moins de 7 jours restants", impact: "warning", icon: "alert" },
+          { type: "high_value", title: "5 opportunité(s) prioritaire(s)", description: "Valeur potentielle: 510,000€ avec bonne probabilité", impact: "positive", icon: "money" },
+          { type: "trend", title: "Tendance positive", description: "Taux de conversion historique de 38%", impact: "positive", icon: "trend" },
+          { type: "recommendation", title: "Focus recommandé", description: "Prioriser: Festival de Jazz de Nice 2025 (85%)", impact: "action", icon: "target", opportunity_id: 1 },
         ],
         distribution: { high: 12, medium: 25, low: 10 },
       };
@@ -384,7 +384,16 @@ function PredictionsContent() {
                   >
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
-                        <span className="text-2xl">{insight.icon}</span>
+                        {(() => {
+                          const iconMap: Record<string, React.ReactNode> = {
+                            check: <CheckCircle className="h-6 w-6 text-green-500" />,
+                            alert: <AlertTriangle className="h-6 w-6 text-amber-500" />,
+                            money: <Euro className="h-6 w-6 text-green-500" />,
+                            trend: <TrendingUp className="h-6 w-6 text-blue-500" />,
+                            target: <Target className="h-6 w-6 text-purple-500" />,
+                          };
+                          return iconMap[insight.icon] || <Lightbulb className="h-6 w-6 text-gray-500" />;
+                        })()}
                         <div className="flex-1">
                           <h4 className="font-semibold">{insight.title}</h4>
                           <p className="text-sm text-muted-foreground mt-1">

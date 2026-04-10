@@ -14,7 +14,13 @@ import {
   Settings,
   Sliders,
   Save,
+  Eye,
+  DollarSign,
+  Users,
+  Mic,
+  Tag,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,12 +57,12 @@ import type { Profile, ProfileWeights } from "@/lib/types";
 
 type ProfileObjective = "visibility" | "revenue" | "networking" | "artist_development" | "brand_building";
 
-const OBJECTIVES: { value: ProfileObjective; label: string; emoji: string }[] = [
-  { value: "visibility", label: "Visibilité", emoji: "👁️" },
-  { value: "revenue", label: "Revenus", emoji: "💰" },
-  { value: "networking", label: "Networking", emoji: "🤝" },
-  { value: "artist_development", label: "Développement artiste", emoji: "🎤" },
-  { value: "brand_building", label: "Image de marque", emoji: "🏷️" },
+const OBJECTIVES: { value: ProfileObjective; label: string; icon: LucideIcon }[] = [
+  { value: "visibility", label: "Visibilité", icon: Eye },
+  { value: "revenue", label: "Revenus", icon: DollarSign },
+  { value: "networking", label: "Networking", icon: Users },
+  { value: "artist_development", label: "Développement artiste", icon: Mic },
+  { value: "brand_building", label: "Image de marque", icon: Tag },
 ];
 
 const DEFAULT_WEIGHTS: ProfileWeights = {
@@ -153,10 +159,10 @@ function ProfileForm({
             <Badge
               key={obj.value}
               variant={formData.objectives.includes(obj.value) ? "default" : "outline"}
-              className="cursor-pointer px-3 py-1.5 text-sm"
+              className="cursor-pointer px-3 py-1.5 text-sm gap-1.5"
               onClick={() => handleObjectiveToggle(obj.value)}
             >
-              {obj.emoji} {obj.label}
+              {(() => { const Icon = obj.icon; return <Icon className="h-3.5 w-3.5" />; })()} {obj.label}
             </Badge>
           ))}
         </div>
@@ -311,8 +317,8 @@ function ProfileCard({
             {profile.objectives.map((obj) => {
               const objInfo = OBJECTIVES.find((o) => o.value === obj);
               return objInfo ? (
-                <Badge key={obj} variant="secondary" className="text-xs">
-                  {objInfo.emoji} {objInfo.label}
+                <Badge key={obj} variant="secondary" className="text-xs gap-1">
+                  {(() => { const Icon = objInfo.icon; return <Icon className="h-3 w-3" />; })()} {objInfo.label}
                 </Badge>
               ) : null;
             })}

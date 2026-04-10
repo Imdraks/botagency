@@ -53,10 +53,7 @@ function getScoreLabel(score: number): string {
 }
 
 function getScoreEmoji(score: number): string {
-  if (score >= 85) return "🌟";
-  if (score >= 70) return "✅";
-  if (score >= 50) return "📊";
-  return "⚠️";
+  return "";
 }
 
 export function FitScoreBadge({ 

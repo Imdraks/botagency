@@ -24,6 +24,9 @@ import {
   User,
   Link as LinkIcon,
   MoreHorizontal,
+  FolderOpen,
+  DollarSign,
+  Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
@@ -629,7 +632,7 @@ function InboxContent() {
             {showMentions && (getMentionSuggestions().existing.length > 0 || getMentionSuggestions().canCreate) && (
               <div className="absolute top-16 left-0 z-50 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
                 <div className="px-3 py-1 text-xs font-medium text-gray-500 border-b border-gray-100 dark:border-gray-700">
-                  {mentionType === '@' ? '👤 Clients' : '📁 Projets'}
+                  {mentionType === '@' ? 'Clients' : 'Projets'}
                 </div>
                 {getMentionSuggestions().existing.map((item, idx) => (
                   <button
@@ -744,11 +747,11 @@ function InboxContent() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous types</SelectItem>
-            <SelectItem value="idea">💡 Idée</SelectItem>
-            <SelectItem value="request">❓ Demande</SelectItem>
-            <SelectItem value="bug">🐛 Bug</SelectItem>
-            <SelectItem value="content">📄 Contenu</SelectItem>
-            <SelectItem value="task">✅ Tâche</SelectItem>
+            <SelectItem value="idea">Idée</SelectItem>
+            <SelectItem value="request">Demande</SelectItem>
+            <SelectItem value="bug">Bug</SelectItem>
+            <SelectItem value="content">Contenu</SelectItem>
+            <SelectItem value="task">Tâche</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -895,10 +898,10 @@ function InboxContent() {
               
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { value: 'task', label: '✅ Tâche', desc: 'Action à faire' },
-                  { value: 'deal', label: '💰 Deal', desc: 'Opportunité commerciale' },
-                  { value: 'project', label: '📁 Projet', desc: 'Nouveau projet' },
-                  { value: 'deliverable', label: '📦 Livrable', desc: 'À livrer' },
+                  { value: 'task', label: 'Tâche', desc: 'Action à faire', icon: CheckCircle2 },
+                  { value: 'deal', label: 'Deal', desc: 'Opportunité commerciale', icon: DollarSign },
+                  { value: 'project', label: 'Projet', desc: 'Nouveau projet', icon: FolderOpen },
+                  { value: 'deliverable', label: 'Livrable', desc: 'À livrer', icon: Package },
                 ].map((option) => (
                   <button
                     key={option.value}
@@ -909,7 +912,7 @@ function InboxContent() {
                         : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                     }`}
                   >
-                    <p className="font-medium">{option.label}</p>
+                    <p className="font-medium flex items-center gap-1.5">{(() => { const Icon = option.icon; return <Icon className="h-4 w-4" />; })()}{option.label}</p>
                     <p className="text-xs text-gray-500">{option.desc}</p>
                   </button>
                 ))}

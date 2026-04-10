@@ -252,7 +252,7 @@ Orelsan`}
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                ⏱️ Temps estimé : ~30-60 secondes par artiste
+                Temps estimé : ~30-60 secondes par artiste
               </p>
             </div>
 

@@ -15,6 +15,9 @@ import {
   RefreshCw,
   Loader2,
   Filter,
+  Zap,
+  Flame,
+  Building2,
 } from "lucide-react";
 import { AppLayoutWithOnboarding, ProtectedRoute } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -65,27 +68,27 @@ function getUrgencyBadge(days: number) {
   if (days <= 1) {
     return (
       <Badge variant="destructive" className="animate-pulse">
-        ⚡ J-{days}
+        <Zap className="h-3 w-3 mr-0.5" /> J-{days}
       </Badge>
     );
   }
   if (days <= 3) {
     return (
       <Badge className="bg-orange-500 text-white">
-        🔥 J-{days}
+        <Flame className="h-3 w-3 mr-0.5" /> J-{days}
       </Badge>
     );
   }
   if (days <= 7) {
     return (
       <Badge className="bg-yellow-500 text-black">
-        ⏰ J-{days}
+        <Clock className="h-3 w-3 mr-0.5" /> J-{days}
       </Badge>
     );
   }
   return (
     <Badge variant="secondary">
-      📅 J-{days}
+      <Calendar className="h-3 w-3 mr-0.5" /> J-{days}
     </Badge>
   );
 }
@@ -133,7 +136,7 @@ function DeadlineAlertCard({ alert }: { alert: DeadlineAlertResponse }) {
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2">
               {alert.organization && (
-                <span>🏢 {alert.organization}</span>
+                <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {alert.organization}</span>
               )}
               {alert.deadline_at && (
                 <span className="flex items-center gap-1">

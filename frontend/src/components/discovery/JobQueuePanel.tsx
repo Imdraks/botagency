@@ -42,10 +42,10 @@ interface JobQueuePanelProps {
 
 // Steps configuration
 const STEPS = [
-  { key: "MATCH", label: "Identification", icon: "🔍", percent: 0 },
-  { key: "VIBERATE", label: "Viberate", icon: "📊", percent: 25 },
-  { key: "SPOTIFY", label: "Spotify", icon: "🎵", percent: 50 },
-  { key: "COMPUTE", label: "Calcul", icon: "⚡", percent: 75 },
+  { key: "MATCH", label: "Identification", icon: "search", percent: 0 },
+  { key: "VIBERATE", label: "Viberate", icon: "chart", percent: 25 },
+  { key: "SPOTIFY", label: "Spotify", icon: "music", percent: 50 },
+  { key: "COMPUTE", label: "Calcul", icon: "zap", percent: 75 },
 ];
 
 const getStepIndex = (step: string): number => {

@@ -20,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, 
+  Search,
   User, 
   Music, 
   TrendingUp, 
@@ -40,6 +41,10 @@ import {
   Sparkles,
   LineChart,
   Target,
+  Smartphone,
+  Gem,
+  Flame,
+  Tent,
 } from "lucide-react";
 
 // Spotify icon component
@@ -253,14 +258,14 @@ export function ArtistAnalysisDialog() {
 
   const getTrendLabel = (trend: string) => {
     const labels: Record<string, string> = {
-      rising: "En hausse 🚀",
-      explosive: "Explosive 🔥",
-      rapid: "Rapide ⚡",
-      strong: "Fort 📈",
+      rising: "En hausse",
+      explosive: "Explosive",
+      rapid: "Rapide",
+      strong: "Fort",
       moderate: "Modéré",
       stable: "Stable",
       declining: "En baisse",
-      falling: "Chute 📉",
+      falling: "Chute",
     };
     return labels[trend] || trend;
   };
@@ -409,9 +414,9 @@ export function ArtistAnalysisDialog() {
                     Analyse en cours pour <strong>{artistName}</strong>
                   </p>
                   <div className="text-sm text-muted-foreground text-center max-w-md space-y-1">
-                    <p>🔍 Scan des sources web...</p>
-                    <p>🧠 Génération des prédictions...</p>
-                    <p>📊 Calcul du score...</p>
+                    <p className="flex items-center justify-center gap-1.5"><Search className="h-3.5 w-3.5" /> Scan des sources web...</p>
+                    <p className="flex items-center justify-center gap-1.5"><Brain className="h-3.5 w-3.5" /> Génération des prédictions...</p>
+                    <p className="flex items-center justify-center gap-1.5"><LineChart className="h-3.5 w-3.5" /> Calcul du score...</p>
                   </div>
                 </div>
               ) : taskStatus?.ready && profile ? (
@@ -478,7 +483,7 @@ export function ArtistAnalysisDialog() {
                     {/* Fee Estimation */}
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium flex items-center gap-2">💰 Cachet estimé</h4>
+                        <h4 className="font-medium flex items-center gap-2"><Zap className="h-4 w-4 text-green-600" /> Cachet estimé</h4>
                         {aiData?.booking_intelligence?.optimal_fee && (
                           <Badge className="bg-green-600">
                             Optimal: {aiData.booking_intelligence.optimal_fee.toLocaleString()}€
@@ -497,7 +502,7 @@ export function ArtistAnalysisDialog() {
 
                     {/* Social Metrics */}
                     <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <h4 className="font-medium mb-3">📊 Métriques Sociales</h4>
+                      <h4 className="font-medium mb-3 flex items-center gap-2"><LineChart className="h-4 w-4 text-blue-600" /> Métriques Sociales</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {profile.social_metrics.spotify_monthly_listeners > 0 && (
                           <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded">
@@ -541,7 +546,7 @@ export function ArtistAnalysisDialog() {
                     {/* Business Info */}
                     {(profile.business.record_label || profile.business.management || profile.business.booking_email) && (
                       <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                        <h4 className="font-medium mb-3">🏢 Contacts Business</h4>
+                        <h4 className="font-medium mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-gray-600" /> Contacts Business</h4>
                         <div className="space-y-2 text-sm">
                           {profile.business.record_label && (
                             <div className="flex items-center gap-2">
@@ -723,13 +728,13 @@ export function ArtistAnalysisDialog() {
                               aiData.listener_prediction.trend === "stable" ? "bg-gray-500" :
                               "bg-red-500"
                             }`}>
-                              {aiData.listener_prediction.trend === "explosive" ? "🚀 EXPLOSIVE" :
-                               aiData.listener_prediction.trend === "rapid" ? "📈 RAPIDE" :
-                               aiData.listener_prediction.trend === "strong" ? "💪 FORTE" :
-                               aiData.listener_prediction.trend === "moderate" ? "📊 MODÉRÉE" :
-                               aiData.listener_prediction.trend === "stable" ? "➡️ STABLE" :
-                               aiData.listener_prediction.trend === "declining" ? "📉 DÉCLIN" :
-                               "⬇️ CHUTE"}
+                              {aiData.listener_prediction.trend === "explosive" ? "EXPLOSIVE" :
+                               aiData.listener_prediction.trend === "rapid" ? "RAPIDE" :
+                               aiData.listener_prediction.trend === "strong" ? "FORTE" :
+                               aiData.listener_prediction.trend === "moderate" ? "MODÉRÉE" :
+                               aiData.listener_prediction.trend === "stable" ? "STABLE" :
+                               aiData.listener_prediction.trend === "declining" ? "DÉCLIN" :
+                               "CHUTE"}
                             </Badge>
                           </div>
                           <div className="flex items-baseline gap-2">
@@ -748,16 +753,16 @@ export function ArtistAnalysisDialog() {
                           {/* Growth context message */}
                           <p className="text-sm text-muted-foreground mt-3 italic">
                             {aiData.listener_prediction.growth_rate_monthly > 20 
-                              ? "🔥 Croissance exceptionnelle ! Artiste en phase virale."
+                              ? "Croissance exceptionnelle ! Artiste en phase virale."
                               : aiData.listener_prediction.growth_rate_monthly > 10
-                              ? "📈 Excellente dynamique. Momentum à capitaliser rapidement."
+                              ? "Excellente dynamique. Momentum à capitaliser rapidement."
                               : aiData.listener_prediction.growth_rate_monthly > 5
-                              ? "✨ Bonne progression. L'artiste gagne en traction."
+                              ? "Bonne progression. L'artiste gagne en traction."
                               : aiData.listener_prediction.growth_rate_monthly > 2
-                              ? "📊 Croissance stable. Base de fans qui se consolide."
+                              ? "Croissance stable. Base de fans qui se consolide."
                               : aiData.listener_prediction.growth_rate_monthly > 0
-                              ? "🌱 Croissance lente mais régulière."
-                              : "⚠️ Attention: audience en régression."}
+                              ? "Croissance lente mais régulière."
+                              : "Attention: audience en régression."}
                           </p>
                         </div>
 
@@ -835,15 +840,11 @@ export function ArtistAnalysisDialog() {
                         {aiData.content_strategy?.best_platforms?.length > 0 && (
                           <div className="p-4 bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-xl border border-pink-200 dark:border-pink-800">
                             <h4 className="font-semibold mb-3 flex items-center gap-2">
-                              📱 Meilleures Plateformes
+                              <Smartphone className="h-4 w-4" /> Meilleures Plateformes
                             </h4>
                             <div className="flex flex-wrap gap-2 mb-4">
                               {aiData.content_strategy.best_platforms.map((platform, i) => (
                                 <Badge key={i} variant="secondary" className="px-3 py-1">
-                                  {platform === "TikTok" ? "🎵 " : 
-                                   platform === "Instagram" ? "📸 " :
-                                   platform === "YouTube" ? "🎬 " :
-                                   platform === "Spotify" ? "🎧 " : ""}
                                   {platform}
                                 </Badge>
                               ))}
@@ -863,7 +864,7 @@ export function ArtistAnalysisDialog() {
                                 <div className="relative">
                                   <Progress value={aiData.content_strategy.viral_potential * 100} className="h-3" />
                                   {aiData.content_strategy.viral_potential > 0.7 && (
-                                    <span className="absolute right-0 -top-1 text-xs">🔥</span>
+                                    <Flame className="absolute right-0 -top-1 h-3 w-3 text-orange-500" />
                                   )}
                                 </div>
                               </div>
@@ -885,7 +886,7 @@ export function ArtistAnalysisDialog() {
                       <>
                         {/* Optimal Fee */}
                         <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
-                          <h4 className="font-medium mb-2">💎 Cachet Optimal Recommandé</h4>
+                          <h4 className="font-medium mb-2 flex items-center gap-2"><Gem className="h-4 w-4" /> Cachet Optimal Recommandé</h4>
                           <div className="text-4xl font-bold text-green-600">
                             {aiData.booking_intelligence.optimal_fee?.toLocaleString()}€
                           </div>
@@ -903,9 +904,9 @@ export function ArtistAnalysisDialog() {
                               aiData.booking_intelligence.negotiation_power === "medium" ? "text-yellow-600" :
                               "text-green-600"
                             }`}>
-                              {aiData.booking_intelligence.negotiation_power === "high" ? "🔴 Élevé (Artiste)" :
-                               aiData.booking_intelligence.negotiation_power === "medium" ? "🟡 Moyen" :
-                               "🟢 Faible (Acheteur)"}
+                              {aiData.booking_intelligence.negotiation_power === "high" ? "Élevé (Artiste)" :
+                               aiData.booking_intelligence.negotiation_power === "medium" ? "Moyen" :
+                               "Faible (Acheteur)"}
                             </div>
                           </div>
                           <div className="p-4 border rounded-lg">
@@ -919,7 +920,7 @@ export function ArtistAnalysisDialog() {
                         {/* Event Type Fit */}
                         {aiData.booking_intelligence.event_type_fit && Object.keys(aiData.booking_intelligence.event_type_fit).length > 0 && (
                           <div className="p-4 border rounded-lg">
-                            <h4 className="font-medium mb-3">🎪 Compatibilité par Type</h4>
+                            <h4 className="font-medium mb-3 flex items-center gap-2"><Tent className="h-4 w-4" /> Compatibilité par Type</h4>
                             <div className="space-y-2">
                               {Object.entries(aiData.booking_intelligence.event_type_fit)
                                 .sort(([, a], [, b]) => b - a)
@@ -938,7 +939,7 @@ export function ArtistAnalysisDialog() {
                         {/* Seasonal Demand */}
                         {aiData.booking_intelligence.seasonal_demand && Object.keys(aiData.booking_intelligence.seasonal_demand).length > 0 && (
                           <div className="p-4 border rounded-lg">
-                            <h4 className="font-medium mb-3">📅 Demande Saisonnière</h4>
+                            <h4 className="font-medium mb-3 flex items-center gap-2"><Calendar className="h-4 w-4" /> Demande Saisonnière</h4>
                             <div className="grid grid-cols-4 gap-2">
                               {Object.entries(aiData.booking_intelligence.seasonal_demand).map(([season, score]) => (
                                 <div key={season} className="text-center p-2 rounded bg-muted/50">

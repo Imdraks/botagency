@@ -737,7 +737,7 @@ function LeadsTable({ leads, selectedLeads, favorites, onToggleSelect, onToggleF
                   onCheckedChange={onSelectAll}
                 />
               </th>
-              <th className="p-3 text-left">⭐</th>
+              <th className="p-3 text-left"><Star className="h-4 w-4" /></th>
               <th className="p-3 text-left">Score</th>
               <th className="p-3 text-left">Titre</th>
               <th className="p-3 text-left">Organisation</th>

@@ -281,11 +281,11 @@ export function TwoFactorSettings() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  ⚠️ Sauvegardez ces codes en lieu sûr
+                  Sauvegardez ces codes en lieu sûr
                 </p>
               </div>
 
-              {/* Verification */}
+              {/* Verification */}}
               <div className="space-y-2">
                 <p className="text-sm">
                   Entrez le code à 6 chiffres de votre application:
@@ -433,7 +433,7 @@ export function TwoFactorSettings() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  ⚠️ Sauvegardez ces codes en lieu sûr
+                  Sauvegardez ces codes en lieu sûr
                 </p>
               </div>
             ) : (

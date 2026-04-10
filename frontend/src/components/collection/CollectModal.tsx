@@ -67,12 +67,12 @@ export interface CollectResponse {
 
 // Constants
 const OBJECTIVES = [
-  { value: "SPONSOR", label: "Sponsor / Partenariat", icon: "🤝" },
-  { value: "BOOKING", label: "Booking artiste", icon: "🎤" },
-  { value: "PRESS", label: "Presse / Média", icon: "📰" },
-  { value: "VENUE", label: "Lieu / Salle", icon: "🏛️" },
-  { value: "SUPPLIER", label: "Prestataires", icon: "🔧" },
-  { value: "GRANT", label: "Subventions / Appels à projets", icon: "💰" },
+  { value: "SPONSOR", label: "Sponsor / Partenariat", icon: "Handshake" },
+  { value: "BOOKING", label: "Booking artiste", icon: "Mic" },
+  { value: "PRESS", label: "Presse / Média", icon: "Newspaper" },
+  { value: "VENUE", label: "Lieu / Salle", icon: "Landmark" },
+  { value: "SUPPLIER", label: "Prestataires", icon: "Wrench" },
+  { value: "GRANT", label: "Subventions / Appels à projets", icon: "Coins" },
 ];
 
 const ENTITY_TYPES = [
@@ -311,7 +311,7 @@ export function CollectModal({ onCollect, isCollecting = false }: CollectModalPr
                 {entities.map((entity, index) => (
                   <Badge key={index} variant="secondary" className="gap-1 pl-2 pr-1">
                     <span className="text-xs opacity-70">
-                      {entity.type === "PERSON" ? "👤" : entity.type === "ORGANIZATION" ? "🏢" : "#"}
+                      {entity.type === "PERSON" ? <User className="h-3 w-3" /> : entity.type === "ORGANIZATION" ? <Building className="h-3 w-3" /> : "#"}
                     </span>
                     {entity.name}
                     <button

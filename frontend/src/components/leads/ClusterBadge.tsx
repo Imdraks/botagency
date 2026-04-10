@@ -161,11 +161,11 @@ export function ClusterBadge({ leadId, showDetails = true }: ClusterBadgeProps) 
           {/* Status */}
           {isCanonical ? (
             <div className="p-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-              ✅ Ceci est le lead principal du cluster
+              Ceci est le lead principal du cluster
             </div>
           ) : (
             <div className="p-2 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
-              ⚠️ Ceci est un doublon. Le lead principal est plus complet.
+              Ceci est un doublon. Le lead principal est plus complet.
             </div>
           )}
 

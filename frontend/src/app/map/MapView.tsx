@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { MapPin, CalendarDays, Coins, Users, Headphones, Building2, Map as MapIcon, Ticket } from "lucide-react";
 import {
   Map,
   MapMarker,
@@ -61,10 +62,10 @@ const EVENT_COLORS: Record<string, string> = {
 };
 
 const EVENT_ICONS: Record<string, string> = {
-  concert: "🎵",
-  festival: "🎪",
-  popup_store: "🏪",
-  brand_event: "⭐",
+  concert: "♪",
+  festival: "F",
+  popup_store: "P",
+  brand_event: "★",
 };
 
 function formatListeners(n: number): string {
@@ -103,7 +104,7 @@ export default function MapView({
         {events.map((event) => {
           const isSelected = selectedEvent?.id === event.id;
           const color = EVENT_COLORS[event.event_type] || "#6366f1";
-          const icon = EVENT_ICONS[event.event_type] || "📍";
+          const icon = EVENT_ICONS[event.event_type] || "●";
 
           return (
             <MapMarker
@@ -172,19 +173,19 @@ export default function MapView({
                     {event.event_name && event.event_name !== event.artist_name && (
                       <p className="font-medium text-foreground">{event.event_name}</p>
                     )}
-                    <p>📍 {event.venue}, {event.city}</p>
-                    <p>📅 {event.date_label}</p>
+                    <p>{event.venue}, {event.city}</p>
+                    <p>{event.date_label}</p>
                     {(event.price_min || event.price_max) && (
-                      <p>💰 {event.price_min ?? "?"}€ – {event.price_max ?? "?"}€</p>
+                      <p>{event.price_min ?? "?"}€ – {event.price_max ?? "?"}€</p>
                     )}
                     {event.capacity && (
-                      <p>👥 {event.capacity.toLocaleString()} places</p>
+                      <p>{event.capacity.toLocaleString()} places</p>
                     )}
                     {event.monthly_listeners > 0 && (
-                      <p>🎧 {formatListeners(event.monthly_listeners)} auditeurs</p>
+                      <p>{formatListeners(event.monthly_listeners)} auditeurs</p>
                     )}
                     {event.promoter && (
-                      <p>🏢 {event.promoter}</p>
+                      <p>{event.promoter}</p>
                     )}
                   </div>
 
@@ -196,7 +197,7 @@ export default function MapView({
                       className="block mt-2 text-center text-[11px] font-semibold py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
                       style={{ backgroundColor: color }}
                     >
-                      🎫 Voir / Acheter
+                      Voir / Acheter
                     </a>
                   )}
 
@@ -252,7 +253,7 @@ export default function MapView({
       {/* Event count */}
       <div className="absolute top-4 right-4 z-[1000] bg-background/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border">
         <p className="text-xs font-medium">
-          🗺️ {events.length} événement{events.length !== 1 ? "s" : ""}
+          {events.length} événement{events.length !== 1 ? "s" : ""}
         </p>
       </div>
     </div>
