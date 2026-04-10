@@ -39,7 +39,7 @@ const stats = [
   { value: "100%", label: "Sécurisé" },
   { value: "RGPD", label: "Conforme" },
   { value: "99.9%", label: "Uptime" },
-  { value: "🇫🇷", label: "Made in France" },
+  { value: "FR", label: "Made in France" },
 ];
 
 export function Security() {
