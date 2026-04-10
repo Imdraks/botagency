@@ -34,7 +34,7 @@ export function LandingFooter() {
               Le cockpit pour piloter votre agence. Pipeline, projets, facturation, analytics — unifié avec Google Workspace et vos banques.
             </p>
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>🇫🇷 Made in France</span>
+              <span>Made in France</span>
               <span>•</span>
               <span>RGPD Conforme</span>
               <span>•</span>
