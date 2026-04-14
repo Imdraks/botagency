@@ -67,7 +67,7 @@ export default function CookieConsent() {
     <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 sm:p-6">
       <div className="mx-auto max-w-2xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
         <div className="flex items-start gap-3">
-          <span className="text-2xl mt-0.5">🍪</span>
+          <svg className="h-6 w-6 mt-0.5 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5v.01"/><path d="M16 15.5v.01"/><path d="M12 12v.01"/><path d="M11 17v.01"/><path d="M7 14v.01"/></svg>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-zinc-900 dark:text-white">
               Respect de votre vie privée
