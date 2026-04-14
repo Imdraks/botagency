@@ -181,8 +181,16 @@ if os.environ.get("TESTING") != "true":
     import logging
     _logger = logging.getLogger(__name__)
     _warnings = settings.validate_security_settings()
+    _has_critical = False
     for w in _warnings:
         if "CRITICAL" in w:
             _logger.critical(w)
+            _has_critical = True
         else:
             _logger.warning(w)
+    # Block startup with default secrets in production
+    if _has_critical and settings.app_env == "production":
+        raise RuntimeError(
+            "SECURITY: Cannot start with default secrets in production! "
+            "Set SECRET_KEY, JWT_SECRET_KEY, and ADMIN_PASSWORD in .env"
+        )

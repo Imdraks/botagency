@@ -77,17 +77,26 @@ class SSOService:
     
     def decode_google_id_token(self, id_token: str) -> Dict[str, Any]:
         """
-        Decode and verify Google ID token.
-        In production, you should verify the signature using Google's JWKS.
+        Decode and verify Google ID token using Google's public keys.
         """
-        # Decode without verification for claims extraction
-        # In production: use PyJWT with Google's public keys
         try:
-            # For development: decode without verification
-            claims = jwt.decode(id_token, options={"verify_signature": False})
+            # Fetch Google's JWKS for signature verification
+            jwks_client = jwt.PyJWKClient("https://www.googleapis.com/oauth2/v3/certs")
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+            claims = jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=settings.google_client_id,
+                issuer=["https://accounts.google.com", "accounts.google.com"],
+                options={"verify_exp": True, "verify_aud": True, "verify_iss": True},
+            )
             return claims
-        except jwt.exceptions.DecodeError as e:
-            logger.error(f"Failed to decode Google ID token: {e}")
+        except jwt.exceptions.PyJWKClientError as e:
+            logger.error(f"Failed to fetch Google JWKS: {e}")
+            raise ValueError("Failed to verify Google ID token")
+        except jwt.exceptions.InvalidTokenError as e:
+            logger.error(f"Invalid Google ID token: {e}")
             raise ValueError("Invalid Google ID token")
     
     def get_apple_auth_url(self, redirect_uri: str, state: str, nonce: str) -> str:
@@ -148,12 +157,24 @@ class SSOService:
         )
     
     def decode_apple_id_token(self, id_token: str) -> Dict[str, Any]:
-        """Decode Apple ID token"""
+        """Decode and verify Apple ID token using Apple's public keys."""
         try:
-            claims = jwt.decode(id_token, options={"verify_signature": False})
+            jwks_client = jwt.PyJWKClient(APPLE_KEYS_URL)
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+            claims = jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256", "ES256"],
+                audience=settings.apple_client_id,
+                issuer="https://appleid.apple.com",
+                options={"verify_exp": True, "verify_aud": True, "verify_iss": True},
+            )
             return claims
-        except jwt.exceptions.DecodeError as e:
-            logger.error(f"Failed to decode Apple ID token: {e}")
+        except jwt.exceptions.PyJWKClientError as e:
+            logger.error(f"Failed to fetch Apple JWKS: {e}")
+            raise ValueError("Failed to verify Apple ID token")
+        except jwt.exceptions.InvalidTokenError as e:
+            logger.error(f"Invalid Apple ID token: {e}")
             raise ValueError("Invalid Apple ID token")
     
     def find_or_create_user_from_sso(

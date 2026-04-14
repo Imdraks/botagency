@@ -357,8 +357,8 @@ async def analyze_artist(
             recommendations=report.recommendations,
         )
     except Exception as e:
-        logger.error(f"Error analyzing artist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Error analyzing artist: {e}")
+        raise HTTPException(status_code=500, detail="Internal error during analysis")
 
 
 @router.post("/discover", response_model=EmergingArtistResponse)
@@ -418,8 +418,8 @@ async def discover_potential(
             estimated_future_fee=artist.estimated_future_fee,
         )
     except Exception as e:
-        logger.error(f"Error in discovery analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Error in discovery analysis: {e}")
+        raise HTTPException(status_code=500, detail="Internal error during discovery")
 
 
 @router.post("/match", response_model=MatchScoreResponse)
@@ -485,8 +485,8 @@ async def match_artist_opportunity(
             negotiation_room=score.negotiation_room,
         )
     except Exception as e:
-        logger.error(f"Error in matching: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Error in matching: {e}")
+        raise HTTPException(status_code=500, detail="Internal error during matching")
 
 
 @router.post("/recommend/artists", response_model=List[ArtistRecommendationResponse])
@@ -571,8 +571,8 @@ async def recommend_artists(
             for rec in recommendations
         ]
     except Exception as e:
-        logger.error(f"Error in recommendations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Error in recommendations: {e}")
+        raise HTTPException(status_code=500, detail="Internal error during recommendations")
 
 
 @router.post("/compare", response_model=ComparisonResponse)
@@ -620,8 +620,8 @@ async def compare_artists(
             lowest_risk=comparison["lowest_risk"],
         )
     except Exception as e:
-        logger.error(f"Error in comparison: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Error in comparison: {e}")
+        raise HTTPException(status_code=500, detail="Internal error during comparison")
 
 
 @router.get("/tiers", response_model=Dict[str, Any])

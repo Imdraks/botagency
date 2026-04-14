@@ -1,5 +1,5 @@
 # /api/health endpoint for monitoring and deployment checks
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from datetime import datetime
 import os
 
@@ -9,26 +9,22 @@ router = APIRouter()
 async def health_check():
     """
     Health check endpoint for load balancers and monitoring.
-    Returns:
-        - status: "healthy" if all checks pass
-        - timestamp: current server time
-        - version: app version from env
-        - uptime: basic uptime indicator
+    Returns minimal info — no version or environment details.
     """
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": os.getenv("APP_VERSION", "1.0.0"),
-        "environment": os.getenv("ENVIRONMENT", "production")
     }
 
 @router.get("/health/detailed")
 async def detailed_health_check():
     """
     Detailed health check with service status.
-    Used for debugging and monitoring dashboards.
+    Requires authentication to prevent reconnaissance.
     """
     from app.db.session import SessionLocal
+    from app.core.auth import get_current_user
+    from app.db.models.user import User
     from sqlalchemy import text
     import redis
     
@@ -44,8 +40,8 @@ async def detailed_health_check():
         db.execute(text("SELECT 1"))
         db.close()
         checks["database"] = True
-    except Exception as e:
-        checks["database_error"] = str(e)
+    except Exception:
+        checks["database"] = False
     
     # Redis check
     try:
@@ -53,8 +49,8 @@ async def detailed_health_check():
         r = redis.from_url(redis_url)
         r.ping()
         checks["redis"] = True
-    except Exception as e:
-        checks["redis_error"] = str(e)
+    except Exception:
+        checks["redis"] = False
     
     # Overall status
     checks["status"] = "healthy" if all([checks["database"], checks["redis"]]) else "degraded"

@@ -6,10 +6,13 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List
 import uuid
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 from pydantic import BaseModel
@@ -1596,7 +1599,8 @@ async def upload_quote_pdf_to_drive(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
+        logger.exception(f"Erreur Google Drive devis: {e}")
+        raise HTTPException(status_code=500, detail="Erreur Google Drive")
 
 
 # ============ Invoice Endpoints ============
@@ -2514,7 +2518,8 @@ async def upload_invoice_pdf_to_drive(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
+        logger.exception(f"Erreur Google Drive facture: {e}")
+        raise HTTPException(status_code=500, detail="Erreur Google Drive")
 
 
 # ============ Dashboard Endpoint ============
@@ -2888,9 +2893,11 @@ async def generate_quote_document(
         }
         
     except GoogleAPIError as e:
-        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
+        logger.exception(f"Erreur Google Drive devis doc: {e}")
+        raise HTTPException(status_code=500, detail="Erreur Google Drive")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération: {str(e)}")
+        logger.exception(f"Erreur génération devis doc: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de la génération")
 
 
 @router.post("/invoices/{invoice_id}/generate-doc")
@@ -2979,9 +2986,11 @@ async def generate_invoice_document(
         }
         
     except GoogleAPIError as e:
-        raise HTTPException(status_code=500, detail=f"Erreur Google Drive: {str(e)}")
+        logger.exception(f"Erreur Google Drive facture doc: {e}")
+        raise HTTPException(status_code=500, detail="Erreur Google Drive")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération: {str(e)}")
+        logger.exception(f"Erreur génération facture doc: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de la génération")
 
 
 def build_quote_replacements(quote: Quote, workspace: Workspace, client_name: str) -> dict:
