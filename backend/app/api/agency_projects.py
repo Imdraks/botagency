@@ -58,14 +58,13 @@ def get_ws_id(current_user: User, db: Session, workspace_id: Optional[int] = Non
 async def list_projects(
     status: Optional[str] = Query(None),
     client_id: Optional[int] = Query(None),
-    workspace_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
     """Liste des projets du workspace"""
-    ws_id = get_ws_id(current_user, db, workspace_id)
+    ws_id = get_ws_id(current_user, db)
     
     query = db.query(Project).join(Client).filter(Client.workspace_id == ws_id)
     
@@ -215,16 +214,24 @@ async def create_project(
     current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouveau projet avec création automatique du dossier Drive"""
+    ws_id = get_ws_id(current_user, db)
+    
     client = None
-    # Vérifier client si fourni
+    # Vérifier client si fourni (avec filtrage workspace)
     if project_in.client_id:
-        client = db.query(Client).filter(Client.id == project_in.client_id).first()
+        client = db.query(Client).filter(
+            Client.id == project_in.client_id,
+            Client.workspace_id == ws_id
+        ).first()
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
     
-    # Vérifier deal si fourni
+    # Vérifier deal si fourni (via Client pour filtrage workspace)
     if project_in.deal_id:
-        deal = db.query(Deal).filter(Deal.id == project_in.deal_id).first()
+        deal = db.query(Deal).join(Client).filter(
+            Deal.id == project_in.deal_id,
+            Client.workspace_id == ws_id
+        ).first()
         if not deal:
             raise HTTPException(status_code=404, detail="Deal not found")
     
@@ -357,8 +364,20 @@ async def update_project(
         raise HTTPException(status_code=404, detail="Project not found")
     
     if project_in.client_id is not None:
+        new_client = db.query(Client).filter(
+            Client.id == project_in.client_id,
+            Client.workspace_id == ws_id
+        ).first()
+        if not new_client:
+            raise HTTPException(status_code=404, detail="Client not found")
         project.client_id = project_in.client_id
     if project_in.deal_id is not None:
+        new_deal = db.query(Deal).join(Client).filter(
+            Deal.id == project_in.deal_id,
+            Client.workspace_id == ws_id
+        ).first()
+        if not new_deal:
+            raise HTTPException(status_code=404, detail="Deal not found")
         project.deal_id = project_in.deal_id
     if project_in.name is not None:
         project.name = project_in.name
@@ -488,14 +507,13 @@ async def archive_project_folder(user_id: int, drive_folder_id: str, project_nam
 async def list_deliverables(
     project_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
-    workspace_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_workspace_member)
 ):
     """Liste des livrables du workspace"""
-    ws_id = get_ws_id(current_user, db, workspace_id)
+    ws_id = get_ws_id(current_user, db)
     
     query = db.query(Deliverable).join(Project).join(Client).filter(Client.workspace_id == ws_id)
     

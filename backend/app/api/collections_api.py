@@ -22,7 +22,7 @@ from app.db.models.collections import (
     CollectionV2, CollectionLog, CollectionResult, LeadItem,
     CollectionType, CollectionStatus
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_workspace_id
 from app.schemas.collections import (
     CreateCollectionRequest, CollectionResponse, CollectionDetailResponse,
     CollectionListResponse, CollectionLogSchema, CollectionStatsSchema,
@@ -46,6 +46,7 @@ def create_collection(
     request: CreateCollectionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """
     Créer et lancer une nouvelle collecte.
@@ -60,6 +61,7 @@ def create_collection(
         status=CollectionStatus.QUEUED.value,
         params=request.params,
         created_by=current_user.id,
+        workspace_id=workspace_id,
     )
     db.add(collection)
     db.commit()
@@ -97,9 +99,10 @@ def list_collections(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Liste paginée des collectes avec filtres"""
-    query = db.query(CollectionV2)
+    query = db.query(CollectionV2).filter(CollectionV2.workspace_id == workspace_id)
 
     # Filtres
     if type:
@@ -134,9 +137,13 @@ def get_collection(
     collection_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Détail complet d'une collecte avec logs et stats"""
-    collection = db.query(CollectionV2).filter(CollectionV2.id == collection_id).first()
+    collection = db.query(CollectionV2).filter(
+        CollectionV2.id == collection_id,
+        CollectionV2.workspace_id == workspace_id,
+    ).first()
     
     if not collection:
         raise HTTPException(status_code=404, detail="Collecte non trouvée")
@@ -174,9 +181,13 @@ def get_collection_logs(
     level: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Logs paginés d'une collecte"""
-    collection = db.query(CollectionV2).filter(CollectionV2.id == collection_id).first()
+    collection = db.query(CollectionV2).filter(
+        CollectionV2.id == collection_id,
+        CollectionV2.workspace_id == workspace_id,
+    ).first()
     if not collection:
         raise HTTPException(status_code=404, detail="Collecte non trouvée")
 
@@ -211,9 +222,13 @@ def get_collection_results(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Résultats (lead_items) produits par une collecte"""
-    collection = db.query(CollectionV2).filter(CollectionV2.id == collection_id).first()
+    collection = db.query(CollectionV2).filter(
+        CollectionV2.id == collection_id,
+        CollectionV2.workspace_id == workspace_id,
+    ).first()
     if not collection:
         raise HTTPException(status_code=404, detail="Collecte non trouvée")
 

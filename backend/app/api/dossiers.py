@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_current_workspace_id
 from app.db.models.user import User
 from app.db.models.opportunity import Opportunity
 from app.db.models.dossier import (
@@ -170,9 +170,12 @@ async def list_dossiers(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """List dossiers with filters"""
-    query = db.query(Dossier).join(Opportunity)
+    query = db.query(Dossier).join(Opportunity).filter(
+        Opportunity.workspace_id == workspace_id
+    )
     
     # Filter by state
     if state:
@@ -233,9 +236,13 @@ async def get_dossier(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Get full dossier details"""
-    dossier = db.query(Dossier).filter(Dossier.id == dossier_id).first()
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.id == dossier_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
     
     if not dossier:
         raise HTTPException(404, "Dossier not found")
@@ -275,10 +282,12 @@ async def get_dossier_by_opportunity(
     opportunity_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Get dossier for a specific opportunity"""
-    dossier = db.query(Dossier).filter(
-        Dossier.opportunity_id == opportunity_id
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.opportunity_id == opportunity_id,
+        Opportunity.workspace_id == workspace_id,
     ).first()
     
     if not dossier:
@@ -320,8 +329,17 @@ async def get_dossier_evidence(
     field_key: Optional[str] = Query(None, description="Filter by field"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Get all evidence for a dossier"""
+    # Verify dossier belongs to workspace
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.id == dossier_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
+    if not dossier:
+        raise HTTPException(404, "Dossier not found")
+
     query = db.query(DossierEvidence).filter(
         DossierEvidence.dossier_id == dossier_id
     )
@@ -355,9 +373,13 @@ async def get_dossier_sources(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Get source documents used for a dossier"""
-    dossier = db.query(Dossier).filter(Dossier.id == dossier_id).first()
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.id == dossier_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
     
     if not dossier:
         raise HTTPException(404, "Dossier not found")
@@ -385,8 +407,17 @@ async def get_dossier_enrichments(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Get enrichment run history for a dossier"""
+    # Verify dossier belongs to workspace
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.id == dossier_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
+    if not dossier:
+        raise HTTPException(404, "Dossier not found")
+
     runs = db.query(WebEnrichmentRun).filter(
         WebEnrichmentRun.dossier_id == dossier_id
     ).order_by(WebEnrichmentRun.started_at.desc()).all()
@@ -413,9 +444,13 @@ async def delete_dossier(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Delete a dossier"""
-    dossier = db.query(Dossier).filter(Dossier.id == dossier_id).first()
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.id == dossier_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
     
     if not dossier:
         raise HTTPException(404, "Dossier not found")
@@ -436,10 +471,14 @@ async def build_opportunity_dossier(
     request: BuildDossierRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Build/rebuild a dossier for an opportunity"""
-    # Check opportunity exists
-    opp = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    # Check opportunity exists and belongs to workspace
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
     if not opp:
         raise HTTPException(404, "Opportunity not found")
     
@@ -462,11 +501,13 @@ async def enrich_opportunity_dossier(
     request: EnrichDossierRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Trigger web enrichment for an opportunity's dossier"""
-    # Get dossier
-    dossier = db.query(Dossier).filter(
-        Dossier.opportunity_id == opportunity_id
+    # Get dossier (verify workspace)
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.opportunity_id == opportunity_id,
+        Opportunity.workspace_id == workspace_id,
     ).first()
     
     if not dossier:
@@ -491,10 +532,14 @@ async def full_pipeline_opportunity(
     force_rebuild: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Run full pipeline: build -> enrich -> merge"""
-    # Check opportunity exists
-    opp = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    # Check opportunity exists and belongs to workspace
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == workspace_id,
+    ).first()
     if not opp:
         raise HTTPException(404, "Opportunity not found")
     
@@ -515,10 +560,12 @@ async def get_opportunity_dossier(
     opportunity_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Get dossier for an opportunity"""
-    dossier = db.query(Dossier).filter(
-        Dossier.opportunity_id == opportunity_id
+    dossier = db.query(Dossier).join(Opportunity).filter(
+        Dossier.opportunity_id == opportunity_id,
+        Opportunity.workspace_id == workspace_id,
     ).first()
     
     if not dossier:
@@ -563,9 +610,10 @@ async def batch_build_dossiers(
     request: BatchBuildRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Build dossiers for multiple opportunities"""
-    # Validate opportunities exist
+    # Validate opportunities exist and belong to workspace
     opp_ids = [str(oid) for oid in request.opportunity_ids]
     
     task = batch_build_dossiers_task.delay(

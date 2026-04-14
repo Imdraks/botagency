@@ -23,7 +23,7 @@ from app.db.models.user import User
 from app.db.models.collections import (
     DossierV2, LeadItem, LeadItemKind, Evidence, SourceDocumentV2, DossierState
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_workspace_id
 from app.schemas.collections import (
     DossierResponse, DossierDetailResponse, DossierListResponse,
     CreateDossierRequest, DossierUpdateRequest,
@@ -55,6 +55,7 @@ def list_dossiers(
     entity_name: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """
     Liste paginée des dossiers avec filtres.
@@ -64,7 +65,9 @@ def list_dossiers(
     - **search**: Recherche dans le titre et contenu
     - **quality_min**: Score qualité minimum
     """
-    query = db.query(DossierV2)
+    query = db.query(DossierV2).join(
+        LeadItem, DossierV2.lead_item_id == LeadItem.id
+    ).filter(LeadItem.workspace_id == workspace_id)
 
     # ===== FILTRES =====
 
@@ -135,9 +138,15 @@ def get_dossier(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Détail complet d'un dossier avec evidence et sections"""
-    dossier = db.query(DossierV2).filter(DossierV2.id == dossier_id).first()
+    dossier = db.query(DossierV2).join(
+        LeadItem, DossierV2.lead_item_id == LeadItem.id
+    ).filter(
+        DossierV2.id == dossier_id,
+        LeadItem.workspace_id == workspace_id,
+    ).first()
 
     if not dossier:
         raise HTTPException(status_code=404, detail="Dossier non trouvé")
@@ -189,6 +198,7 @@ def create_dossier(
     request: CreateDossierRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """
     Créer un dossier directement (mode IA).
@@ -216,6 +226,7 @@ def create_dossier(
             url_primary=request.source_url,
             source_name="manual",
             source_type="manual",
+            workspace_id=workspace_id,
         )
         db.add(lead_item)
         db.flush()
@@ -259,9 +270,15 @@ def update_dossier(
     request: DossierUpdateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Mettre à jour un dossier (sections, target_entities)"""
-    dossier = db.query(DossierV2).filter(DossierV2.id == dossier_id).first()
+    dossier = db.query(DossierV2).join(
+        LeadItem, DossierV2.lead_item_id == LeadItem.id
+    ).filter(
+        DossierV2.id == dossier_id,
+        LeadItem.workspace_id == workspace_id,
+    ).first()
 
     if not dossier:
         raise HTTPException(status_code=404, detail="Dossier non trouvé")
@@ -298,9 +315,15 @@ def delete_dossier(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Supprimer un dossier et son evidence"""
-    dossier = db.query(DossierV2).filter(DossierV2.id == dossier_id).first()
+    dossier = db.query(DossierV2).join(
+        LeadItem, DossierV2.lead_item_id == LeadItem.id
+    ).filter(
+        DossierV2.id == dossier_id,
+        LeadItem.workspace_id == workspace_id,
+    ).first()
 
     if not dossier:
         raise HTTPException(status_code=404, detail="Dossier non trouvé")
@@ -327,9 +350,15 @@ def regenerate_dossier(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Régénérer un dossier (relancer GPT)"""
-    dossier = db.query(DossierV2).filter(DossierV2.id == dossier_id).first()
+    dossier = db.query(DossierV2).join(
+        LeadItem, DossierV2.lead_item_id == LeadItem.id
+    ).filter(
+        DossierV2.id == dossier_id,
+        LeadItem.workspace_id == workspace_id,
+    ).first()
 
     if not dossier:
         raise HTTPException(status_code=404, detail="Dossier non trouvé")
@@ -365,9 +394,15 @@ def get_dossier_evidence(
     dossier_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """Liste des evidence d'un dossier"""
-    dossier = db.query(DossierV2).filter(DossierV2.id == dossier_id).first()
+    dossier = db.query(DossierV2).join(
+        LeadItem, DossierV2.lead_item_id == LeadItem.id
+    ).filter(
+        DossierV2.id == dossier_id,
+        LeadItem.workspace_id == workspace_id,
+    ).first()
 
     if not dossier:
         raise HTTPException(status_code=404, detail="Dossier non trouvé")
