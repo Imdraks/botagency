@@ -214,9 +214,9 @@ class QuoteListResponse(BaseModel):
 class InvoiceItemBase(BaseModel):
     """Base invoice item schema"""
     description: str = Field(..., max_length=500)
-    quantity: Decimal = Decimal("1")
+    quantity: Decimal = Field(Decimal("1"), gt=0)
     unit: str = "unité"
-    unit_price: Decimal
+    unit_price: Decimal = Field(..., ge=0)
 
 
 class InvoiceItemCreate(InvoiceItemBase):

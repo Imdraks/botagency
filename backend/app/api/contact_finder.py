@@ -7,6 +7,8 @@ from uuid import UUID
 import time
 import re
 import logging
+import socket
+from ipaddress import ip_address
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -21,6 +23,37 @@ from app.schemas.radar_features import (
 
 router = APIRouter(prefix="/contact-finder", tags=["contact-finder"])
 logger = logging.getLogger(__name__)
+
+
+def is_safe_url(url: str) -> bool:
+    """Block SSRF: reject private IPs, localhost, metadata endpoints"""
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        
+        # Block non-HTTP schemes
+        if parsed.scheme not in ("http", "https"):
+            return False
+        
+        # Block known dangerous hosts
+        blocked_hosts = {"localhost", "127.0.0.1", "::1", "0.0.0.0", ""}
+        if hostname in blocked_hosts:
+            return False
+        
+        # Resolve hostname and check IP
+        try:
+            resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            for family, _, _, _, sockaddr in resolved:
+                ip = ip_address(sockaddr[0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                    return False
+        except (socket.gaierror, ValueError):
+            return False
+        
+        return True
+    except Exception:
+        return False
 
 # Allowed domains for contact search (whitelist)
 DEFAULT_ALLOWED_DOMAINS = [
@@ -86,6 +119,11 @@ def search_official_website(url: str, allowed_domains: List[str]) -> dict:
     }
     
     if not url:
+        return result
+    
+    # SSRF protection
+    if not is_safe_url(url):
+        logger.warning(f"SSRF blocked: {url}")
         return result
     
     try:

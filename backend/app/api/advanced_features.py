@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from app.db import get_db
 from app.db.models.user import User
 from app.db.models.opportunity import Opportunity, OpportunityStatus
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, get_current_workspace_id
 
 # Services
 from app.services.weekly_report_service import WeeklyReportService
@@ -176,10 +176,20 @@ def get_opportunity_history(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    workspace_id: int = Depends(get_current_workspace_id),
 ):
     """
     Récupère l'historique complet d'une opportunité.
     """
+    # Verify opportunity belongs to user's workspace
+    from app.db.models.opportunity import Opportunity
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == workspace_id
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
     service = AuditService(db)
     logs = service.get_entity_history("opportunity", str(opportunity_id), limit)
     

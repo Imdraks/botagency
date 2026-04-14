@@ -307,8 +307,15 @@ def merge_opportunities(
     current_user: User = Depends(require_admin),
 ):
     """Merge duplicate opportunity into another"""
-    source = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
-    target = db.query(Opportunity).filter(Opportunity.id == merge_into_id).first()
+    ws_id = current_user.workspace_id
+    source = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
+    target = db.query(Opportunity).filter(
+        Opportunity.id == merge_into_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
     
     if not source or not target:
         raise HTTPException(
@@ -355,6 +362,13 @@ def list_notes(
     current_user: User = Depends(get_current_user),
 ):
     """List notes for an opportunity"""
+    ws_id = current_user.workspace_id
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
     notes = db.query(OpportunityNote).filter(
         OpportunityNote.opportunity_id == opportunity_id
     ).order_by(desc(OpportunityNote.created_at)).all()
@@ -369,7 +383,11 @@ def create_note(
     current_user: User = Depends(require_bizdev),
 ):
     """Create a note on an opportunity"""
-    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    ws_id = current_user.workspace_id
+    opportunity = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
     if not opportunity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -395,6 +413,13 @@ def list_tasks(
     current_user: User = Depends(get_current_user),
 ):
     """List tasks for an opportunity"""
+    ws_id = current_user.workspace_id
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
     tasks = db.query(OpportunityTask).filter(
         OpportunityTask.opportunity_id == opportunity_id
     ).order_by(OpportunityTask.due_date).all()
@@ -409,7 +434,11 @@ def create_task(
     current_user: User = Depends(require_bizdev),
 ):
     """Create a task on an opportunity"""
-    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    ws_id = current_user.workspace_id
+    opportunity = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
     if not opportunity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -438,6 +467,13 @@ def update_task(
     current_user: User = Depends(require_bizdev),
 ):
     """Update a task"""
+    ws_id = current_user.workspace_id
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opportunity_id,
+        Opportunity.workspace_id == ws_id
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
     task = db.query(OpportunityTask).filter(
         OpportunityTask.id == task_id,
         OpportunityTask.opportunity_id == opportunity_id,

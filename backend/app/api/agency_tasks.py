@@ -14,7 +14,8 @@ from app.db.models.agency import (
     DealStatus, DeliverableStatus, Deliverable
 )
 from app.db.models.user import User
-from app.api.deps import get_current_user
+from app.db.models.workspace import WorkspaceMember
+from app.api.deps import get_current_user, require_workspace_member
 from app.schemas.agency import (
     # Task
     TaskCreate, TaskUpdate, TaskResponse,
@@ -29,6 +30,15 @@ from app.schemas.agency import (
 )
 
 router = APIRouter(prefix="/agency", tags=["agency-tasks-assets"])
+
+
+def _get_ws_id(current_user: User, db: Session) -> int:
+    """Get workspace_id from current user"""
+    ws_id = getattr(current_user, 'workspace_id', None)
+    if not ws_id:
+        member = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+        ws_id = member.workspace_id if member else None
+    return ws_id
 
 
 # ============================================================================
@@ -46,10 +56,19 @@ async def list_tasks(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
-    """Liste des tâches"""
-    query = db.query(AgencyTask)
+    """Liste des tâches du workspace"""
+    ws_id = _get_ws_id(current_user, db)
+    
+    # Filter tasks by workspace: tasks linked to projects/deals belonging to workspace clients
+    query = db.query(AgencyTask).outerjoin(
+        Project, AgencyTask.project_id == Project.id
+    ).outerjoin(
+        Deal, AgencyTask.deal_id == Deal.id
+    ).outerjoin(
+        Client, (Project.client_id == Client.id) | (Deal.client_id == Client.id)
+    ).filter(Client.workspace_id == ws_id)
     
     if status:
         # Convert string to enum (case-insensitive)
@@ -118,9 +137,29 @@ async def list_tasks(
 async def create_task(
     task_in: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer une nouvelle tâche"""
+    ws_id = _get_ws_id(current_user, db)
+    
+    # Validate project belongs to workspace
+    if task_in.project_id:
+        project = db.query(Project).join(Client).filter(
+            Project.id == task_in.project_id,
+            Client.workspace_id == ws_id
+        ).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Validate deal belongs to workspace
+    if task_in.deal_id:
+        deal = db.query(Deal).join(Client).filter(
+            Deal.id == task_in.deal_id,
+            Client.workspace_id == ws_id
+        ).first()
+        if not deal:
+            raise HTTPException(status_code=404, detail="Deal not found")
+    
     task = AgencyTask(
         project_id=task_in.project_id,
         deal_id=task_in.deal_id,
@@ -157,10 +196,17 @@ async def create_task(
 async def get_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'une tâche"""
-    task = db.query(AgencyTask).filter(AgencyTask.id == task_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    task = db.query(AgencyTask).outerjoin(
+        Project, AgencyTask.project_id == Project.id
+    ).outerjoin(
+        Deal, AgencyTask.deal_id == Deal.id
+    ).outerjoin(
+        Client, (Project.client_id == Client.id) | (Deal.client_id == Client.id)
+    ).filter(AgencyTask.id == task_id, Client.workspace_id == ws_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -198,10 +244,17 @@ async def update_task(
     task_id: int,
     task_in: TaskUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour une tâche"""
-    task = db.query(AgencyTask).filter(AgencyTask.id == task_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    task = db.query(AgencyTask).outerjoin(
+        Project, AgencyTask.project_id == Project.id
+    ).outerjoin(
+        Deal, AgencyTask.deal_id == Deal.id
+    ).outerjoin(
+        Client, (Project.client_id == Client.id) | (Deal.client_id == Client.id)
+    ).filter(AgencyTask.id == task_id, Client.workspace_id == ws_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -233,10 +286,17 @@ async def update_task_status(
     task_id: int,
     status: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Quick status update"""
-    task = db.query(AgencyTask).filter(AgencyTask.id == task_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    task = db.query(AgencyTask).outerjoin(
+        Project, AgencyTask.project_id == Project.id
+    ).outerjoin(
+        Deal, AgencyTask.deal_id == Deal.id
+    ).outerjoin(
+        Client, (Project.client_id == Client.id) | (Deal.client_id == Client.id)
+    ).filter(AgencyTask.id == task_id, Client.workspace_id == ws_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -250,10 +310,17 @@ async def update_task_status(
 async def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer une tâche"""
-    task = db.query(AgencyTask).filter(AgencyTask.id == task_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    task = db.query(AgencyTask).outerjoin(
+        Project, AgencyTask.project_id == Project.id
+    ).outerjoin(
+        Deal, AgencyTask.deal_id == Deal.id
+    ).outerjoin(
+        Client, (Project.client_id == Client.id) | (Deal.client_id == Client.id)
+    ).filter(AgencyTask.id == task_id, Client.workspace_id == ws_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -269,21 +336,23 @@ async def delete_task(
 @router.post("/tasks/generate-followups")
 async def generate_followup_tasks(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """
     Génère automatiquement des tâches de relance:
     - Deals avec quote_sent depuis 3+ jours sans réponse
     - Livrables avec deadline < 72h pas encore approved
     """
+    ws_id = _get_ws_id(current_user, db)
     now = datetime.utcnow()
     three_days_ago = now - timedelta(days=3)
     urgency_threshold = now + timedelta(hours=72)
     
     tasks_created = 0
     
-    # 1. Deals quote_sent sans réponse depuis 3 jours
-    stale_quotes = db.query(Deal).filter(
+    # 1. Deals quote_sent sans réponse depuis 3 jours (filtered by workspace)
+    stale_quotes = db.query(Deal).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deal.status == DealStatus.QUOTE_SENT,
         Deal.last_contact_at <= three_days_ago
     ).all()
@@ -310,8 +379,9 @@ async def generate_followup_tasks(
             db.add(task)
             tasks_created += 1
     
-    # 2. Livrables avec deadline urgente
-    urgent_deliverables = db.query(Deliverable).filter(
+    # 2. Livrables avec deadline urgente (filtered by workspace)
+    urgent_deliverables = db.query(Deliverable).join(Project).join(Client).filter(
+        Client.workspace_id == ws_id,
         Deliverable.due_date <= urgency_threshold,
         Deliverable.due_date >= now,
         Deliverable.status.notin_([DeliverableStatus.APPROVED, DeliverableStatus.DELIVERED])
@@ -359,10 +429,11 @@ async def list_assets(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
-    """Liste des assets"""
-    query = db.query(Asset).join(Project).join(Client)
+    """Liste des assets du workspace"""
+    ws_id = _get_ws_id(current_user, db)
+    query = db.query(Asset).join(Project).join(Client).filter(Client.workspace_id == ws_id)
     
     if project_id:
         query = query.filter(Asset.project_id == project_id)
@@ -393,10 +464,14 @@ async def list_assets(
 async def create_asset(
     asset_in: AssetCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer un nouvel asset"""
-    project = db.query(Project).filter(Project.id == asset_in.project_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    project = db.query(Project).join(Client).filter(
+        Project.id == asset_in.project_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -431,10 +506,14 @@ async def create_asset(
 async def get_asset(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un asset"""
-    asset = db.query(Asset).join(Project).join(Client).filter(Asset.id == asset_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    asset = db.query(Asset).join(Project).join(Client).filter(
+        Asset.id == asset_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     
@@ -457,10 +536,14 @@ async def update_asset(
     asset_id: int,
     asset_in: AssetUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un asset"""
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    asset = db.query(Asset).join(Project).join(Client).filter(
+        Asset.id == asset_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     
@@ -483,10 +566,14 @@ async def update_asset(
 async def delete_asset(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un asset"""
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    asset = db.query(Asset).join(Project).join(Client).filter(
+        Asset.id == asset_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     
@@ -506,10 +593,11 @@ async def list_calendar_events(
     project_id: Optional[int] = Query(None),
     event_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
-    """Liste des événements du calendrier"""
-    query = db.query(CalendarEvent)
+    """Liste des événements du calendrier du workspace"""
+    ws_id = _get_ws_id(current_user, db)
+    query = db.query(CalendarEvent).join(Project).join(Client).filter(Client.workspace_id == ws_id)
     
     if start_date:
         query = query.filter(CalendarEvent.start >= start_date)
@@ -547,11 +635,15 @@ async def list_calendar_events(
 async def create_calendar_event(
     event_in: CalendarEventCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Créer un événement"""
+    ws_id = _get_ws_id(current_user, db)
     if event_in.project_id:
-        project = db.query(Project).filter(Project.id == event_in.project_id).first()
+        project = db.query(Project).join(Client).filter(
+            Project.id == event_in.project_id,
+            Client.workspace_id == ws_id
+        ).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
     
@@ -590,10 +682,14 @@ async def create_calendar_event(
 async def get_calendar_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Détails d'un événement"""
-    event = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    event = db.query(CalendarEvent).join(Project).join(Client).filter(
+        CalendarEvent.id == event_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
@@ -619,10 +715,14 @@ async def update_calendar_event(
     event_id: int,
     event_in: CalendarEventUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Mettre à jour un événement"""
-    event = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    event = db.query(CalendarEvent).join(Project).join(Client).filter(
+        CalendarEvent.id == event_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
@@ -653,10 +753,14 @@ async def update_calendar_event(
 async def delete_calendar_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_workspace_member)
 ):
     """Supprimer un événement"""
-    event = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    ws_id = _get_ws_id(current_user, db)
+    event = db.query(CalendarEvent).join(Project).join(Client).filter(
+        CalendarEvent.id == event_id,
+        Client.workspace_id == ws_id
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     

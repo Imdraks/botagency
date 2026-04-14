@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_db, get_current_user, get_current_workspace_id
 from app.db.models.user import User
-from app.db.models.workspace import Workspace
+from app.db.models.workspace import Workspace, WorkspaceMember
 from app.db.models.billing import (
     BillingClient, Quote, QuoteItem, Invoice, InvoiceItem,
     QuoteStatus, InvoiceStatus, PaymentMethod
@@ -200,7 +200,18 @@ async def update_emitter_info(
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace non trouvé")
     
-    # TODO: Check if user is admin
+    # Check if user is workspace admin or owner
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.user_id == current_user.id,
+        WorkspaceMember.workspace_id == workspace_id
+    ).first()
+    is_admin = (
+        current_user.is_superuser or 
+        (workspace.owner_user_id and workspace.owner_user_id == current_user.id) or
+        (member and member.role == "admin")
+    )
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
     
     update_data = emitter_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -697,9 +708,9 @@ async def delete_quote_item(
 class QuoteItemUpdate(BaseModel):
     """Update quote item"""
     description: Optional[str] = None
-    quantity: Optional[float] = None
+    quantity: Optional[float] = Field(None, gt=0)
     unit: Optional[str] = None
-    unit_price: Optional[float] = None
+    unit_price: Optional[float] = Field(None, ge=0)
 
 
 @router.patch("/quotes/{quote_id}/items/{item_id}")

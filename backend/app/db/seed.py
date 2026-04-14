@@ -20,7 +20,9 @@ def seed_users(db):
     """Create default admin user"""
     # Check if admin exists
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@agency.fr")
-    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+    if not admin_password:
+        raise RuntimeError("ADMIN_PASSWORD environment variable must be set")
     admin_name = os.environ.get("ADMIN_NAME", "Administrateur")
     
     existing = db.query(User).filter(User.email == admin_email).first()
@@ -39,7 +41,7 @@ def seed_users(db):
     db.add(admin)
     db.commit()
     
-    print(f"Admin user created: {admin_email} / {admin_password}")
+    print(f"Admin user created: {admin_email}")
 
 
 def seed_sources(db):
