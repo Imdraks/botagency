@@ -10,9 +10,9 @@ export const metadata = {
 export default function CiscoPage() {
   return (
     <WikiLayout
-      title="TP Réseaux Cisco"
+      title="TP Réseaux Cisco — Guide Complet CIEL V3"
       subtitle="BTS CIEL · TP 1 & TP 2 · Préparation E5"
-      description="Configuration réseau multi-switches avec VLANs, STP Rapid PVST+, sécurisation couche 2, supervision SNMP, EtherChannel LACP et ACLs pour la sécurisation inter-VLAN."
+      description="Configuration réseau multi-switches avec VLANs, STP Rapid PVST+, sécurisation couche 2, supervision SNMP, EtherChannel LACP et ACLs pour la sécurisation inter-VLAN. Guide complet incluant scenarios pratiques et exercices."
       color="from-orange-500 to-red-600"
     >
 
