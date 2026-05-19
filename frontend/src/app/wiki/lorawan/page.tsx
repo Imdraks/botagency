@@ -463,6 +463,25 @@ return null;`} language="javascript" />
       </TpSection>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
+        <ul className="space-y-2 text-sm text-gray-700 mb-4">
+          <li>1. Vérifier les services clés : ChirpStack, PostgreSQL, Redis, Mosquitto</li>
+          <li>2. Vérifier l'arrivée des uplinks dans ChirpStack avant Node-RED</li>
+          <li>3. Vérifier la gateway et la région radio (EU868, US915, etc.)</li>
+          <li>4. Vérifier DevEUI/AppEUI/AppKey et Device Profile</li>
+          <li>5. Vérifier le topic MQTT exact utilisé dans Node-RED</li>
+        </ul>
+        <CodeBlock code={`# État des services
+sudo systemctl status chirpstack mosquitto redis-server postgresql
+
+# Test MQTT local
+mosquitto_sub -h localhost -t "#" -v
+
+# Logs ChirpStack
+sudo journalctl -u chirpstack -f`} />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 className="font-bold text-gray-900 mb-4">Annexes et ressources en ligne</h2>
         <ul className="space-y-2 text-sm text-gray-700">
           <li>
@@ -470,17 +489,6 @@ return null;`} language="javascript" />
               ChirpStack - Documentation officielle
             </a>
           </li>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
-            <ul className="space-y-2 text-sm text-gray-700 mb-4">
-              <li>1. Vérifier les services clés : ChirpStack, PostgreSQL, Redis, Mosquitto</li>
-              <li>2. Vérifier l'arrivée des uplinks dans ChirpStack avant Node-RED</li>
-              <li>3. Vérifier la gateway et la région radio (EU868, US915, etc.)</li>
-              <li>4. Vérifier DevEUI/AppEUI/AppKey et Device Profile</li>
-              <li>5. Vérifier le topic MQTT exact utilisé dans Node-RED</li>
-            </ul>
-            <CodeBlock code={`# État des services
           <li>
             <a className="text-indigo-600 hover:underline" href="https://nodered.org/docs/" target="_blank" rel="noreferrer">
               Node-RED - Documentation officielle
@@ -488,7 +496,6 @@ return null;`} language="javascript" />
           </li>
           <li>
             <a className="text-indigo-600 hover:underline" href="https://mosquitto.org/documentation/" target="_blank" rel="noreferrer">
-          </div>
               Eclipse Mosquitto - Documentation officielle
             </a>
           </li>

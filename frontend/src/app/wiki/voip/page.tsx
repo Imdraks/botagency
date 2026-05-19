@@ -444,28 +444,34 @@ sudo tc filter add dev docker0 protocol ip prio 1 u32 match ip dscp 46 0xff flow
       </TpSection>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
+        <ul className="space-y-2 text-sm text-gray-700 mb-4">
+          <li>1. Vérifier que le service Asterisk tourne : <span className="font-mono">systemctl status asterisk</span></li>
+          <li>2. Vérifier les enregistrements SIP : <span className="font-mono">pjsip show endpoints</span> puis <span className="font-mono">pjsip show contacts</span></li>
+          <li>3. Vérifier les ports exposés : <span className="font-mono">ss -luntp | grep -E &quot;5060|5061|10000&quot;</span></li>
+          <li>4. Vérifier la résolution DNS/NAT côté clients avant de changer la conf PJSIP</li>
+          <li>5. Si audio one-way, revérifier NAT, ICE et plage RTP autorisée dans le pare-feu</li>
+        </ul>
+        <CodeBlock code={`# Logs en direct
+sudo journalctl -u asterisk -f
+
+# Tests utiles dans la console Asterisk
+asterisk -rvvv
+pjsip show registrations
+rtp set debug on`} />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 className="font-bold text-gray-900 mb-4">Annexes et ressources en ligne</h2>
         <ul className="space-y-2 text-sm text-gray-700">
           <li>
             <a className="text-indigo-600 hover:underline" href="https://docs.asterisk.org/Getting-Started/" target="_blank" rel="noreferrer">
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
-          <ul className="space-y-2 text-sm text-gray-700 mb-4">
-            <li>1. Vérifier que le service Asterisk tourne : <span className="font-mono">systemctl status asterisk</span></li>
-            <li>2. Vérifier les enregistrements SIP : <span className="font-mono">pjsip show endpoints</span> puis <span className="font-mono">pjsip show contacts</span></li>
-            <li>3. Vérifier les ports exposés : <span className="font-mono">ss -luntp | grep -E "5060|5061|10000"</span></li>
-            <li>4. Vérifier la résolution DNS/NAT côté clients avant de changer la conf PJSIP</li>
-            <li>5. Si audio one-way, revérifier NAT, ICE et plage RTP autorisée dans le pare-feu</li>
-          </ul>
-          <CodeBlock code={`# Logs en direct
               Asterisk Docs - Getting Started
             </a>
           </li>
           <li>
             <a className="text-indigo-600 hover:underline" href="https://docs.asterisk.org/Configuration/Channel-Drivers/SIP/Configuring-res_pjsip/PJSIP-Configuration-Sections-and-Relationships/" target="_blank" rel="noreferrer">
               Asterisk Docs - PJSIP Configuration Sections and Relationships
-        </div>
             </a>
           </li>
           <li>
