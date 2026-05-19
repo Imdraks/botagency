@@ -3,21 +3,21 @@ import {
 } from "../components";
 
 export const metadata = {
-  title: "TP Réseaux Cisco — VLANs, STP, SNMP, EtherChannel & ACLs",
+  title: "Guide Réseaux Cisco — VLANs, STP, SNMP, EtherChannel & ACLs",
   robots: { index: false, follow: false },
 };
 
 export default function CiscoPage() {
   return (
     <WikiLayout
-      title="TP Réseaux Cisco — Guide Complet CIEL V3"
-      subtitle="BTS CIEL · TP 1 & TP 2 · Préparation E5"
+      title="Réseaux Cisco — Guide Opérationnel"
+      subtitle="Modules 1 et 2 · VLANs, STP, SNMP, EtherChannel, ACLs"
       description="Configuration réseau multi-switches avec VLANs, STP Rapid PVST+, sécurisation couche 2, supervision SNMP, EtherChannel LACP et ACLs pour la sécurisation inter-VLAN. Guide complet incluant scenarios pratiques et exercices."
       color="from-orange-500 to-red-600"
     >
 
       {/* TP 1 */}
-      <TpSection number="TP 1" title="Réseau segmenté et sécurisé avec supervision SNMP" duration="2h">
+      <TpSection number="Module 1" title="Réseau segmenté et sécurisé avec supervision SNMP" duration="2h">
         <Tip>
           <strong>Contexte :</strong> Une PME souhaite moderniser son infrastructure réseau en la segmentant selon ses services (Informatique, RH, Comptabilité), sécuriser les accès internes et mettre en place une supervision SNMP.
         </Tip>
@@ -142,7 +142,7 @@ Switch# show snmp community`} language="cisco" />
       </TpSection>
 
       {/* TP 2 */}
-      <TpSection number="TP 2" title="Optimisation réseau multi-switches : EtherChannel et ACLs" duration="2h">
+      <TpSection number="Module 2" title="Optimisation réseau multi-switches : EtherChannel et ACLs" duration="2h">
         <Tip>
           <strong>Contexte :</strong> L'entreprise MOUNDZEKI tech constate des lenteurs et souhaite optimiser la bande passante entre ses switches (EtherChannel LACP), renforcer la sécurité avec des ACLs et configurer un Spanning Tree stable.
         </Tip>
@@ -296,6 +296,46 @@ Switch# show mac address-table vlan 10`} language="cisco" />
 ! si les règles ACL sont bien atteintes`} language="cisco" />
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
+        <ul className="space-y-2 text-sm text-gray-700 mb-4">
+          <li>1. Vérifier les VLANs et l'affectation des ports : <span className="font-mono">show vlan brief</span></li>
+          <li>2. Vérifier les trunks : <span className="font-mono">show interfaces trunk</span></li>
+          <li>3. Vérifier STP et le root : <span className="font-mono">show spanning-tree vlan 10</span></li>
+          <li>4. Vérifier EtherChannel : <span className="font-mono">show etherchannel summary</span></li>
+          <li>5. Vérifier ACLs et compteurs : <span className="font-mono">show ip access-lists</span></li>
+        </ul>
+        <Warning>
+          Si un trunk ne passe pas, comparez la configuration des deux côtés (mode trunk, VLANs autorisés, encapsulation) avant de modifier STP ou les ACLs.
+        </Warning>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Annexes et ressources en ligne</h2>
+        <ul className="space-y-2 text-sm text-gray-700">
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://www.cisco.com/c/en/us/support/docs/lan-switching/etherchannel/12023-4.html" target="_blank" rel="noreferrer">
+              Cisco - Understand EtherChannel Load Balance and Redundancy
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://www.cisco.com/c/en/us/support/index.html" target="_blank" rel="noreferrer">
+              Cisco Technical Support and Documentation Portal
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://www.rfc-editor.org/rfc/rfc3411" target="_blank" rel="noreferrer">
+              RFC 3411 - SNMP Management Frameworks
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://www.rfc-editor.org/rfc/rfc2328" target="_blank" rel="noreferrer">
+              RFC 2328 - OSPF Version 2 (référence routage inter-VLAN)
+            </a>
+          </li>
+        </ul>
       </div>
     </WikiLayout>
   );

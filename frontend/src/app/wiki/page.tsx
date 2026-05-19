@@ -2,8 +2,8 @@ import Link from "next/link";
 import { BookOpen, Wifi, Server, Radio, Network } from "lucide-react";
 
 export const metadata = {
-  title: "Wiki BTS CIEL — Travaux Pratiques",
-  description: "Documentation et guides pratiques BTS CIEL — TP préparatoires E5",
+  title: "Wiki Technique — Guides Opérationnels",
+  description: "Documentation technique et guides opérationnels pour l'infrastructure réseau et systèmes",
   robots: { index: false, follow: false },
 };
 
@@ -14,10 +14,10 @@ const tps = [
     color: "from-emerald-500 to-teal-600",
     badge: "bg-emerald-100 text-emerald-700",
     title: "LoRaWAN & ChirpStack",
-    subtitle: "TP 0 à TP 4",
+    subtitle: "Modules 0 à 4",
     description:
       "Déploiement de capteurs LoRaWAN avec ChirpStack, MQTT et Node-RED sur Raspberry Pi. Installation, enregistrement passerelle, intégration MQTT, sécurisation TLS et infrastructure multi-projets.",
-    tps: ["TP 0 — Installation ChirpStack", "TP 1 — Passerelle & premier capteur", "TP 2 — MQTT & Node-RED", "TP 3 — Sécurisation TLS", "TP 4 — Infrastructure multi-projets"],
+    tps: ["Module 0 — Installation ChirpStack", "Module 1 — Passerelle & premier capteur", "Module 2 — MQTT & Node-RED", "Module 3 — Sécurisation TLS", "Module 4 — Infrastructure multi-projets"],
     duration: "8h total",
   },
   {
@@ -26,10 +26,10 @@ const tps = [
     color: "from-blue-500 to-indigo-600",
     badge: "bg-blue-100 text-blue-700",
     title: "VoIP — Asterisk PJSIP",
-    subtitle: "TP 1 à TP 4",
+    subtitle: "Modules 1 à 4",
     description:
       "Configuration et sécurisation PJSIP avec Asterisk, déploiement Docker, supervision Zabbix/Grafana et optimisation QoS mobile.",
-    tps: ["TP 1 — Analyse & Sécurisation PJSIP", "TP 2 — Docker PJSIP", "TP 3 — Supervision Zabbix/Grafana", "TP 4 — QoS Mobile PJSIP"],
+    tps: ["Module 1 — Analyse & Sécurisation PJSIP", "Module 2 — Docker PJSIP", "Module 3 — Supervision Zabbix/Grafana", "Module 4 — QoS Mobile PJSIP"],
     duration: "8h total",
   },
   {
@@ -38,10 +38,10 @@ const tps = [
     color: "from-violet-500 to-purple-600",
     badge: "bg-violet-100 text-violet-700",
     title: "Windows Server 2022 GUI",
-    subtitle: "TP 1 à TP 4",
+    subtitle: "Modules 1 à 4",
     description:
       "Infrastructure Active Directory, DNS, DHCP, VPN RADIUS, DNSSEC, Wi-Fi WPA2-Enterprise, 802.1X, GPO et haute disponibilité — 100% interface graphique, sans ligne de commande.",
-    tps: ["TP 1 — AD DS, DNS, DHCP, VPN", "TP 2 — DNSSEC & Wi-Fi WPA2-Ent.", "TP 3 — 802.1X Filaire & GPO", "TP 4 — Haute Disponibilité AD/DHCP"],
+    tps: ["Module 1 — AD DS, DNS, DHCP, VPN", "Module 2 — DNSSEC & Wi-Fi WPA2-Ent.", "Module 3 — 802.1X Filaire & GPO", "Module 4 — Haute Disponibilité AD/DHCP"],
     duration: "16h total",
   },
   {
@@ -50,10 +50,10 @@ const tps = [
     color: "from-orange-500 to-red-600",
     badge: "bg-orange-100 text-orange-700",
     title: "Réseaux Cisco",
-    subtitle: "TP 1 & TP 2",
+    subtitle: "Modules 1 et 2",
     description:
       "Configuration réseau multi-switches avec VLANs, STP Rapid PVST+, sécurisation couche 2, supervision SNMP, EtherChannel LACP et ACLs.",
-    tps: ["TP 1 — VLANs, STP & SNMP", "TP 2 — EtherChannel & ACLs"],
+    tps: ["Module 1 — VLANs, STP & SNMP", "Module 2 — EtherChannel & ACLs"],
     duration: "4h total",
   },
 ];
@@ -71,11 +71,11 @@ export default function WikiPage() {
             </span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            BTS CIEL — Travaux Pratiques
+            Wiki Technique — Guides Opérationnels
           </h1>
           <p className="text-gray-500 text-base max-w-2xl">
-            Documentation complète des TP pratiques de préparation à l'épreuve E5 IR.
-            Chaque section regroupe les étapes, les configurations et les astuces pour réussir.
+            Base documentaire interne pour le déploiement, la configuration et l'exploitation des environnements réseau.
+            Chaque section regroupe les procédures, configurations et bonnes pratiques.
           </p>
         </div>
       </div>

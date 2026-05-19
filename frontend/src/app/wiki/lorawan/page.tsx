@@ -3,23 +3,23 @@ import {
 } from "../components";
 
 export const metadata = {
-  title: "TP LoRaWAN — ChirpStack · MQTT · Node-RED",
+  title: "Guide LoRaWAN — ChirpStack · MQTT · Node-RED",
   robots: { index: false, follow: false },
 };
 
 export default function LoRaWANPage() {
   return (
     <WikiLayout
-      title="TP LoRaWAN — ChirpStack · MQTT · Node-RED"
-      subtitle="BTS CIEL · TP 0 à TP 4 · Préparation E5"
+      title="LoRaWAN — ChirpStack · MQTT · Node-RED"
+      subtitle="Modules 0 à 4 · Déploiement, intégration et sécurisation"
       description="Déploiement de capteurs LoRaWAN sur Raspberry Pi avec ChirpStack, Mosquitto et Node-RED. Même infrastructure pour tous les sujets — seuls les capteurs et topics MQTT changent."
       color="from-emerald-600 to-teal-700"
     >
 
       {/* TP 0 */}
-      <TpSection number="TP 0" title="Installation de ChirpStack sur Raspberry Pi" duration="1h30">
+      <TpSection number="Module 0" title="Installation de ChirpStack sur Raspberry Pi" duration="1h30">
         <Tip>
-          Cette étape n'est faite <strong>qu'une seule fois</strong> avant les TP 1 à 4. Si l'infrastructure est déjà installée par le formateur, parcourez ce TP pour comprendre l'architecture.
+          Cette étape n'est faite <strong>qu'une seule fois</strong> avant les modules 1 à 4. Si l'infrastructure est déjà installée, parcourez ce module pour comprendre l'architecture.
         </Tip>
 
         <Phase number={1} title="Préparation du Raspberry Pi">
@@ -127,7 +127,7 @@ sudo systemctl restart nodered.service`} />
       </TpSection>
 
       {/* TP 1 */}
-      <TpSection number="TP 1" title="Passerelle LoRaWAN et premier capteur dans ChirpStack" duration="2h">
+      <TpSection number="Module 1" title="Passerelle LoRaWAN et premier capteur dans ChirpStack" duration="2h">
         <Phase number={1} title="Enregistrement de la passerelle Laird RG186">
           <Steps items={[
             "Identifiez l'adresse IP de la passerelle avec <code class='bg-gray-100 px-1 rounded text-xs'>nmap -sn 192.168.1.0/24</code>",
@@ -189,7 +189,7 @@ sudo systemctl restart nodered.service`} />
       </TpSection>
 
       {/* TP 2 */}
-      <TpSection number="TP 2" title="Intégration MQTT et tableau de bord Node-RED" duration="2h">
+      <TpSection number="Module 2" title="Intégration MQTT et tableau de bord Node-RED" duration="2h">
         <Phase number={1} title="Configuration de Mosquitto avec authentification">
           <CodeBlock code={`# Créer les utilisateurs MQTT
 sudo mosquitto_passwd -c /etc/mosquitto/passwd chirpstack_user
@@ -263,7 +263,7 @@ return [msg1, msg2];`} language="javascript" />
       </TpSection>
 
       {/* TP 3 */}
-      <TpSection number="TP 3" title="Sécurisation MQTT (TLS) et système d'alertes" duration="2h">
+      <TpSection number="Module 3" title="Sécurisation MQTT (TLS) et système d'alertes" duration="2h">
         <Phase number={1} title="Activation du chiffrement TLS sur Mosquitto">
           <Steps items={[
             "Créez le répertoire de travail pour les certificats : <code class='bg-gray-100 px-1 rounded text-xs'>mkdir -p ~/mqtt-certs && cd ~/mqtt-certs</code>",
@@ -349,7 +349,7 @@ return msg;`} language="javascript" />
       </TpSection>
 
       {/* TP 4 */}
-      <TpSection number="TP 4" title="Infrastructure multi-projets et capteurs spécialisés" duration="2h">
+      <TpSection number="Module 4" title="Infrastructure multi-projets et capteurs spécialisés" duration="2h">
         <Phase number={1} title="Règles d'isolation multi-projets">
           <InfoTable
             headers={["Composant", "Règle d'isolation"]}
@@ -435,7 +435,7 @@ return null;`} language="javascript" />
 
         {/* Checklist globale */}
         <div className="border-t border-gray-100 pt-5">
-          <h3 className="font-semibold text-gray-800 mb-3">Checklist globale — Préparation à l'épreuve</h3>
+          <h3 className="font-semibold text-gray-800 mb-3">Checklist globale — Validation opérationnelle</h3>
           <InfoTable
             headers={["URL / Port", "Service"]}
             rows={[
@@ -461,6 +461,44 @@ return null;`} language="javascript" />
           </div>
         </div>
       </TpSection>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Annexes et ressources en ligne</h2>
+        <ul className="space-y-2 text-sm text-gray-700">
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://www.chirpstack.io/docs/" target="_blank" rel="noreferrer">
+              ChirpStack - Documentation officielle
+            </a>
+          </li>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
+            <ul className="space-y-2 text-sm text-gray-700 mb-4">
+              <li>1. Vérifier les services clés : ChirpStack, PostgreSQL, Redis, Mosquitto</li>
+              <li>2. Vérifier l'arrivée des uplinks dans ChirpStack avant Node-RED</li>
+              <li>3. Vérifier la gateway et la région radio (EU868, US915, etc.)</li>
+              <li>4. Vérifier DevEUI/AppEUI/AppKey et Device Profile</li>
+              <li>5. Vérifier le topic MQTT exact utilisé dans Node-RED</li>
+            </ul>
+            <CodeBlock code={`# État des services
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://nodered.org/docs/" target="_blank" rel="noreferrer">
+              Node-RED - Documentation officielle
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://mosquitto.org/documentation/" target="_blank" rel="noreferrer">
+          </div>
+              Eclipse Mosquitto - Documentation officielle
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://lora-alliance.org/resource_hub/lorawan-specification-v1-0-3/" target="_blank" rel="noreferrer">
+              LoRa Alliance - LoRaWAN Specification
+            </a>
+          </li>
+        </ul>
+      </div>
     </WikiLayout>
   );
 }

@@ -3,15 +3,15 @@ import {
 } from "../components";
 
 export const metadata = {
-  title: "TP Windows Server 2022 GUI",
+  title: "Guide Windows Server 2022 GUI",
   robots: { index: false, follow: false },
 };
 
 export default function WS2022Page() {
   return (
     <WikiLayout
-      title="TP Windows Server 2022 — Interface Graphique"
-      subtitle="BTS CIEL · TP 1 à TP 4 · Préparation E5"
+      title="Windows Server 2022 — Interface Graphique"
+      subtitle="Modules 1 à 4 · AD, sécurité réseau, haute disponibilité"
       description="Infrastructure AD DS, DNS, DHCP, VPN RADIUS, DNSSEC, Wi-Fi WPA2-Enterprise, 802.1X, GPO et haute disponibilité — 100% GUI, sans ligne de commande."
       color="from-violet-600 to-purple-700"
     >
@@ -37,7 +37,7 @@ export default function WS2022Page() {
       </div>
 
       {/* TP 1 */}
-      <TpSection number="TP 1" title="Infrastructure de base : AD DS, DNS, DHCP, VPN RADIUS" duration="4h">
+      <TpSection number="Module 1" title="Infrastructure de base : AD DS, DNS, DHCP, VPN RADIUS" duration="4h">
 
         <Phase number={1} title="Installation et configuration AD DS">
           <Steps items={[
@@ -152,7 +152,7 @@ export default function WS2022Page() {
       </TpSection>
 
       {/* TP 2 */}
-      <TpSection number="TP 2" title="Sécurisation DNS (DNSSEC) et Wi-Fi WPA2-Enterprise" duration="4h">
+      <TpSection number="Module 2" title="Sécurisation DNS (DNSSEC) et Wi-Fi WPA2-Enterprise" duration="4h">
 
         <Phase number={1} title="DNS avancé — Enregistrements A, CNAME, PTR">
           <Steps items={[
@@ -225,7 +225,7 @@ export default function WS2022Page() {
       </TpSection>
 
       {/* TP 3 */}
-      <TpSection number="TP 3" title="Authentification 802.1X Filaire et GPO" duration="4h">
+      <TpSection number="Module 3" title="Authentification 802.1X Filaire et GPO" duration="4h">
 
         <Phase number={1} title="NPS pour 802.1X filaire — Client RADIUS Switch">
           <Steps items={[
@@ -298,7 +298,7 @@ gpupdate /force`} />
       </TpSection>
 
       {/* TP 4 */}
-      <TpSection number="TP 4" title="Haute Disponibilité : DHCP Failover et infrastructure résiliente" duration="4h">
+      <TpSection number="Module 4" title="Haute Disponibilité : DHCP Failover et infrastructure résiliente" duration="4h">
 
         <Phase number={1} title="Second contrôleur de domaine (DC2)">
           <Steps items={[
@@ -387,16 +387,16 @@ gpupdate /force`} />
         </Phase>
 
         <div className="border-t border-gray-100 pt-5">
-          <h3 className="font-semibold text-gray-800 mb-3">Points clés pour l'examen E5</h3>
+          <h3 className="font-semibold text-gray-800 mb-3">Points clés de validation</h3>
           <InfoTable
-            headers={["TP", "Concept", "Point clé"]}
+            headers={["Module", "Concept", "Point clé"]}
             rows={[
-              ["TP 1", "Socle obligatoire", "Sans AD/DNS/DHCP fonctionnels, rien d'autre ne marche"],
-              ["TP 2", "RADIUS = cœur", "Bien comprendre les stratégies réseau NPS et les clients RADIUS"],
-              ["TP 2", "DNSSEC", "Sécurise l'intégrité DNS, pas la confidentialité"],
-              ["TP 3", "802.1X", "Authentification AVANT accès réseau (port-based NAC)"],
-              ["TP 4", "Load Balance ≠ Hot Standby", "En Load Balance, les deux serveurs DHCP répondent en parallèle"],
-              ["TP 4", "MCLT", "Durée maximale de désaccord entre serveurs DHCP partenaires"],
+              ["Module 1", "Socle obligatoire", "Sans AD/DNS/DHCP fonctionnels, rien d'autre ne marche"],
+              ["Module 2", "RADIUS = cœur", "Bien comprendre les stratégies réseau NPS et les clients RADIUS"],
+              ["Module 2", "DNSSEC", "Sécurise l'intégrité DNS, pas la confidentialité"],
+              ["Module 3", "802.1X", "Authentification AVANT accès réseau (port-based NAC)"],
+              ["Module 4", "Load Balance ≠ Hot Standby", "En Load Balance, les deux serveurs DHCP répondent en parallèle"],
+              ["Module 4", "MCLT", "Durée maximale de désaccord entre serveurs DHCP partenaires"],
             ]}
           />
         </div>
@@ -409,6 +409,52 @@ gpupdate /force`} />
           "Toutes les fonctions critiques restent opérationnelles avec DC1 éteint",
         ]} />
       </TpSection>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Annexes et ressources en ligne</h2>
+        <ul className="space-y-2 text-sm text-gray-700">
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview" target="_blank" rel="noreferrer">
+              Microsoft Learn - Active Directory Domain Services overview
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/en-us/windows-server/networking/dns/dns-top" target="_blank" rel="noreferrer">
+              Microsoft Learn - DNS on Windows Server
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/en-us/windows-server/networking/technologies/dhcp/dhcp-top" target="_blank" rel="noreferrer">
+              Microsoft Learn - DHCP on Windows Server
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory" target="_blank" rel="noreferrer">
+              Microsoft Learn - AD Security Best Practices
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
+        <ul className="space-y-2 text-sm text-gray-700 mb-4">
+          <li>1. Vérifier l'heure et la synchronisation NTP sur tous les serveurs (écarts de temps = authentification cassée)</li>
+          <li>2. Vérifier la résolution DNS du domaine avant de diagnostiquer AD ou GPO</li>
+          <li>3. Vérifier l'état des services AD DS, DNS, DHCP, NPS dans Services</li>
+          <li>4. Vérifier les journaux Event Viewer pour les IDs critiques (DHCP, NPS, réplication AD)</li>
+          <li>5. Tester d'abord localement sur le LAN, puis via VPN/Wi-Fi/802.1X</li>
+        </ul>
+        <InfoTable
+          headers={["Vérification", "Où regarder"]}
+          rows={[
+            ["Réplication AD", "Active Directory Sites and Services + Event Viewer"],
+            ["Attribution IP DHCP", "DHCP Console > Address Leases"],
+            ["Authentification RADIUS", "Event Viewer > Security > IDs 6272/6273"],
+            ["Résolution DNS", "DNS Manager + nslookup depuis un client"],
+          ]}
+        />
+      </div>
     </WikiLayout>
   );
 }

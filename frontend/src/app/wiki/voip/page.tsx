@@ -3,22 +3,22 @@ import {
 } from "../components";
 
 export const metadata = {
-  title: "TP VoIP — Asterisk PJSIP",
+  title: "Guide VoIP — Asterisk PJSIP",
   robots: { index: false, follow: false },
 };
 
 export default function VoIPPage() {
   return (
     <WikiLayout
-      title="TP VoIP — Asterisk PJSIP"
-      subtitle="BTS CIEL · TP 1 à TP 4 · Préparation E5"
+      title="VoIP — Asterisk PJSIP"
+      subtitle="Modules 1 à 4 · Déploiement, sécurité, supervision, QoS"
       description="Configuration et sécurisation PJSIP avec Asterisk 20+, déploiement Docker, supervision Zabbix/Grafana et optimisation QoS pour clients mobiles."
       color="from-blue-600 to-indigo-700"
     >
 
       {/* Paramètres communs */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-bold text-gray-900 mb-3">Paramètres communs à tous les TP</h2>
+        <h2 className="font-bold text-gray-900 mb-3">Paramètres communs à tous les modules</h2>
         <InfoTable
           headers={["Paramètre", "Valeur"]}
           rows={[
@@ -35,7 +35,7 @@ export default function VoIPPage() {
       </div>
 
       {/* TP 1 */}
-      <TpSection number="TP 1" title="Analyse et Sécurisation Infrastructure PJSIP" duration="2h">
+      <TpSection number="Module 1" title="Analyse et Sécurisation Infrastructure PJSIP" duration="2h">
         <Tip>
           Objectif : Configurer les endpoints PJSIP, capturer avec Wireshark, simuler des attaques sipvicious, implémenter TLS/SRTP/ICE et valider les métriques de performance.
         </Tip>
@@ -196,7 +196,7 @@ sudo netfilter-persistent save`} />
       </TpSection>
 
       {/* TP 2 */}
-      <TpSection number="TP 2" title="Déploiement et Sécurisation Docker PJSIP" duration="2h">
+      <TpSection number="Module 2" title="Déploiement et Sécurisation Docker PJSIP" duration="2h">
         <Phase number={1} title="Préparation de l'environnement Docker">
           <CodeBlock code={`mkdir -p ~/tp2-pjsip/{configs,keys,data} && cd ~/tp2-pjsip
 cp /etc/asterisk/{pjsip.conf,extensions.conf} configs/
@@ -281,7 +281,7 @@ docker exec asterisk-pjsip iptables -A INPUT -p udp --dport 5060 -j DROP`} />
       </TpSection>
 
       {/* TP 3 */}
-      <TpSection number="TP 3" title="Supervision Zabbix / Grafana PJSIP" duration="2h">
+      <TpSection number="Module 3" title="Supervision Zabbix / Grafana PJSIP" duration="2h">
         <Phase number={1} title="Installation Zabbix Server + Agent Docker">
           <CodeBlock code={`wget https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb
 sudo dpkg -i zabbix-release_6.4-1+ubuntu22.04_all.deb
@@ -365,7 +365,7 @@ docker compose up -d`} />
       </TpSection>
 
       {/* TP 4 */}
-      <TpSection number="TP 4" title="Diagnostic QoS Mobile PJSIP" duration="2h">
+      <TpSection number="Module 4" title="Diagnostic QoS Mobile PJSIP" duration="2h">
         <Phase number={1} title="Endpoint mobile PJSIP">
           <CodeBlock code={`; Transport WebRTC optionnel (WebSocket Secure)
 [transport-wss]
@@ -442,6 +442,44 @@ sudo tc filter add dev docker0 protocol ip prio 1 u32 match ip dscp 46 0xff flow
           "Le monitoring Grafana (TP3) trace le MOS en temps réel",
         ]} />
       </TpSection>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Annexes et ressources en ligne</h2>
+        <ul className="space-y-2 text-sm text-gray-700">
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://docs.asterisk.org/Getting-Started/" target="_blank" rel="noreferrer">
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 className="font-bold text-gray-900 mb-4">Déblocage rapide (si ça ne marche pas)</h2>
+          <ul className="space-y-2 text-sm text-gray-700 mb-4">
+            <li>1. Vérifier que le service Asterisk tourne : <span className="font-mono">systemctl status asterisk</span></li>
+            <li>2. Vérifier les enregistrements SIP : <span className="font-mono">pjsip show endpoints</span> puis <span className="font-mono">pjsip show contacts</span></li>
+            <li>3. Vérifier les ports exposés : <span className="font-mono">ss -luntp | grep -E "5060|5061|10000"</span></li>
+            <li>4. Vérifier la résolution DNS/NAT côté clients avant de changer la conf PJSIP</li>
+            <li>5. Si audio one-way, revérifier NAT, ICE et plage RTP autorisée dans le pare-feu</li>
+          </ul>
+          <CodeBlock code={`# Logs en direct
+              Asterisk Docs - Getting Started
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://docs.asterisk.org/Configuration/Channel-Drivers/SIP/Configuring-res_pjsip/PJSIP-Configuration-Sections-and-Relationships/" target="_blank" rel="noreferrer">
+              Asterisk Docs - PJSIP Configuration Sections and Relationships
+        </div>
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://www.zabbix.com/documentation/current/en/manual" target="_blank" rel="noreferrer">
+              Zabbix - Official Documentation
+            </a>
+          </li>
+          <li>
+            <a className="text-indigo-600 hover:underline" href="https://grafana.com/docs/grafana/latest/" target="_blank" rel="noreferrer">
+              Grafana - Official Documentation
+            </a>
+          </li>
+        </ul>
+      </div>
     </WikiLayout>
   );
 }
