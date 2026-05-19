@@ -295,7 +295,7 @@ sudo apt install zabbix-server-mysql zabbix-agent2 grafana -y`} />
         </Phase>
 
         <Phase number={2} title="Items et Triggers PJSIP (Tutoriel détaillé)">
-          <p className="text-sm text-gray-600 mb-3">Configuration > Hosts > ast-pjsip-tp2 > Items > Create item</p>
+          <p className="text-sm text-gray-600 mb-3">Configuration &gt; Hosts &gt; ast-pjsip-tp2 &gt; Items &gt; Create item</p>
           <InfoTable
             headers={["Nom de l'item", "Type", "Clé"]}
             rows={[
